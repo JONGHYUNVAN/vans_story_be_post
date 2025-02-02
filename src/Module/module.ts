@@ -4,10 +4,14 @@ import { PostsService } from '../Service/service';
 import { PostsController } from '../Controller/controller';
 import { Post } from '../Entity/entity';
 import { AuthModule } from '../Authorization/Module/module';
+import { PostsRepository } from '../Repository/repository';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Post]), AuthModule],
+  imports: [
+    TypeOrmModule.forFeature([Post]),
+    AuthModule,
+  ],
   controllers: [PostsController],
-  providers: [PostsService],
+  providers: [PostsService, PostsRepository],
 })
 export class PostsModule {}
