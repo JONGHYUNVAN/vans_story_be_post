@@ -15,7 +15,7 @@ export class Post {
   theme: string;
 
   @Column()
-  email: string;
+  authorEmail: string;
 
   @CreateDateColumn()
   createdAt: Date;
