@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { PostsService } from '../Service/service';
 import { PostsController } from '../Controller/controller';
 import { Post } from '../Entity/entity';
-import { AuthModule } from '../Authorization/Module/module';
+import { AuthModule } from '../utils/Authorization/Module/module';
 import { PostsRepository } from '../Repository/repository';
 
 @Module({

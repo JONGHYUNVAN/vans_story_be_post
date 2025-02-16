@@ -2,11 +2,18 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Transport } from '@nestjs/microservices';
+import { SwaggerModule } from '@nestjs/swagger';
+import { swaggerConfig } from './config/swagger';
 
 async function bootstrap() {
   // 기존 HTTP 서버 생성
-  const app = await NestFactory.create(AppModule);
-  await app.listen(3001);
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'debug', 'verbose'], // 로깅 레벨 설정
+  });
+
+  // Swagger 설정
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api', app, document);
 
   // 별도의 마이크로서비스 서버 생성 (TCP 기반)
   const microservice = app.connectMicroservice({
@@ -17,6 +24,7 @@ async function bootstrap() {
     },
   });
 
+  await app.listen(3001);
   await app.startAllMicroservices();
 }
 bootstrap();
