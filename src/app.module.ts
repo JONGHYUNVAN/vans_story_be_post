@@ -9,11 +9,7 @@ dotenv.config();
 
 @Module({
   imports: [
-    MongooseModule.forRootAsync({
-      useFactory: () => ({
-        ...mongooseConfig
-      }),
-    }),
+    MongooseModule.forRoot(process.env.MONGODB_URI),
     HttpModule,
     PostsModule,
     AuthModule,
