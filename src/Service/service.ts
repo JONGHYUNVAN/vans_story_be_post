@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { CreateDto, UpdateDto, ResponseDto } from '../Dto/dto';
+import { CreateDto, UpdateDto, ResponseDto } from '../DTO/dto';
 import { Post, PostDocument } from '../schemas/post.schema';
 import { mapToDto } from '../Mapper/mapper';
 import { PaginateQuery, Paginated } from 'nestjs-paginate';
