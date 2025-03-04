@@ -1,14 +1,20 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { MongooseModule } from '@nestjs/mongoose';
+import { HttpModule } from '@nestjs/axios';
 import * as dotenv from 'dotenv';
 import { PostsModule } from './Module/module';
 import { AuthModule } from './utils/Authorization/Module/module';
-import { databaseConfig } from './config/database';
+import { mongooseConfig } from './config/database';
 dotenv.config();
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot(databaseConfig),
+    MongooseModule.forRootAsync({
+      useFactory: () => ({
+        ...mongooseConfig
+      }),
+    }),
+    HttpModule,
     PostsModule,
     AuthModule,
   ],

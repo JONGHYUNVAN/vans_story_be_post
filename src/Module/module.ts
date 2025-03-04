@@ -1,17 +1,25 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { PostsService } from '../Service/service';
+import { MongooseModule } from '@nestjs/mongoose';
+import { HttpModule } from '@nestjs/axios';
 import { PostsController } from '../Controller/controller';
-import { Post } from '../Entity/entity';
-import { AuthModule } from '../utils/Authorization/Module/module';
-import { PostsRepository } from '../Repository/repository';
+import { PostsService } from '../Service/service';
+import { Post, PostSchema } from '../schemas/post.schema';
+import { InternalApiClient } from '../utils/Api/api';
+import { PostInitService } from '../database/init/post.init';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Post]),
-    AuthModule,
+    MongooseModule.forFeature([
+      { name: Post.name, schema: PostSchema }
+    ]),
+    HttpModule
   ],
   controllers: [PostsController],
-  providers: [PostsService, PostsRepository],
+  providers: [
+    PostsService,
+    InternalApiClient,
+    PostInitService
+  ],
+  exports: [PostsService]
 })
 export class PostsModule {}

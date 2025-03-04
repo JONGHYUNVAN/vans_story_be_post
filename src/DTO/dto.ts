@@ -1,5 +1,6 @@
 import { Field } from '../Mapper/fieldname.extractor';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Types } from 'mongoose';
 
 export class CreateDto {
     @ApiProperty({
@@ -43,8 +44,11 @@ export class UpdateDto {
 
 export class ResponseDto {
     @Field
-    @ApiProperty({ example: 1 })
-    id: number;
+    @ApiProperty({ 
+        example: '507f1f77bcf86cd799439011',
+        description: 'MongoDB ObjectId'
+    })
+    _id: Types.ObjectId;
 
     @Field
     @ApiProperty({ example: '게시글 제목' })
@@ -61,6 +65,10 @@ export class ResponseDto {
     @Field
     @ApiProperty({ example: 'user@example.com' })
     authorEmail: string;
+
+    @Field
+    @ApiProperty({ example: '닉네임' })
+    author: string;
 
     @Field
     @ApiProperty({ example: '2024-03-19T09:00:00.000Z' })

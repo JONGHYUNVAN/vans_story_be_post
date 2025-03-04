@@ -1,12 +1,16 @@
-import { PaginateQuery } from 'nestjs-paginate';
+export interface PaginationMeta {
+  itemsPerPage: number;
+  totalItems: number;
+  currentPage: number;
+  totalPages: number;
+  sortBy: Record<string, string>;
+  searchBy: string[];
+  search: string;
+  filter: Record<string, string | string[]>;
+}
 
-export class PaginationQueryDto implements PaginateQuery {
-  page?: number;
-  limit?: number;
-  path: string;
-  sortBy?: [string, string][];
-  searchBy?: string[];
-  search?: string;
-  filter?: { [column: string]: string | string[] };
+export interface PaginatedResponseDto<T> {
+  data: T[];
+  meta: PaginationMeta;
 }
 

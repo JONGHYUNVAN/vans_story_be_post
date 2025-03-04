@@ -1,30 +1,28 @@
 // main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { Transport } from '@nestjs/microservices';
 import { SwaggerModule } from '@nestjs/swagger';
 import { swaggerConfig } from './config/swagger';
+import { Logger } from '@nestjs/common';
 
 async function bootstrap() {
-  // 기존 HTTP 서버 생성
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule, {
-    logger: ['error', 'warn', 'debug', 'verbose'], // 로깅 레벨 설정
+    logger: ['error', 'warn', 'debug', 'verbose'],
+  });
+
+  // CORS 설정
+  app.enableCors({
+    origin: process.env.CORS_ORIGINS.split(','),
+    credentials: true,
   });
 
   // Swagger 설정
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api', app, document);
 
-  // 별도의 마이크로서비스 서버 생성 (TCP 기반)
-  const microservice = app.connectMicroservice({
-    transport: Transport.TCP,
-    options: {
-      host: '127.0.0.1',
-      port: 8877,
-    },
-  });
-
   await app.listen(3001);
-  await app.startAllMicroservices();
+  logger.log(`Application is running on: ${await app.getUrl()}`);
+  logger.log(`MongoDB URI: ${process.env.MONGODB_URI}`);
 }
 bootstrap();
