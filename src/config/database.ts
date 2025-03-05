@@ -4,6 +4,14 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
+// 환경변수 확인 로그
+console.log('환경변수 확인:');
+console.log('MONGODB_URI:', process.env.MONGODB_URI);
+console.log('NODE_ENV:', process.env.NODE_ENV);
+
+// MongoDB 연결 문자열 구성
+const mongoUri = process.env.MONGODB_URI;
+
 // MongoDB 연결 이벤트 리스너 설정
 mongoose.connection.on('connected', () => {
   console.log('MongoDB Connected');
