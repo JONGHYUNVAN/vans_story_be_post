@@ -1,0 +1,186 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vans Story API Docs database/init/post.init.ts</title>
+
+  <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="./build/entry.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,400,700|Inconsolata,700" rel="stylesheet">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+  <link type="text/css" rel="stylesheet" href="https://jmblog.github.io/color-themes-for-google-code-prettify/themes/tomorrow-night.min.css">
+  <link type="text/css" rel="stylesheet" href="styles/app.min.css">
+  <link type="text/css" rel="stylesheet" href="styles/iframe.css">
+  <link type="text/css" rel="stylesheet" href="">
+  <script async defer src="https://buttons.github.io/buttons.js"></script>
+
+  
+</head>
+
+
+
+<body class="layout small-header">
+    <div id="stickyNavbarOverlay"></div>
+    
+
+<div class="top-nav">
+    <div class="inner">
+        <a id="hamburger" role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+        </a>
+        <div class="logo">
+            
+             
+                <a href="index.html">
+                    <h1 class="navbar-item">Vans Story Backend - Posts Service Documentation</h1>
+                </a>
+            
+        </div>
+        <div class="menu">
+            
+            <div class="navigation">
+                <a
+                    href="index.html"
+                    class="link"
+                >
+                    Documentation
+                </a>
+                
+                 
+                    
+                        <a
+                            class="link user-link "
+                            href="https://github.com/yourusername/vans_story_be_post"
+                        >
+                            README
+                        </a>
+                    
+                
+                
+            </div>
+        </div>
+    </div>
+</div>
+    <div id="main">
+        <div
+            class="sidebar "
+            id="sidebarNav"
+        >
+            
+            <nav>
+                
+                    <h2><a href="index.html">Documentation</a></h2><div class="category"><h3>Classes</h3><ul><li><a href="InternalApiClient.html">InternalApiClient</a></li><li><a href="JwtAuthGuard.html">JwtAuthGuard</a></li><li><a href="JwtStrategy.html">JwtStrategy</a></li><li><a href="JwtStrategy_JwtStrategy.html">JwtStrategy</a></li><li><a href="PostsService.html">PostsService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#allowedOrigins">allowedOrigins</a></li><li><a href="global.html#corsConfig">corsConfig</a></li><li><a href="global.html#initialPosts">initialPosts</a></li></ul></div>
+                
+            </nav>
+        </div>
+        <div class="core" id="main-content-wrapper">
+            <div class="content">
+                <header class="page-title">
+                    <p>Source</p>
+                    <h1>database/init/post.init.ts</h1>
+                </header>
+                
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import { Model } from 'mongoose';
+import { Post } from '../../schemas/post.schema';
+import { InjectModel } from '@nestjs/mongoose';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+
+/**
+ * 게시글 초기 데이터
+ * @description 애플리케이션 시작 시 기본적으로 생성될 초기 게시글입니다.
+ */
+const initialPosts = [
+  {
+    title: "샘플 게시글",
+    theme: "next",
+    topic: "테스트 토픽",
+    description: "테스트 설명",
+    content: `&lt;h1>Hello World&lt;/h1>
+            &lt;p>This is a sample post&lt;/p>
+            &lt;pre>&lt;code class='language-typescript'>const hello = 'world';&lt;/code>&lt;/pre>
+            &lt;ul>
+            &lt;li>항목 1&lt;/li>
+            &lt;li>항목 2&lt;/li>
+            &lt;/ul>
+            &lt;table>
+            &lt;tr>&lt;th>헤더 1&lt;/th>&lt;th>헤더 2&lt;/th>&lt;/tr>
+            &lt;tr>&lt;td>내용 1&lt;/td>&lt;td>내용 2&lt;/td>&lt;/tr>
+            &lt;/table>`,
+    authorEmail: "test@vans-story.com",
+    category: "nextjs",
+    tags: ["테스트", "태그"],
+    thumbnail: "",
+    language: "ko"
+  }
+];
+
+@Injectable()
+export class PostInitService implements OnModuleInit {
+  constructor(
+    @InjectModel(Post.name) private postModel: Model&lt;Post>
+  ) {}
+
+  async onModuleInit() {
+    try {
+      // 기존 데이터 확인
+      const existingPost = await this.postModel.findOne({ title: initialPosts[0].title });
+
+      // 중복 데이터가 없는 경우에만 삽입
+      if (!existingPost) {
+        await this.postModel.create(initialPosts);
+        console.log('✅ 초기 게시글이 성공적으로 생성되었습니다.');
+      } else {
+        console.log('ℹ️ 초기 게시글이 이미 존재합니다.');
+      }
+    } catch (error) {
+      console.error('❌ 초기 게시글 생성 중 오류 발생:', error);
+    }
+  }
+} </code></pre>
+        </article>
+    </section>
+
+
+
+
+            </div>
+            
+            <footer class="footer">
+                <div class="content has-text-centered">
+                    <p>Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.4</a></p>
+                    <p class="sidebar-created-by">
+                        <a href="https://github.com/SoftwareBrothers/better-docs" target="_blank">BetterDocs theme</a> provided with <i class="fas fa-heart"></i> by
+                        <a href="http://softwarebrothers.co" target="_blank">SoftwareBrothers - JavaScript Development Agency</a>
+                    </p>
+                </div>
+            </footer>
+            
+        </div>
+        <div id="side-nav" class="side-nav">
+        </div>
+    </div>
+<script src="scripts/app.min.js"></script>
+<script>PR.prettyPrint();</script>
+<script src="scripts/linenumber.js"> </script>
+
+
+</body>
+</html>

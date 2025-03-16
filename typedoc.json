@@ -1,0 +1,15 @@
+{
+  "entryPoints": ["./src"],
+  "entryPointStrategy": "expand",
+  "out": "docs",
+  "plugin": ["typedoc-plugin-markdown"],
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeExternals": true,
+  "includeVersion": true,
+  "categorizeByGroup": true,
+  "categoryOrder": ["Service", "DTO", "Models", "*"],
+  "readme": "README.md",
+  "name": "Vans Story Backend - Posts Service API Documentation",
+  "sort": ["static-first", "alphabetical"]
+} 

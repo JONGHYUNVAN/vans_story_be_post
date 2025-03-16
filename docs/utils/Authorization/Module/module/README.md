@@ -1,0 +1,11 @@
+[**Vans Story Backend - Posts Service API Documentation v0.0.1**](README.md)
+
+***
+
+[Vans Story Backend - Posts Service API Documentation](modules.md) / utils/Authorization/Module/module
+
+# utils/Authorization/Module/module
+
+## Classes
+
+- [AuthModule](utils\Authorization\Module\module\README\classes\AuthModule.md)

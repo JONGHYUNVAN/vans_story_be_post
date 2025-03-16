@@ -1,0 +1,183 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vans Story API Docs utils/Authorization/Strategy/strategy.ts</title>
+
+  <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="./build/entry.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,400,700|Inconsolata,700" rel="stylesheet">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+  <link type="text/css" rel="stylesheet" href="https://jmblog.github.io/color-themes-for-google-code-prettify/themes/tomorrow-night.min.css">
+  <link type="text/css" rel="stylesheet" href="styles/app.min.css">
+  <link type="text/css" rel="stylesheet" href="styles/iframe.css">
+  <link type="text/css" rel="stylesheet" href="">
+  <script async defer src="https://buttons.github.io/buttons.js"></script>
+
+  
+</head>
+
+
+
+<body class="layout small-header">
+    <div id="stickyNavbarOverlay"></div>
+    
+
+<div class="top-nav">
+    <div class="inner">
+        <a id="hamburger" role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+        </a>
+        <div class="logo">
+            
+             
+                <a href="index.html">
+                    <h1 class="navbar-item">Vans Story Backend - Posts Service Documentation</h1>
+                </a>
+            
+        </div>
+        <div class="menu">
+            
+            <div class="navigation">
+                <a
+                    href="index.html"
+                    class="link"
+                >
+                    Documentation
+                </a>
+                
+                 
+                    
+                        <a
+                            class="link user-link "
+                            href="https://github.com/yourusername/vans_story_be_post"
+                        >
+                            README
+                        </a>
+                    
+                
+                
+            </div>
+        </div>
+    </div>
+</div>
+    <div id="main">
+        <div
+            class="sidebar "
+            id="sidebarNav"
+        >
+            
+            <nav>
+                
+                    <h2><a href="index.html">Documentation</a></h2><div class="category"><h3>Classes</h3><ul><li><a href="InternalApiClient.html">InternalApiClient</a></li><li><a href="JwtAuthGuard.html">JwtAuthGuard</a></li><li><a href="JwtStrategy.html">JwtStrategy</a></li><li><a href="JwtStrategy_JwtStrategy.html">JwtStrategy</a></li><li><a href="PostsService.html">PostsService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#allowedOrigins">allowedOrigins</a></li><li><a href="global.html#corsConfig">corsConfig</a></li><li><a href="global.html#initialPosts">initialPosts</a></li></ul></div>
+                
+            </nav>
+        </div>
+        <div class="core" id="main-content-wrapper">
+            <div class="content">
+                <header class="page-title">
+                    <p>Source</p>
+                    <h1>utils/Authorization/Strategy/strategy.ts</h1>
+                </header>
+                
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import { Injectable } from '@nestjs/common';
+import { PassportStrategy } from '@nestjs/passport';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+
+/**
+ * JWT 인증 전략을 구현하는 클래스
+ * 
+ * @class JwtStrategy
+ * @extends {PassportStrategy(Strategy)}
+ * @description
+ * JWT 토큰의 추출 및 검증을 담당하는 Passport 전략을 구현합니다.
+ * Authorization 헤더의 Bearer 토큰을 추출하고, 
+ * 환경 변수에 설정된 비밀 키를 사용하여 토큰을 검증합니다.
+ */
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy) {
+  /**
+   * JWT 전략 설정을 초기화합니다.
+   * 
+   * @constructor
+   * @description
+   * - jwtFromRequest: Authorization 헤더에서 Bearer 토큰을 추출
+   * - ignoreExpiration: 토큰 만료 검사 활성화
+   * - secretOrKey: 환경 변수에서 JWT 비밀 키를 가져와 base64로 디코딩
+   */
+  constructor() {
+    super({
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ignoreExpiration: false,
+      secretOrKey: Buffer.from(process.env.JWT_SECRET, 'base64')
+    });
+  }
+
+  /**
+   * JWT 페이로드를 검증하고 사용자 정보를 추출합니다.
+   * 
+   * @param {any} payload - JWT 토큰에서 추출된 페이로드
+   * @returns {Promise&lt;{email: string, role: string}>} 검증된 사용자 정보
+   * @description
+   * 토큰의 페이로드에서 이메일(sub)과 권한(auth) 정보를 추출하여 반환합니다.
+   * 이 정보는 Request 객체의 user 속성으로 주입됩니다.
+   * 
+   * @example
+   * // JWT 페이로드 예시
+   * {
+   *   "sub": "user@example.com",
+   *   "auth": "user",
+   *   "iat": 1516239022
+   * }
+   */
+  async validate(payload: any) {
+    return { email: payload.sub, role: payload.auth };
+  }
+}</code></pre>
+        </article>
+    </section>
+
+
+
+
+            </div>
+            
+            <footer class="footer">
+                <div class="content has-text-centered">
+                    <p>Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.4</a></p>
+                    <p class="sidebar-created-by">
+                        <a href="https://github.com/SoftwareBrothers/better-docs" target="_blank">BetterDocs theme</a> provided with <i class="fas fa-heart"></i> by
+                        <a href="http://softwarebrothers.co" target="_blank">SoftwareBrothers - JavaScript Development Agency</a>
+                    </p>
+                </div>
+            </footer>
+            
+        </div>
+        <div id="side-nav" class="side-nav">
+        </div>
+    </div>
+<script src="scripts/app.min.js"></script>
+<script>PR.prettyPrint();</script>
+<script src="scripts/linenumber.js"> </script>
+
+
+</body>
+</html>
