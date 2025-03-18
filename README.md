@@ -230,11 +230,12 @@ npm run build
 npm run start:prod
 ```
 
-### 테스트
+### 테스트(개발중)
 ```bash
 npm test
 npm run test:e2e
 ```
 
 ## 라이센스
-이 프로젝트는 비공개(UNLICENSED) 라이센스로 보호됩니다.
+이 프로젝트는 개인 블로그 프로젝트로,  
+ 비공개(UNLICENSED) 라이센스로 보호됩니다.

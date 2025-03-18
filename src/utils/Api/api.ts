@@ -1,3 +1,11 @@
+/**
+ * 내부 API 클라이언트 모듈
+ * 
+ * 다른 마이크로서비스와의 통신을 위한 HTTP 클라이언트를 제공합니다.
+ * 
+ * @module utils/Api/api
+ */
+
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { Injectable } from '@nestjs/common';
@@ -10,9 +18,24 @@ import { Injectable } from '@nestjs/common';
  */
 @Injectable()
 export class InternalApiClient {
+  /**
+   * 사용자 서비스 기본 URL
+   */
   private readonly userServiceUrl: string;
+  
+  /**
+   * 내부 API 호출을 위한 인증 키
+   */
   private readonly apiKey: string;
 
+  /**
+   * InternalApiClient 생성자
+   * 
+   * 환경 변수에서 설정을 로드하고 필수 설정 유무를 검증합니다.
+   * 
+   * @param {HttpService} httpService - HTTP 요청을 처리하기 위한 NestJS HTTP 서비스
+   * @throws {Error} 필수 환경 변수가 정의되지 않은 경우
+   */
   constructor(
     private readonly httpService: HttpService,
   ) {

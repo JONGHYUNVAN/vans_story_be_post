@@ -1,199 +1,368 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html class="default" lang="en" data-base="./"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>Vans Story Backend - Posts Service API Documentation - v0.0.1</title><meta name="description" content="Documentation for Vans Story Backend - Posts Service API Documentation"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/style.css"/><link rel="stylesheet" href="assets/highlight.css"/><script defer src="assets/main.js"></script><script async src="assets/icons.js" id="tsd-icons-script"></script><script async src="assets/search.js" id="tsd-search-script"></script><script async src="assets/navigation.js" id="tsd-nav-script"></script><style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --md-sys-color-primary: #c0c1ff;
+    --md-sys-color-on-primary: #0f00aa;
+    --md-sys-color-primary-container: #2824cf;
+    --md-sys-color-on-primary-container: #e1e0ff;
+    --md-sys-color-secondary: #c6c4dd;
+    --md-sys-color-on-secondary: #2e2f42;
+    --md-sys-color-secondary-container: #454559;
+    --md-sys-color-on-secondary-container: #e2e0f9;
+    --md-sys-color-tertiary: #e9b9d3;
+    --md-sys-color-on-tertiary: #46263a;
+    --md-sys-color-tertiary-container: #5f3c51;
+    --md-sys-color-on-tertiary-container: #ffd8ec;
+    --md-sys-color-error: #ffb4ab;
+    --md-sys-color-on-error: #690005;
+    --md-sys-color-error-container: #93000a;
+    --md-sys-color-on-error-container: #ffb4ab;
+    --md-sys-color-background: #1c1b1f;
+    --md-sys-color-on-background: #e5e1e6;
+    --md-sys-color-surface: #1c1b1f;
+    --md-sys-color-on-surface: #e5e1e6;
+    --md-sys-color-surface-variant: #46464f;
+    --md-sys-color-on-surface-variant: #c8c5d0;
+    --md-sys-color-outline: #918f9a;
+    --md-sys-color-outline-variant: #46464f;
+    --md-sys-color-shadow: #000000;
+    --md-sys-color-scrim: #000000;
+    --md-sys-color-inverse-surface: #e5e1e6;
+    --md-sys-color-inverse-on-surface: #313034;
+    --md-sys-color-inverse-primary: #4445e6;
+    --md-sys-color-surface-dim: #131316;
+    --md-sys-color-surface-bright: #39393c;
+    --md-sys-color-surface-container-lowest: #0e0e11;
+    --md-sys-color-surface-container-low: #1c1b1f;
+    --md-sys-color-surface-container: #201f23;
+    --md-sys-color-surface-container-high: #2a292d;
+    --md-sys-color-surface-container-highest: #353438
+  }
+}
+:root[data-theme="dark"] {
+  --md-sys-color-primary: #c0c1ff;
+  --md-sys-color-on-primary: #0f00aa;
+  --md-sys-color-primary-container: #2824cf;
+  --md-sys-color-on-primary-container: #e1e0ff;
+  --md-sys-color-secondary: #c6c4dd;
+  --md-sys-color-on-secondary: #2e2f42;
+  --md-sys-color-secondary-container: #454559;
+  --md-sys-color-on-secondary-container: #e2e0f9;
+  --md-sys-color-tertiary: #e9b9d3;
+  --md-sys-color-on-tertiary: #46263a;
+  --md-sys-color-tertiary-container: #5f3c51;
+  --md-sys-color-on-tertiary-container: #ffd8ec;
+  --md-sys-color-error: #ffb4ab;
+  --md-sys-color-on-error: #690005;
+  --md-sys-color-error-container: #93000a;
+  --md-sys-color-on-error-container: #ffb4ab;
+  --md-sys-color-background: #1c1b1f;
+  --md-sys-color-on-background: #e5e1e6;
+  --md-sys-color-surface: #1c1b1f;
+  --md-sys-color-on-surface: #e5e1e6;
+  --md-sys-color-surface-variant: #46464f;
+  --md-sys-color-on-surface-variant: #c8c5d0;
+  --md-sys-color-outline: #918f9a;
+  --md-sys-color-outline-variant: #46464f;
+  --md-sys-color-shadow: #000000;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-inverse-surface: #e5e1e6;
+  --md-sys-color-inverse-on-surface: #313034;
+  --md-sys-color-inverse-primary: #4445e6;
+  --md-sys-color-surface-dim: #131316;
+  --md-sys-color-surface-bright: #39393c;
+  --md-sys-color-surface-container-lowest: #0e0e11;
+  --md-sys-color-surface-container-low: #1c1b1f;
+  --md-sys-color-surface-container: #201f23;
+  --md-sys-color-surface-container-high: #2a292d;
+  --md-sys-color-surface-container-highest: #353438
+}
 
-<head>
-  
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Vans Story API Docs Home</title>
-
-  <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="./build/entry.js"></script>
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-  <!--[if lt IE 9]>
-    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-  <![endif]-->
-  <link href="https://fonts.googleapis.com/css?family=Roboto:100,400,700|Inconsolata,700" rel="stylesheet">
-  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
-  <link type="text/css" rel="stylesheet" href="https://jmblog.github.io/color-themes-for-google-code-prettify/themes/tomorrow-night.min.css">
-  <link type="text/css" rel="stylesheet" href="styles/app.min.css">
-  <link type="text/css" rel="stylesheet" href="styles/iframe.css">
-  <link type="text/css" rel="stylesheet" href="">
-  <script async defer src="https://buttons.github.io/buttons.js"></script>
-
-  
-</head>
-
-
-
-<body class="layout small-header">
-    <div id="stickyNavbarOverlay"></div>
-    
-
-<div class="top-nav">
-    <div class="inner">
-        <a id="hamburger" role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
-            <span aria-hidden="true"></span>
-            <span aria-hidden="true"></span>
-            <span aria-hidden="true"></span>
-        </a>
-        <div class="logo">
-            
-             
-                <a href="index.html">
-                    <h1 class="navbar-item">Vans Story Backend - Posts Service Documentation</h1>
-                </a>
-            
-        </div>
-        <div class="menu">
-            
-            <div class="navigation">
-                <a
-                    href="index.html"
-                    class="link"
-                >
-                    Documentation
-                </a>
-                
-                 
-                    
-                        <a
-                            class="link user-link "
-                            href="https://github.com/yourusername/vans_story_be_post"
-                        >
-                            README
-                        </a>
-                    
-                
-                
-            </div>
-        </div>
-    </div>
-</div>
-    <div id="main">
-        <div
-            class="sidebar "
-            id="sidebarNav"
-        >
-            
-            <nav>
-                
-                    <h2><a href="index.html">Documentation</a></h2><div class="category"><h3>Classes</h3><ul><li><a href="InternalApiClient.html">InternalApiClient</a></li><li><a href="JwtAuthGuard.html">JwtAuthGuard</a></li><li><a href="JwtStrategy.html">JwtStrategy</a></li><li><a href="JwtStrategy_JwtStrategy.html">JwtStrategy</a></li><li><a href="PostsService.html">PostsService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#allowedOrigins">allowedOrigins</a></li><li><a href="global.html#corsConfig">corsConfig</a></li><li><a href="global.html#initialPosts">initialPosts</a></li></ul></div>
-                
-            </nav>
-        </div>
-        <div class="core" id="main-content-wrapper">
-            <div class="content">
-                <header class="page-title">
-                    <p></p>
-                    <h1>Home</h1>
-                </header>
-                
-
-
-
-    
-
-
-    <h3> </h3>
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-    <section>
-        <article><p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-<h2>Description</h2>
-<p><a href="https://github.com/nestjs/nest">Nest</a> framework TypeScript starter repository.</p>
-<h2>Installation</h2>
-<pre class="prettyprint source lang-bash"><code>$ npm install
-</code></pre>
-<h2>Running the app</h2>
-<pre class="prettyprint source lang-bash"><code># development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-</code></pre>
-<h2>Test</h2>
-<pre class="prettyprint source lang-bash"><code># unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-</code></pre>
-<h2>Support</h2>
-<p>Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please <a href="https://docs.nestjs.com/support">read more here</a>.</p>
-<h2>Stay in touch</h2>
-<ul>
-<li>Author - <a href="https://kamilmysliwiec.com">Kamil Myśliwiec</a></li>
-<li>Website - <a href="https://nestjs.com/">https://nestjs.com</a></li>
-<li>Twitter - <a href="https://twitter.com/nestframework">@nestframework</a></li>
+@media (prefers-color-scheme: light) {
+  :root {
+    --md-sys-color-primary: #4445e6;
+    --md-sys-color-on-primary: #ffffff;
+    --md-sys-color-primary-container: #e1e0ff;
+    --md-sys-color-on-primary-container: #06006c;
+    --md-sys-color-secondary: #5d5c72;
+    --md-sys-color-on-secondary: #ffffff;
+    --md-sys-color-secondary-container: #e2e0f9;
+    --md-sys-color-on-secondary-container: #191a2c;
+    --md-sys-color-tertiary: #79536a;
+    --md-sys-color-on-tertiary: #ffffff;
+    --md-sys-color-tertiary-container: #ffd8ec;
+    --md-sys-color-on-tertiary-container: #2e1125;
+    --md-sys-color-error: #ba1a1a;
+    --md-sys-color-on-error: #ffffff;
+    --md-sys-color-error-container: #ffdad6;
+    --md-sys-color-on-error-container: #410002;
+    --md-sys-color-background: #fffbff;
+    --md-sys-color-on-background: #1c1b1f;
+    --md-sys-color-surface: #fffbff;
+    --md-sys-color-on-surface: #1c1b1f;
+    --md-sys-color-surface-variant: #e4e1ec;
+    --md-sys-color-on-surface-variant: #46464f;
+    --md-sys-color-outline: #777680;
+    --md-sys-color-outline-variant: #c8c5d0;
+    --md-sys-color-shadow: #000000;
+    --md-sys-color-scrim: #000000;
+    --md-sys-color-inverse-surface: #313034;
+    --md-sys-color-inverse-on-surface: #f3eff4;
+    --md-sys-color-inverse-primary: #c0c1ff;
+    --md-sys-color-surface-dim: #dcd9de;
+    --md-sys-color-surface-bright: #fcf8fd;
+    --md-sys-color-surface-container-lowest: #ffffff;
+    --md-sys-color-surface-container-low: #f6f2f7;
+    --md-sys-color-surface-container: #f0edf1;
+    --md-sys-color-surface-container-high: #eae7ec;
+    --md-sys-color-surface-container-highest: #e5e1e6
+  }
+}
+:root[data-theme="light"] {
+  --md-sys-color-primary: #4445e6;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #e1e0ff;
+  --md-sys-color-on-primary-container: #06006c;
+  --md-sys-color-secondary: #5d5c72;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #e2e0f9;
+  --md-sys-color-on-secondary-container: #191a2c;
+  --md-sys-color-tertiary: #79536a;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-tertiary-container: #ffd8ec;
+  --md-sys-color-on-tertiary-container: #2e1125;
+  --md-sys-color-error: #ba1a1a;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #ffdad6;
+  --md-sys-color-on-error-container: #410002;
+  --md-sys-color-background: #fffbff;
+  --md-sys-color-on-background: #1c1b1f;
+  --md-sys-color-surface: #fffbff;
+  --md-sys-color-on-surface: #1c1b1f;
+  --md-sys-color-surface-variant: #e4e1ec;
+  --md-sys-color-on-surface-variant: #46464f;
+  --md-sys-color-outline: #777680;
+  --md-sys-color-outline-variant: #c8c5d0;
+  --md-sys-color-shadow: #000000;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-inverse-surface: #313034;
+  --md-sys-color-inverse-on-surface: #f3eff4;
+  --md-sys-color-inverse-primary: #c0c1ff;
+  --md-sys-color-surface-dim: #dcd9de;
+  --md-sys-color-surface-bright: #fcf8fd;
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container-low: #f6f2f7;
+  --md-sys-color-surface-container: #f0edf1;
+  --md-sys-color-surface-container-high: #eae7ec;
+  --md-sys-color-surface-container-highest: #e5e1e6
+}
+</style><link rel="stylesheet" href="assets/material-style.css"/></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><a href="index.html" class="title">Vans Story Backend - Posts Service API Documentation - v0.0.1</a><div id="tsd-toolbar-links"><a href="https://github.com/JONGHYUNVAN/vans_story_be_post">GitHub</a><a href="modules.html">API Reference</a></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/><ul role="listbox" id="tsd-search-results"></ul><div id="tsd-search-status" aria-live="polite" aria-atomic="true"><div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-menu"></use></svg></a></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><h1>Vans Story Backend - Posts Service API Documentation - v0.0.1</h1></div><div class="tsd-panel tsd-typography"><h1 id="vans-dev-blog-백엔드---게시글-서비스" class="tsd-anchor-link">Vans Dev Blog 백엔드 - 게시글 서비스<a href="#vans-dev-blog-백엔드---게시글-서비스" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h1><h2 id="개발-환경" class="tsd-anchor-link">개발 환경<a href="#개발-환경" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="버전-정보" class="tsd-anchor-link">버전 정보<a href="#버전-정보" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>NestJS: 11.0.0</li>
+<li>TypeScript: 5.1.3</li>
+<li>Node.js: &gt;=20.0.0</li>
+<li>MongoDB: 8.11.0</li>
+<li>Mongoose: 8.11.0</li>
 </ul>
-<h2>License</h2>
-<p>Nest is <a href="LICENSE">MIT licensed</a>.</p></article>
-    </section>
+<h3 id="주요-의존성" class="tsd-anchor-link">주요 의존성<a href="#주요-의존성" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><h4 id="nestjs-핵심-모듈" class="tsd-anchor-link">NestJS 핵심 모듈<a href="#nestjs-핵심-모듈" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li>@nestjs/common: ^11.0.0</li>
+<li>@nestjs/core: ^11.0.0</li>
+<li>@nestjs/platform-express: ^11.0.0</li>
+<li>@nestjs/mongoose: ^11.0.1</li>
+<li>@nestjs/swagger: ^11.0.3</li>
+</ul>
+<h4 id="보안-관련" class="tsd-anchor-link">보안 관련<a href="#보안-관련" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li>@nestjs/passport: ^11.0.0</li>
+<li>@nestjs/jwt: ^11.0.0</li>
+<li>passport: ^0.7.0</li>
+<li>passport-jwt: ^4.0.1</li>
+</ul>
+<h4 id="데이터베이스" class="tsd-anchor-link">데이터베이스<a href="#데이터베이스" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li>mongoose: ^8.11.0</li>
+<li>@nestjs/typeorm: ^11.0.0 (보조)</li>
+<li>sqlite3: ^5.1.7 (테스트용)</li>
+</ul>
+<h4 id="유틸리티" class="tsd-anchor-link">유틸리티<a href="#유틸리티" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li>nestjs-paginate: ^11.0.0</li>
+<li>rxjs: ^7.8.1</li>
+<li>reflect-metadata: ^0.2.0</li>
+</ul>
+<h4 id="세션-관리" class="tsd-anchor-link">세션 관리<a href="#세션-관리" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li>express-session: ^1.18.1</li>
+<li>express-basic-auth: ^1.2.1</li>
+</ul>
+<h4 id="api-통신" class="tsd-anchor-link">API 통신<a href="#api-통신" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li>@nestjs/axios: ^4.0.0</li>
+</ul>
+<h4 id="개발-도구" class="tsd-anchor-link">개발 도구<a href="#개발-도구" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li>@nestjs/cli: ^11.0.0</li>
+<li>@nestjs/schematics: ^11.0.0</li>
+<li>prettier: ^3.0.0</li>
+<li>eslint: ^8.42.0</li>
+</ul>
+<h4 id="테스트" class="tsd-anchor-link">테스트<a href="#테스트" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li>@nestjs/testing: ^11.0.0</li>
+<li>jest: ^29.5.0</li>
+<li>supertest: ^7.0.0</li>
+</ul>
+<h4 id="문서화" class="tsd-anchor-link">문서화<a href="#문서화" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li>jsdoc: ^4.0.4</li>
+<li>better-docs: ^2.7.3</li>
+<li>typedoc: ^0.28.0</li>
+<li>typedoc-plugin-markdown: ^4.5.0</li>
+</ul>
+<h3 id="개발-환경-dev" class="tsd-anchor-link">개발 환경 (dev)<a href="#개발-환경-dev" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><h4 id="데이터베이스-1" class="tsd-anchor-link">데이터베이스<a href="#데이터베이스-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li>MongoDB 사용</li>
+<li>접속 정보는 환경 변수로 관리</li>
+</ul>
+<h4 id="서버-설정" class="tsd-anchor-link">서버 설정<a href="#서버-설정" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li>Port: 3000 (기본값)</li>
+<li>메모리 제한: 512MB (<code>--max-old-space-size=512</code>)</li>
+</ul>
+<h3 id="swagger-ui-설정" class="tsd-anchor-link">Swagger UI 설정<a href="#swagger-ui-설정" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>접근 경로: <code>http://localhost:3000/api-docs</code></li>
+<li>API 문서 기능:
+<ul>
+<li>API 그룹화</li>
+<li>메서드 기반 정렬</li>
+<li>응답 형식 문서화</li>
+</ul>
+</li>
+</ul>
+<h3 id="jwt-설정" class="tsd-anchor-link">JWT 설정<a href="#jwt-설정" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>환경 변수로 시크릿 키 관리</li>
+<li>토큰 검증 전략 구현 (<code>JwtStrategy</code>)</li>
+<li>가드 기반 인증 적용 (<code>JwtAuthGuard</code>)</li>
+</ul>
+<h2 id="프로젝트-구조" class="tsd-anchor-link">프로젝트 구조<a href="#프로젝트-구조" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="주요-디렉토리" class="tsd-anchor-link">주요 디렉토리<a href="#주요-디렉토리" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><code>src/</code>: 소스 코드
+<ul>
+<li><code>Controller/</code>: API 컨트롤러</li>
+<li><code>Service/</code>: 비즈니스 로직</li>
+<li><code>DTO/</code>: 데이터 전송 객체</li>
+<li><code>schemas/</code>: MongoDB 스키마</li>
+<li><code>Mapper/</code>: DTO 변환기</li>
+<li><code>utils/</code>: 유틸리티 함수
+<ul>
+<li><code>Api/</code>: 내부 API 클라이언트</li>
+<li><code>Authorization/</code>: 인증 관련 컴포넌트</li>
+</ul>
+</li>
+<li><code>middleware/</code>: 미들웨어</li>
+<li><code>config/</code>: 설정 파일</li>
+</ul>
+</li>
+</ul>
+<h3 id="전역-설정" class="tsd-anchor-link">전역 설정<a href="#전역-설정" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><h4 id="보안-설정" class="tsd-anchor-link">보안 설정<a href="#보안-설정" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li>JWT 기반 인증</li>
+<li>가드를 통한 엔드포인트 보호</li>
+<li>패스포트 전략 구현</li>
+</ul>
+<h4 id="swagger-설정" class="tsd-anchor-link">Swagger 설정<a href="#swagger-설정" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li>API 문서 자동화</li>
+<li>엔드포인트, DTO 모델 문서화</li>
+</ul>
+<h3 id="글로벌-컴포넌트" class="tsd-anchor-link">글로벌 컴포넌트<a href="#글로벌-컴포넌트" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><h4 id="api-응답-형식" class="tsd-anchor-link">API 응답 형식<a href="#api-응답-형식" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><p>모든 API 응답은 다음 구조를 따릅니다:</p>
+<pre><code class="typescript"><span class="hl-0">{</span><br/><span class="hl-1">  </span><span class="hl-2">data</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-3">T</span><span class="hl-0">;</span><span class="hl-1">        </span><span class="hl-4">// 응답 데이터 (제네릭 타입)</span><br/><span class="hl-1">  </span><span class="hl-5">meta</span><span class="hl-6">?:</span><span class="hl-1"> </span><span class="hl-5">object</span><span class="hl-0">;</span><span class="hl-1">  </span><span class="hl-4">// 페이지네이션 등 메타데이터 (선택사항)</span><br/><span class="hl-1">  </span><span class="hl-5">links</span><span class="hl-6">?:</span><span class="hl-1"> </span><span class="hl-5">object</span><span class="hl-0">;</span><span class="hl-1"> </span><span class="hl-4">// 관련 리소스 링크 (선택사항)</span><br/><span class="hl-0">}</span>
+</code><button type="button">Copy</button></pre>
 
+<h4 id="페이지네이션-응답-형식" class="tsd-anchor-link">페이지네이션 응답 형식<a href="#페이지네이션-응답-형식" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="typescript"><span class="hl-0">{</span><br/><span class="hl-1">  </span><span class="hl-2">data</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-3">T</span><span class="hl-1">[]</span><span class="hl-0">;</span><span class="hl-1">      </span><span class="hl-4">// 페이지 데이터 배열</span><br/><span class="hl-1">  </span><span class="hl-2">meta</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-0">{</span><br/><span class="hl-1">    </span><span class="hl-2">itemsPerPage</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">number</span><span class="hl-0">;</span><br/><span class="hl-1">    </span><span class="hl-2">totalItems</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">number</span><span class="hl-0">;</span><br/><span class="hl-1">    </span><span class="hl-2">currentPage</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">number</span><span class="hl-0">;</span><br/><span class="hl-1">    </span><span class="hl-2">totalPages</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">number</span><span class="hl-0">;</span><br/><span class="hl-1">    </span><span class="hl-2">sortBy</span><span class="hl-0">:</span><span class="hl-1"> [</span><span class="hl-5">string</span><span class="hl-0">,</span><span class="hl-1"> </span><span class="hl-5">string</span><span class="hl-1">][]</span><span class="hl-0">;</span><br/><span class="hl-1">    </span><span class="hl-2">searchBy</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">string</span><span class="hl-1">[]</span><span class="hl-0">;</span><br/><span class="hl-1">    </span><span class="hl-2">search</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">string</span><span class="hl-0">;</span><br/><span class="hl-1">    </span><span class="hl-2">filter</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">object</span><span class="hl-0">;</span><br/><span class="hl-1">    </span><span class="hl-2">select</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">string</span><span class="hl-1">[]</span><span class="hl-0">;</span><br/><span class="hl-1">  </span><span class="hl-0">};</span><br/><span class="hl-1">  </span><span class="hl-2">links</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-0">{</span><br/><span class="hl-1">    </span><span class="hl-2">current</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">string</span><span class="hl-0">;</span><br/><span class="hl-1">    </span><span class="hl-2">next</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">string</span><span class="hl-0">;</span><br/><span class="hl-1">    </span><span class="hl-2">previous</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">string</span><span class="hl-0">;</span><br/><span class="hl-1">  </span><span class="hl-0">};</span><br/><span class="hl-0">}</span>
+</code><button type="button">Copy</button></pre>
 
+<h4 id="예외-처리" class="tsd-anchor-link">예외 처리<a href="#예외-처리" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li><strong>NotFoundException</strong>: 리소스를 찾을 수 없을 때</li>
+<li>글로벌 예외 필터를 통한 일관된 오류 응답</li>
+</ul>
+<h2 id="주요-api-엔드포인트" class="tsd-anchor-link">주요 API 엔드포인트<a href="#주요-api-엔드포인트" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="게시글-post-api" class="tsd-anchor-link">게시글 (Post) API<a href="#게시글-post-api" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>GET /posts</strong>: 모든 게시글 조회 (페이지네이션 지원)</li>
+<li><strong>GET /posts/:id</strong>: 특정 ID의 게시글 조회</li>
+<li><strong>POST /posts</strong>: 새 게시글 생성</li>
+<li><strong>PUT /posts/:id</strong>: 특정 ID의 게시글 업데이트</li>
+<li><strong>DELETE /posts/:id</strong>: 특정 ID의 게시글 삭제</li>
+<li><strong>GET /posts/author/:email</strong>: 특정 작성자의 게시글 조회</li>
+<li><strong>GET /posts/search/:keyword</strong>: 키워드로 게시글 검색</li>
+<li><strong>GET /posts/theme-category</strong>: 테마와 카테고리로 게시글 필터링</li>
+</ul>
+<h2 id="인증-아키텍처" class="tsd-anchor-link">인증 아키텍처<a href="#인증-아키텍처" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="jwt-기반-인증" class="tsd-anchor-link">JWT 기반 인증<a href="#jwt-기반-인증" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>인증 헤더로 JWT 토큰 전달 (<code>Authorization: Bearer {token}</code>)</li>
+<li>JwtStrategy를 통한 토큰 검증</li>
+<li>JwtAuthGuard를 사용하여 보호된 엔드포인트 접근 제어</li>
+</ul>
+<h3 id="인증-컴포넌트" class="tsd-anchor-link">인증 컴포넌트<a href="#인증-컴포넌트" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><ol>
+<li>
+<p><strong>JwtStrategy</strong></p>
+<ul>
+<li>토큰 검증 및 사용자 정보 추출</li>
+<li>환경 변수에서 시크릿 키 로드</li>
+</ul>
+</li>
+<li>
+<p><strong>JwtAuthGuard</strong></p>
+<ul>
+<li>보호된 리소스 접근 제어</li>
+<li>인증되지 않은 요청 거부</li>
+</ul>
+</li>
+<li>
+<p><strong>InternalApiClient</strong></p>
+<ul>
+<li>사용자 서비스와의 내부 통신</li>
+<li>사용자 정보 (닉네임 등) 조회</li>
+</ul>
+</li>
+</ol>
+<h2 id="데이터-모델" class="tsd-anchor-link">데이터 모델<a href="#데이터-모델" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="게시글-post-스키마" class="tsd-anchor-link">게시글 (Post) 스키마<a href="#게시글-post-스키마" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-0">{</span><br/><span class="hl-1">  </span><span class="hl-2">title</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">string</span><span class="hl-0">;</span><span class="hl-1">        </span><span class="hl-4">// 게시글 제목</span><br/><span class="hl-1">  </span><span class="hl-2">content</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">string</span><span class="hl-0">;</span><span class="hl-1">      </span><span class="hl-4">// 게시글 내용</span><br/><span class="hl-1">  </span><span class="hl-2">theme</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">string</span><span class="hl-0">;</span><span class="hl-1">        </span><span class="hl-4">// 게시글 테마</span><br/><span class="hl-1">  </span><span class="hl-5">category</span><span class="hl-6">?:</span><span class="hl-1"> </span><span class="hl-5">string</span><span class="hl-0">;</span><span class="hl-1">    </span><span class="hl-4">// 게시글 카테고리 (선택사항)</span><br/><span class="hl-1">  </span><span class="hl-2">authorEmail</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">string</span><span class="hl-0">;</span><span class="hl-1">  </span><span class="hl-4">// 작성자 이메일</span><br/><span class="hl-1">  </span><span class="hl-2">createdAt</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">Date</span><span class="hl-0">;</span><span class="hl-1">      </span><span class="hl-4">// 생성 일시</span><br/><span class="hl-1">  </span><span class="hl-2">updatedAt</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">Date</span><span class="hl-0">;</span><span class="hl-1">      </span><span class="hl-4">// 수정 일시</span><br/><span class="hl-0">}</span>
+</code><button type="button">Copy</button></pre>
 
+<h2 id="문서화-1" class="tsd-anchor-link">문서화<a href="#문서화-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><p>프로젝트는 두 가지 문서화 방식을 지원합니다:</p>
+<ol>
+<li>
+<p><strong>JSDoc</strong>: HTML 형식의 문서 생성</p>
+<pre><code class="bash"><span class="hl-2">npm</span><span class="hl-5"> </span><span class="hl-7">run</span><span class="hl-5"> </span><span class="hl-7">docs</span>
+</code><button type="button">Copy</button></pre>
 
+</li>
+<li>
+<p><strong>TypeDoc</strong>: Markdown 형식의 문서 생성</p>
+<pre><code class="bash"><span class="hl-2">npm</span><span class="hl-5"> </span><span class="hl-7">run</span><span class="hl-5"> </span><span class="hl-7">docs:typedoc</span>
+</code><button type="button">Copy</button></pre>
 
+</li>
+</ol>
+<p>생성된 문서는 <code>docs/</code> 디렉토리에서 확인할 수 있습니다.</p>
+<h2 id="환경-설정" class="tsd-anchor-link">환경 설정<a href="#환경-설정" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="환경-변수" class="tsd-anchor-link">환경 변수<a href="#환경-변수" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p>프로젝트는 다음과 같은 환경 변수를 사용합니다:</p>
+<ul>
+<li><code>MONGODB_URI</code>: MongoDB 연결 문자열</li>
+<li><code>JWT_SECRET</code>: JWT 시크릿 키</li>
+<li><code>USER_SERVICE_URL</code>: 사용자 서비스 API 주소</li>
+<li><code>PORT</code>: 서버 포트 (기본값: 3000)</li>
+</ul>
+<h2 id="시작하기" class="tsd-anchor-link">시작하기<a href="#시작하기" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="설치" class="tsd-anchor-link">설치<a href="#설치" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-2">npm</span><span class="hl-5"> </span><span class="hl-7">install</span>
+</code><button type="button">Copy</button></pre>
 
-            </div>
-            
-            <footer class="footer">
-                <div class="content has-text-centered">
-                    <p>Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.4</a></p>
-                    <p class="sidebar-created-by">
-                        <a href="https://github.com/SoftwareBrothers/better-docs" target="_blank">BetterDocs theme</a> provided with <i class="fas fa-heart"></i> by
-                        <a href="http://softwarebrothers.co" target="_blank">SoftwareBrothers - JavaScript Development Agency</a>
-                    </p>
-                </div>
-            </footer>
-            
-        </div>
-        <div id="side-nav" class="side-nav">
-        </div>
-    </div>
-<script src="scripts/app.min.js"></script>
-<script>PR.prettyPrint();</script>
-<script src="scripts/linenumber.js"> </script>
+<h3 id="개발-모드-실행" class="tsd-anchor-link">개발 모드 실행<a href="#개발-모드-실행" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-2">npm</span><span class="hl-5"> </span><span class="hl-7">run</span><span class="hl-5"> </span><span class="hl-7">start:dev</span>
+</code><button type="button">Copy</button></pre>
 
+<h3 id="빌드-및-운영-모드-실행" class="tsd-anchor-link">빌드 및 운영 모드 실행<a href="#빌드-및-운영-모드-실행" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-2">npm</span><span class="hl-5"> </span><span class="hl-7">run</span><span class="hl-5"> </span><span class="hl-7">build</span><br/><span class="hl-2">npm</span><span class="hl-5"> </span><span class="hl-7">run</span><span class="hl-5"> </span><span class="hl-7">start:prod</span>
+</code><button type="button">Copy</button></pre>
 
-</body>
-</html>
+<h3 id="테스트개발중" class="tsd-anchor-link">테스트(개발중)<a href="#테스트개발중" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-2">npm</span><span class="hl-5"> </span><span class="hl-7">test</span><br/><span class="hl-2">npm</span><span class="hl-5"> </span><span class="hl-7">run</span><span class="hl-5"> </span><span class="hl-7">test:e2e</span>
+</code><button type="button">Copy</button></pre>
+
+<h2 id="라이센스" class="tsd-anchor-link">라이센스<a href="#라이센스" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><p>이 프로젝트는 개인 블로그 프로젝트로,<br>
+비공개(UNLICENSED) 라이센스로 보호됩니다.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg><h3>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg><h3>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#vans-dev-blog-백엔드---게시글-서비스"><span>Vans <wbr/>Dev <wbr/>Blog 백엔드 -<wbr/> 게시글 서비스</span></a><ul><li><a href="#개발-환경"><span>개발 환경</span></a></li><li><ul><li><a href="#버전-정보"><span>버전 정보</span></a></li><li><a href="#주요-의존성"><span>주요 의존성</span></a></li><li><ul><li><a href="#nestjs-핵심-모듈"><span>NestJS 핵심 모듈</span></a></li><li><a href="#보안-관련"><span>보안 관련</span></a></li><li><a href="#데이터베이스"><span>데이터베이스</span></a></li><li><a href="#유틸리티"><span>유틸리티</span></a></li><li><a href="#세션-관리"><span>세션 관리</span></a></li><li><a href="#api-통신"><span>API 통신</span></a></li><li><a href="#개발-도구"><span>개발 도구</span></a></li><li><a href="#테스트"><span>테스트</span></a></li><li><a href="#문서화"><span>문서화</span></a></li></ul></li><li><a href="#개발-환경-dev"><span>개발 환경 (dev)</span></a></li><li><ul><li><a href="#데이터베이스-1"><span>데이터베이스</span></a></li><li><a href="#서버-설정"><span>서버 설정</span></a></li></ul></li><li><a href="#swagger-ui-설정"><span>Swagger UI 설정</span></a></li><li><a href="#jwt-설정"><span>JWT 설정</span></a></li></ul></li><li><a href="#프로젝트-구조"><span>프로젝트 구조</span></a></li><li><ul><li><a href="#주요-디렉토리"><span>주요 디렉토리</span></a></li><li><a href="#전역-설정"><span>전역 설정</span></a></li><li><ul><li><a href="#보안-설정"><span>보안 설정</span></a></li><li><a href="#swagger-설정"><span>Swagger 설정</span></a></li></ul></li><li><a href="#글로벌-컴포넌트"><span>글로벌 컴포넌트</span></a></li><li><ul><li><a href="#api-응답-형식"><span>API 응답 형식</span></a></li><li><a href="#페이지네이션-응답-형식"><span>페이지네이션 응답 형식</span></a></li><li><a href="#예외-처리"><span>예외 처리</span></a></li></ul></li></ul></li><li><a href="#주요-api-엔드포인트"><span>주요 API 엔드포인트</span></a></li><li><ul><li><a href="#게시글-post-api"><span>게시글 (<wbr/>Post) API</span></a></li></ul></li><li><a href="#인증-아키텍처"><span>인증 아키텍처</span></a></li><li><ul><li><a href="#jwt-기반-인증"><span>JWT 기반 인증</span></a></li><li><a href="#인증-컴포넌트"><span>인증 컴포넌트</span></a></li></ul></li><li><a href="#데이터-모델"><span>데이터 모델</span></a></li><li><ul><li><a href="#게시글-post-스키마"><span>게시글 (<wbr/>Post) 스키마</span></a></li></ul></li><li><a href="#문서화-1"><span>문서화</span></a></li><li><a href="#환경-설정"><span>환경 설정</span></a></li><li><ul><li><a href="#환경-변수"><span>환경 변수</span></a></li></ul></li><li><a href="#시작하기"><span>시작하기</span></a></li><li><ul><li><a href="#설치"><span>설치</span></a></li><li><a href="#개발-모드-실행"><span>개발 모드 실행</span></a></li><li><a href="#빌드-및-운영-모드-실행"><span>빌드 및 운영 모드 실행</span></a></li><li><a href="#테스트개발중"><span>테스트(개발중)</span></a></li></ul></li><li><a href="#라이센스"><span>라이센스</span></a></li></ul></div></details></div><div class="site-menu"><nav id="tsd-sidebar-links" class="tsd-navigation"><a href="https://github.com/JONGHYUNVAN/vans_story_be_post" class="tsd-nav-link">GitHub</a><a href="modules.html" class="tsd-nav-link">API Reference</a></nav><nav class="tsd-navigation"><a href="modules.html">Vans Story Backend - Posts Service API Documentation - v0.0.1</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer></footer><div class="overlay"></div><script>
+          try {
+            const generateLinkElement = document.querySelector(".tsd-generator a");
+            const link = document.createElement("a");
+            Object.assign(link, {
+              href: "https://github.com/dmnsgn/typedoc-material-theme",
+              target: "_blank",
+              rel: "noreferrer",
+              innerText: "typedoc-material-theme."
+            });
+            generateLinkElement.insertAdjacentElement("afterend", link);
+            generateLinkElement.insertAdjacentText("afterend", " with ");
+          } catch (error) {
+
+          }
+        </script></body></html>

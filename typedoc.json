@@ -2,14 +2,23 @@
   "entryPoints": ["./src"],
   "entryPointStrategy": "expand",
   "out": "docs",
-  "plugin": ["typedoc-plugin-markdown"],
   "excludePrivate": true,
-  "excludeProtected": false,
+  "excludeProtected": true,
   "excludeExternals": true,
+  "name": "Vans Story Backend - Posts Service API Documentation",
+  "hideGenerator": true,
   "includeVersion": true,
   "categorizeByGroup": true,
   "categoryOrder": ["Service", "DTO", "Models", "*"],
   "readme": "README.md",
-  "name": "Vans Story Backend - Posts Service API Documentation",
-  "sort": ["static-first", "alphabetical"]
-} 
+  "sort": ["static-first", "alphabetical"],
+  "plugin": ["typedoc-material-theme"],
+  "themeColor": "#4B4DED",
+  "darkHighlightTheme": "material-theme-darker",
+  "lightHighlightTheme": "github-light",
+  "navigationLinks": {
+    "GitHub": "https://github.com/JONGHYUNVAN/vans_story_be_post",
+    "API Reference": "modules.html"
+  },
+  "searchInComments": true
+}

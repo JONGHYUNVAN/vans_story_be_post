@@ -1,3 +1,11 @@
+/**
+ * 게시글 초기화 모듈
+ * 
+ * 애플리케이션 시작 시 기본 게시글 데이터를 생성합니다.
+ * 
+ * @module database/init/post.init
+ */
+
 import { Model } from 'mongoose';
 import { Post } from '../../schemas/post.schema';
 import { InjectModel } from '@nestjs/mongoose';
@@ -32,12 +40,23 @@ const initialPosts = [
   }
 ];
 
+/**
+ * 게시글 초기화 서비스
+ * 
+ * 애플리케이션 시작 시 기본 게시글 데이터를 MongoDB에 생성합니다.
+ * NestJS의 OnModuleInit 인터페이스를 구현하여 모듈 초기화 시 자동 실행됩니다.
+ */
 @Injectable()
 export class PostInitService implements OnModuleInit {
   constructor(
     @InjectModel(Post.name) private postModel: Model<Post>
   ) {}
 
+  /**
+   * 모듈 초기화 시 실행되는 메서드
+   * 
+   * 기존 데이터 유무를 확인하고 없을 경우에만 초기 데이터를 삽입합니다.
+   */
   async onModuleInit() {
     try {
       // 기존 데이터 확인
