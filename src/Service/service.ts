@@ -36,10 +36,13 @@ export class PostsService {
    * ```
    */
   async create(createDto: CreateDto, authorEmail: string): Promise<ResponseDto> {
+    console.log('createDto:', createDto);
+    console.log('authorEmail:', authorEmail);
     const created = await this.postModel.create({
       ...createDto,
       authorEmail
     });
+    console.log('created post:', created);
     return mapToDto(created.toObject(), ResponseDto);
   }
 

@@ -35,6 +35,30 @@ export class CreateDto {
         description: '게시글의 테마'
     })
     theme: string;
+
+    @ApiProperty({
+        example: '게시글 설명입니다.',
+        description: '게시글의 설명'
+    })
+    description: string;
+
+    @ApiProperty({
+        example: ['태그1', '태그2'],
+        description: '게시글의 태그 목록'
+    })
+    tags: string[];
+
+    @ApiProperty({
+        example: 'introduction',
+        description: '게시글의 카테고리'
+    })
+    category: string;
+
+    @ApiProperty({
+        example: 'Java 알고리즘',
+        description: '게시글의 주제'
+    })
+    topic: string;
 }
 
 /**
@@ -61,6 +85,42 @@ export class UpdateDto {
         description: '수정할 테마'
     })
     theme?: string;
+
+    @ApiPropertyOptional({
+        example: '수정된 설명입니다.',
+        description: '수정할 게시글 설명'
+    })
+    description?: string;
+
+    @ApiPropertyOptional({
+        example: ['태그1', '태그2'],
+        description: '수정할 태그 목록'
+    })
+    tags?: string[];
+
+    @ApiPropertyOptional({
+        example: 'introduction',
+        description: '수정할 카테고리'
+    })
+    category?: string;
+
+    @ApiPropertyOptional({
+        example: 'Java 알고리즘',
+        description: '수정할 주제'
+    })
+    topic?: string;
+
+    @ApiPropertyOptional({
+        example: 'thumbnail.jpg',
+        description: '수정할 썸네일 이미지'
+    })
+    thumbnail?: string;
+
+    @ApiPropertyOptional({
+        example: 'ko',
+        description: '수정할 언어'
+    })
+    language?: string;
 }
 
 /**
@@ -104,4 +164,36 @@ export class ResponseDto {
     @Field
     @ApiProperty({ example: '2024-03-19T09:00:00.000Z' })
     updatedAt: Date;
+
+    @Field
+    @ApiProperty({ example: '게시글 설명입니다.' })
+    description: string;
+
+    @Field
+    @ApiProperty({ example: ['태그1', '태그2'] })
+    tags: string[];
+
+    @Field
+    @ApiProperty({ example: 0 })
+    viewCount: number;
+
+    @Field
+    @ApiProperty({ example: 0 })
+    likeCount: number;
+
+    @Field
+    @ApiProperty({ example: 'introduction' })
+    category: string;
+
+    @Field
+    @ApiProperty({ example: 'thumbnail.jpg' })
+    thumbnail: string;
+
+    @Field
+    @ApiProperty({ example: 'ko' })
+    language: string;
+
+    @Field
+    @ApiProperty({ example: 'Java 알고리즘' })
+    topic: string;
 }
