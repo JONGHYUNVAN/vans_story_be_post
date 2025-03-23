@@ -4,7 +4,7 @@ import { Model, Types } from 'mongoose';
 import { CreateDto, UpdateDto, ResponseDto } from '../DTO/dto';
 import { Post, PostDocument } from '../schemas/post.schema';
 import { mapToDto } from '../Mapper/mapper';
-import { PaginateQuery, Paginated } from 'nestjs-paginate';
+import { Paginated } from '../types/pagination';
 import { InternalApiClient } from '../utils/Api/api';
 /**
  * MongoDB를 사용하는 게시글 관련 비즈니스 로직을 처리하는 서비스 클래스
@@ -66,34 +66,40 @@ export class PostsService {
    * const posts = await postsService.findAll(query);
    * ```
    */
-  async findAll(query: PaginateQuery): Promise<Paginated<ResponseDto>> {
-    const { page = 1, limit = 10 } = query;
+  async findAll(theme?: string, category?: string, page: number = 1, limit: number = 10): Promise<Paginated<ResponseDto>> {
+    const query: any = {};
+    
+    if (theme && theme.trim() !== '') {
+      query.theme = theme.trim();
+    }
+    
+    if (category && category.trim() !== '') {
+      query.category = category.trim();
+    }
+    
+    console.log('Query:', query); // 디버깅을 위한 로그 추가
+    
     const skip = (page - 1) * limit;
-
-    const [data, totalItems] = await Promise.all([
-      this.postModel.find().skip(skip).limit(limit).exec(),
-      this.postModel.countDocuments()
+    const [posts, total] = await Promise.all([
+      this.postModel.find(query)
+        .select('-content')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec(),
+      this.postModel.countDocuments(query)
     ]);
 
-    const totalPages = Math.ceil(totalItems / limit);
+    console.log('Found posts:', posts.length); // 디버깅을 위한 로그 추가
 
     return {
-      data: data.map(post => mapToDto(post.toObject(), ResponseDto)),
+      data: posts.map(post => mapToDto(post, ResponseDto)),
       meta: {
-        itemsPerPage: limit,
-        totalItems,
+        totalItems: total,
         currentPage: page,
-        totalPages,
-        sortBy: [['createdAt', 'DESC']],
-        searchBy: ['title', 'content', 'theme', 'authorEmail'],
-        search: '',
-        filter: {},
-        select: ['title', 'content', 'theme', 'authorEmail', 'createdAt', 'updatedAt']
-      },
-      links: {
-        current: `posts?page=${page}&limit=${limit}`,
-        next: page < totalPages ? `posts?page=${page + 1}&limit=${limit}` : '',
-        previous: page > 1 ? `posts?page=${page - 1}&limit=${limit}` : ''
+        totalPages: Math.ceil(total / limit),
+        itemsPerPage: limit
       }
     };
   }
@@ -226,18 +232,55 @@ export class PostsService {
    * @param {string} category - 검색할 카테고리 (옵션)
    * @returns {Promise<ResponseDto[]>} - 검색 결과 게시글 목록
    */
-  async findByThemeAndCategory(theme?: string, category?: string): Promise<ResponseDto[]> {
+  async findByThemeAndCategory(theme?: string, category?: string, page: number = 1, limit: number = 10): Promise<Paginated<ResponseDto>> {
     const query: any = {};
     
     if (theme) {
       query.theme = theme;
     }
     
-    if (category) {
+    if (category && category.trim() !== '') {
       query.category = category;
     }
     
-    const posts = await this.postModel.find(query).exec();
-    return posts.map(post => mapToDto(post.toObject(), ResponseDto));
+    const skip = (page - 1) * limit;
+    const [posts, total] = await Promise.all([
+      this.postModel.find(query)
+        .select('-content')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      this.postModel.countDocuments(query)
+    ]);
+
+    return {
+      data: posts.map(post => mapToDto(post.toObject(), ResponseDto)),
+      meta: {
+        totalItems: total,
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        itemsPerPage: limit
+      }
+    };
+  }
+
+  private mapToDto(entity: any): ResponseDto {
+    const dto = new ResponseDto();
+    const metadata = Reflect.getMetadata('swagger/apiModelPropertiesArray', ResponseDto.prototype);
+    
+    metadata.forEach(({ propertyName, type }) => {
+      if (propertyName === 'content') return; // content 필드 제외
+      if (entity.hasOwnProperty(propertyName)) {
+        const value = entity[propertyName];
+        if (value instanceof Date) {
+          dto[propertyName] = value.toLocaleString();
+        } else {
+          dto[propertyName] = value;
+        }
+      }
+    });
+    
+    return dto;
   }
 }

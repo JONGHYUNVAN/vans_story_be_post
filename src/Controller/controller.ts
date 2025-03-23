@@ -22,9 +22,9 @@ import {
 import { PostsService } from '../Service/service';
 import { JwtAuthGuard } from '../utils/Authorization/Guard/auth';
 import { Roles } from 'src/utils/Authorization/Guard/roles.decorator';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { CreateDto, UpdateDto, ResponseDto } from '../DTO/dto';
-import { PaginateQuery } from 'nestjs-paginate';
+import { Paginated } from '../types/pagination';
 
 /**
  * 게시글 컨트롤러 클래스
@@ -64,19 +64,36 @@ export class PostsController {
   }
 
   /**
-   * 모든 게시글 목록을 페이지네이션과 함께 조회합니다.
+   * 게시글 목록을 조회합니다.
    * 
-   * 페이지, 정렬, 검색 등의 쿼리 파라미터를 지원합니다.
+   * 테마, 카테고리, 페이지네이션 등의 쿼리 파라미터를 지원합니다.
    * 인증 없이 접근 가능한 공개 엔드포인트입니다.
    * 
-   * @param {PaginateQuery} query - 페이지네이션 쿼리 파라미터 (페이지, 제한, 정렬 등)
+   * @param {string} [theme] - 필터링할 게시글 테마 (선택사항)
+   * @param {string} [category] - 필터링할 게시글 카테고리 (선택사항)
+   * @param {number} [page] - 페이지 번호 (기본값: 1)
+   * @param {number} [limit] - 페이지당 게시글 수 (기본값: 10)
    * @returns {Promise<Paginated<ResponseDto>>} 페이지네이션이 적용된 게시글 목록
    */
-  @ApiOperation({ summary: '게시글 목록 조회' })
-  @ApiResponse({ status: 200, description: '게시글 목록 조회 성공', type: [ResponseDto] })
   @Get()
-  findAll(@Query() query: PaginateQuery): Promise<any> {
-    return this.postsService.findAll(query);
+  @ApiOperation({ summary: '게시글 목록 조회' })
+  @ApiResponse({ status: 200, description: '게시글 목록 조회 성공', type: ResponseDto, isArray: true })
+  @ApiQuery({ name: 'theme', required: false, description: '필터링할 게시글 테마' })
+  @ApiQuery({ name: 'category', required: false, description: '필터링할 게시글 카테고리' })
+  @ApiQuery({ name: 'page', required: false, description: '페이지 번호 (기본값: 1)' })
+  @ApiQuery({ name: 'limit', required: false, description: '페이지당 게시글 수 (기본값: 10)' })
+  async findAll(
+    @Query('theme') theme?: string,
+    @Query('category') category?: string,
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '10'
+  ): Promise<Paginated<ResponseDto>> {
+    return this.postsService.findAll(
+      theme, 
+      category, 
+      parseInt(page, 10), 
+      parseInt(limit, 10)
+    );
   }
 
   /**
@@ -90,6 +107,7 @@ export class PostsController {
    * 
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
    */
+  @Get(':id')
   @ApiOperation({ summary: '게시글 상세 조회' })
   @ApiResponse({ status: 200, description: '게시글 상세 조회 성공', type: ResponseDto })
   @ApiParam({ 
@@ -97,7 +115,6 @@ export class PostsController {
     description: 'MongoDB ObjectId (24자리 16진수 문자열, 예: 507f1f77bcf86cd799439011)',
     example: '507f1f77bcf86cd799439011'
   })
-  @Get(':id')
   findOne(@Param('id') id: string): Promise<ResponseDto> {
     return this.postsService.findOne(id);
   }
@@ -151,25 +168,5 @@ export class PostsController {
   @Delete(':id')
   remove(@Param('id') id: string): Promise<void> {
     return this.postsService.remove(id);
-  }
-
-  /**
-   * 테마와 카테고리로 게시글을 필터링하여 검색합니다.
-   * 
-   * 테마 및 카테고리 쿼리 파라미터를 사용하여 게시글을 필터링합니다.
-   * 인증 없이 접근 가능한 공개 엔드포인트입니다.
-   * 
-   * @param {string} [theme] - 필터링할 게시글 테마 (선택사항)
-   * @param {string} [category] - 필터링할 게시글 카테고리 (선택사항)
-   * @returns {Promise<ResponseDto[]>} 필터링된 게시글 목록
-   */
-  @ApiOperation({ summary: '테마와 카테고리로 게시글 검색' })
-  @ApiResponse({ status: 200, description: '게시글 검색 성공', type: [ResponseDto] })
-  @Get('search/filters')
-  async findByThemeAndCategory(
-    @Query('theme') theme?: string,
-    @Query('category') category?: string
-  ): Promise<ResponseDto[]> {
-    return this.postsService.findByThemeAndCategory(theme, category);
   }
 }
