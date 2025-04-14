@@ -18,6 +18,7 @@ import {
   UseGuards,
   Request,
   Query,
+  Headers,
 } from '@nestjs/common';
 import { PostsService } from '../Service/service';
 import { JwtAuthGuard } from '../utils/Authorization/Guard/auth';
@@ -103,6 +104,7 @@ export class PostsController {
    * 게시글 ID를 경로 파라미터로 받아 해당 게시글을 조회합니다.
    * 
    * @param {string} id - 조회할 게시글의 MongoDB ObjectId
+   * @param {string} [viewed] - 조회수 증가 여부 (true일 경우 조회수 1 증가)
    * @returns {Promise<ResponseDto>} 조회된 게시글 정보
    * 
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
@@ -115,8 +117,11 @@ export class PostsController {
     description: 'MongoDB ObjectId (24자리 16진수 문자열, 예: 507f1f77bcf86cd799439011)',
     example: '507f1f77bcf86cd799439011'
   })
-  findOne(@Param('id') id: string): Promise<ResponseDto> {
-    return this.postsService.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @Headers('x-viewed') viewed?: string
+  ): Promise<ResponseDto> {
+    return this.postsService.findOne(id, viewed === 'true');
   }
 
   /**

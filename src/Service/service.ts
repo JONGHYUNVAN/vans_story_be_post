@@ -91,8 +91,6 @@ export class PostsService {
       this.postModel.countDocuments(query)
     ]);
 
-    console.log('Found posts:', posts.length); // 디버깅을 위한 로그 추가
-
     return {
       data: posts.map(post => mapToDto(post, ResponseDto)),
       meta: {
@@ -116,7 +114,7 @@ export class PostsService {
    * const post = await postsService.findOne('1');
    * ```
    */
-  async findOne(id: string): Promise<ResponseDto> {
+  async findOne(id: string, viewed: boolean = false): Promise<ResponseDto> {
     if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException(`Invalid post ID: ${id}`);
     }
@@ -126,11 +124,45 @@ export class PostsService {
       throw new NotFoundException(`Post with ID ${id} not found`);
     }
 
+    // 조회수 증가 로직
+    if (!viewed) {
+      await this.incrementViewCount(id);
+    }
+
     const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
     const responseDto = mapToDto(post.toObject(), ResponseDto);
     responseDto.author = authorNickname;
     return responseDto;
   }
+    /**
+   * 게시글의 조회수를 증가시킵니다.
+   * 
+   * @param {string} id - 조회수를 증가시킬 게시글의 ID
+   * @returns {Promise<void>}
+   * 
+   * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
+   * 
+   * @example
+   * ```typescript
+   * await postsService.incrementViewCount('1');
+   * ```
+   */
+    async incrementViewCount(id: string): Promise<void> {
+      if (!Types.ObjectId.isValid(id)) {
+        throw new NotFoundException(`Invalid post ID: ${id}`);
+      }
+  
+      const result = await this.postModel.findByIdAndUpdate(
+        id,
+        { $inc: { viewCount: 1 } },
+        { new: true }
+      ).exec();
+  
+      if (!result) {
+        throw new NotFoundException(`Post with ID ${id} not found`);
+      }
+    }
+  
 
   /**
    * 특정 ID의 게시글을 수정합니다.
