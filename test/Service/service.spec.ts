@@ -200,6 +200,17 @@ describe('PostsService', () => {
       // When & Then
       await expect(service.findOne(id)).rejects.toThrow(NotFoundException);
     });
+
+    it('should not increment view count when viewed is true', async () => {
+      // Given
+      const id = '507f1f77bcf86cd799439011';
+
+      // When
+      await service.findOne(id, true);
+
+      // Then
+      expect(mockPostModel.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
   });
 
   /**
@@ -303,6 +314,195 @@ describe('PostsService', () => {
 
       // When & Then
       await expect(service.incrementViewCount(id)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  /**
+   * 게시글 삭제 테스트
+   * 
+   * @description
+   * 게시글을 삭제하고 삭제 작업이 올바르게 수행되는지 검증합니다.
+   * 
+   * @param {string} id - 삭제할 게시글의 ID
+   * @returns {Promise<void>}
+   * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
+   * 
+   * @example
+   * ```typescript
+   * // 정상 케이스
+   * await service.remove('507f1f77bcf86cd799439011');
+   * 
+   * // 예외 케이스
+   * await service.remove('invalid-id');
+   * ```
+   */
+  describe('remove', () => {
+    it('should remove a post', async () => {
+      // Given
+      const id = '507f1f77bcf86cd799439011';
+
+      // When
+      await service.remove(id);
+
+      // Then
+      expect(mockPostModel.findByIdAndDelete).toHaveBeenCalledWith(id);
+    });
+
+    it('should throw NotFoundException for invalid id', async () => {
+      // Given
+      const id = 'invalid-id';
+
+      // When & Then
+      await expect(service.remove(id)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw NotFoundException when post not found', async () => {
+      // Given
+      const id = '507f1f77bcf86cd799439011';
+      mockPostModel.findByIdAndDelete.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null)
+      });
+
+      // When & Then
+      await expect(service.remove(id)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  /**
+   * 작성자별 게시글 조회 테스트
+   * 
+   * @description
+   * 특정 작성자의 게시글 목록을 조회하고 결과가 올바른지 검증합니다.
+   * 
+   * @param {string} authorEmail - 작성자의 이메일
+   * @returns {Promise<ResponseDto[]>} 작성자의 게시글 목록
+   * 
+   * @example
+   * ```typescript
+   * // 정상 케이스
+   * const posts = await service.findByAuthor('test@example.com');
+   * 
+   * // 존재하지 않는 작성자
+   * const posts = await service.findByAuthor('nonexistent@example.com');
+   * ```
+   */
+  describe('findByAuthor', () => {
+    it('should return posts by author', async () => {
+      // Given
+      const authorEmail = 'test@example.com';
+      mockPostModel.find.mockReturnValue({
+        exec: jest.fn().mockResolvedValue([{
+          toObject: () => mockResponseDto
+        }])
+      });
+
+      // When
+      const result = await service.findByAuthor(authorEmail);
+
+      // Then
+      expect(mockPostModel.find).toHaveBeenCalledWith({ authorEmail });
+      expect(result).toEqual([mockResponseDto]);
+    });
+
+    it('should return empty array for non-existent author', async () => {
+      // Given
+      const authorEmail = 'nonexistent@example.com';
+      mockPostModel.find.mockReturnValue({
+        exec: jest.fn().mockResolvedValue([])
+      });
+
+      // When
+      const result = await service.findByAuthor(authorEmail);
+
+      // Then
+      expect(mockPostModel.find).toHaveBeenCalledWith({ authorEmail });
+      expect(result).toEqual([]);
+    });
+  });
+
+  /**
+   * 게시글 검색 테스트
+   * 
+   * @description
+   * 키워드로 게시글을 검색하고 결과가 올바른지 검증합니다.
+   * 제목과 내용에서 대소문자 구분 없이 키워드를 검색합니다.
+   * 
+   * @param {string} keyword - 검색할 키워드
+   * @returns {Promise<ResponseDto[]>} 검색된 게시글 목록
+   * 
+   * @example
+   * ```typescript
+   * // 정상 케이스
+   * const posts = await service.searchPosts('test');
+   * 
+   * // 검색 결과 없음
+   * const posts = await service.searchPosts('nonexistent');
+   * 
+   * // 빈 키워드
+   * const posts = await service.searchPosts('');
+   * ```
+   */
+  describe('searchPosts', () => {
+    it('should return posts matching keyword', async () => {
+      // Given
+      const keyword = 'test';
+      mockPostModel.find.mockReturnValue({
+        exec: jest.fn().mockResolvedValue([{
+          toObject: () => mockResponseDto
+        }])
+      });
+
+      // When
+      const result = await service.searchPosts(keyword);
+
+      // Then
+      expect(mockPostModel.find).toHaveBeenCalledWith({
+        $or: [
+          { title: { $regex: keyword, $options: 'i' } },
+          { content: { $regex: keyword, $options: 'i' } }
+        ]
+      });
+      expect(result).toEqual([mockResponseDto]);
+    });
+
+    it('should return empty array for no matches', async () => {
+      // Given
+      const keyword = 'nonexistent';
+      mockPostModel.find.mockReturnValue({
+        exec: jest.fn().mockResolvedValue([])
+      });
+
+      // When
+      const result = await service.searchPosts(keyword);
+
+      // Then
+      expect(mockPostModel.find).toHaveBeenCalledWith({
+        $or: [
+          { title: { $regex: keyword, $options: 'i' } },
+          { content: { $regex: keyword, $options: 'i' } }
+        ]
+      });
+      expect(result).toEqual([]);
+    });
+
+    it('should handle empty keyword', async () => {
+      // Given
+      const keyword = '';
+      mockPostModel.find.mockReturnValue({
+        exec: jest.fn().mockResolvedValue([])
+      });
+
+      // When
+      const result = await service.searchPosts(keyword);
+
+      // Then
+      expect(mockPostModel.find).toHaveBeenCalledWith({
+        $or: [
+          { title: { $regex: keyword, $options: 'i' } },
+          { content: { $regex: keyword, $options: 'i' } }
+        ]
+      });
+      expect(result).toEqual([]);
     });
   });
 }); 

@@ -49,8 +49,8 @@ export class Post {
   /**
    * 게시글 내용
    */
-  @Prop({ required: true })
-  content: string;
+  @Prop({ type: Object, required: true })
+  content: Record<string, any>;
 
   /**
    * 게시글 태그 목록
@@ -85,8 +85,8 @@ export class Post {
   /**
    * 썸네일 이미지 URL
    */
-  @Prop({ default: '' })
-  thumbnail: string;
+  @Prop({ required: false })
+  thumbnail?: string;
 
   /**
    * 게시글 언어

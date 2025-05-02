@@ -10,7 +10,7 @@
 import { Field } from '../Mapper/fieldname.extractor';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Types } from 'mongoose';
-import { IsString, IsArray, IsOptional, MinLength, MaxLength, IsEnum, IsUrl } from 'class-validator';
+import { IsString, IsArray, IsOptional, MinLength, MaxLength, IsEnum, IsUrl, IsObject } from 'class-validator';
 
 /**
  * 게시글 생성 DTO
@@ -29,12 +29,11 @@ export class CreateDto {
     title: string;
 
     @ApiProperty({
-        example: '게시글 내용입니다.',
-        description: '게시글의 본문 내용'
+        example: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: '게시글 내용입니다.' }] }] },
+        description: '게시글의 본문 내용 (Object)'
     })
-    @IsString()
-    @MinLength(1)
-    content: string;
+    @IsObject()
+    content: Record<string, any>;
 
     @ApiProperty({
         example: 'dark',
@@ -93,13 +92,12 @@ export class UpdateDto {
     title?: string;
 
     @ApiPropertyOptional({
-        example: '수정된 내용입니다.',
-        description: '수정할 게시글 내용'
+        example: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: '수정된 내용입니다.' }] }] },
+        description: '수정할 게시글 내용 (Object)'
     })
     @IsOptional()
-    @IsString()
-    @MinLength(1)
-    content?: string;
+    @IsObject()
+    content?: Record<string, any>;
 
     @ApiPropertyOptional({
         example: 'light',
@@ -150,7 +148,7 @@ export class UpdateDto {
         description: '수정할 썸네일 이미지'
     })
     @IsOptional()
-    @IsUrl()
+    @IsString()
     thumbnail?: string;
 
     @ApiPropertyOptional({
@@ -181,8 +179,11 @@ export class ResponseDto {
     title: string;
 
     @Field
-    @ApiProperty({ example: '게시글 내용입니다.' })
-    content: string;
+    @ApiProperty({ 
+        example: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: '게시글 내용입니다.' }] }] },
+        description: '게시글 내용 (Object)'
+    })
+    content: Record<string, any>;
 
     @Field
     @ApiProperty({ example: 'dark' })

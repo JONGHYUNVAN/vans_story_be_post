@@ -51,7 +51,7 @@ describe('PostsController (e2e)', () => {
     it('게시글 생성', async () => {
       const createDto = MockGenerator.createMock(CreateDto, {
         title: 'E2E 테스트 게시글',
-        content: 'E2E 테스트 내용',
+        content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'E2E 테스트 내용' }] }] },
         theme: 'light',
         category: 'general',
         description: 'E2E 테스트 설명',
@@ -82,7 +82,7 @@ describe('PostsController (e2e)', () => {
     it('게시글 수정', async () => {
       const updateDto = MockGenerator.createMock(CreateDto, {
         title: '수정된 E2E 테스트 게시글',
-        content: '수정된 E2E 테스트 내용'
+        content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: '수정된 E2E 테스트 내용' }] }] }
       });
 
       const response = await request(app.getHttpServer())
