@@ -11,6 +11,7 @@ import { JwtAuthGuard } from '../../src/utils/Authorization/Guard/auth';
 import { TestAuthGuard } from '../helpers/test-auth.guard';
 import { InternalApiClient } from '../../src/utils/Api/api';
 import { MockInternalApiClient } from '../helpers/mock-api.client';
+import { MockGenerator } from '../helpers/mock-generator';
 
 describe('PostsController (e2e)', () => {
   let app: INestApplication;
@@ -48,7 +49,7 @@ describe('PostsController (e2e)', () => {
     });
 
     it('게시글 생성', async () => {
-      const createDto: CreateDto = {
+      const createDto = MockGenerator.createMock(CreateDto, {
         title: 'E2E 테스트 게시글',
         content: 'E2E 테스트 내용',
         theme: 'light',
@@ -56,7 +57,7 @@ describe('PostsController (e2e)', () => {
         description: 'E2E 테스트 설명',
         tags: ['테스트'],
         topic: 'E2E 테스트 주제'
-      };
+      });
 
       const response = await request(app.getHttpServer())
         .post('/api/v1/posts')
@@ -79,10 +80,10 @@ describe('PostsController (e2e)', () => {
     });
 
     it('게시글 수정', async () => {
-      const updateDto = {
+      const updateDto = MockGenerator.createMock(CreateDto, {
         title: '수정된 E2E 테스트 게시글',
         content: '수정된 E2E 테스트 내용'
-      };
+      });
 
       const response = await request(app.getHttpServer())
         .patch(`/api/v1/posts/${createdPostId}`)

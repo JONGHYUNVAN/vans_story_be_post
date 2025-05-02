@@ -22,22 +22,24 @@ import { PostsService } from '../../src/Service/service';
 import { Post } from '../../src/schemas/post.schema';
 import { InternalApiClient } from '../../src/utils/Api/api';
 import { createMockPostModel, createMockApiClient } from '../helpers/test-utils';
-import { mockCreateDto, mockUpdateDto, mockResponseDto, mockPaginatedResponse } from '../fixtures/post-test-data';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { MockGenerator } from '../helpers/mock-generator';
+import { CreateDto, UpdateDto, ResponseDto } from '../../src/DTO/dto';
+import { Types } from 'mongoose';
 
 describe('PostsService', () => {
   let service: PostsService;
   let mockPostModel: any;
   let mockApiClient: any;
+  let mockResponseDto: ResponseDto;
 
-  /**
-   * 각 테스트 전에 실행되는 설정
-   * 
-   * @description
-   * - MongoDB 모델과 API 클라이언트를 모킹
-   * - TestingModule을 생성하고 PostsService 인스턴스를 가져옴
-   */
   beforeEach(async () => {
+    mockResponseDto = MockGenerator.createMock(ResponseDto, {
+      _id: new Types.ObjectId('507f1f77bcf86cd799439011'),
+      authorEmail: 'test@example.com',
+      author: '테스트 작성자'
+    });
+
     mockPostModel = createMockPostModel();
     mockApiClient = createMockApiClient();
 
@@ -84,16 +86,14 @@ describe('PostsService', () => {
     it('should create a new post', async () => {
       // Given
       const authorEmail = 'test@example.com';
-      mockPostModel.create.mockResolvedValue({
-        toObject: () => mockResponseDto
-      });
+      const createDto = MockGenerator.createMock(CreateDto);
 
       // When
-      const result = await service.create(mockCreateDto, authorEmail);
+      const result = await service.create(createDto, authorEmail);
 
       // Then
       expect(mockPostModel.create).toHaveBeenCalledWith({
-        ...mockCreateDto,
+        ...createDto,
         authorEmail
       });
       expect(result).toEqual(mockResponseDto);
@@ -102,9 +102,10 @@ describe('PostsService', () => {
     it('should throw BadRequestException when author email is invalid', async () => {
       // Given
       const invalidEmail = 'invalid-email';
+      const createDto = MockGenerator.createMock(CreateDto);
 
       // When & Then
-      await expect(service.create(mockCreateDto, invalidEmail)).rejects.toThrow('Invalid author email');
+      await expect(service.create(createDto, invalidEmail)).rejects.toThrow('Invalid author email');
     });
   });
 
@@ -184,11 +185,6 @@ describe('PostsService', () => {
     it('should return a post by id', async () => {
       // Given
       const id = '507f1f77bcf86cd799439011';
-      mockPostModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({
-          toObject: () => mockResponseDto
-        })
-      });
 
       // When
       const result = await service.findOne(id);
@@ -230,14 +226,10 @@ describe('PostsService', () => {
     it('should update a post', async () => {
       // Given
       const id = '507f1f77bcf86cd799439011';
-      mockPostModel.findByIdAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({
-          toObject: () => mockResponseDto
-        })
-      });
+      const updateDto = MockGenerator.createMock(UpdateDto);
 
       // When
-      const result = await service.update(id, mockUpdateDto);
+      const result = await service.update(id, updateDto);
 
       // Then
       expect(result).toEqual(mockResponseDto);
@@ -246,9 +238,10 @@ describe('PostsService', () => {
     it('should throw NotFoundException for invalid id', async () => {
       // Given
       const id = 'invalid-id';
+      const updateDto = MockGenerator.createMock(UpdateDto);
 
       // When & Then
-      await expect(service.update(id, mockUpdateDto)).rejects.toThrow(NotFoundException);
+      await expect(service.update(id, updateDto)).rejects.toThrow(NotFoundException);
     });
   });
 

@@ -1,11 +1,19 @@
 import { Model } from 'mongoose';
 import { Post, PostDocument } from '../../src/schemas/post.schema';
-import { mockResponseDto } from '../fixtures/post-test-data';
+import { MockGenerator } from './mock-generator';
+import { ResponseDto } from '../../src/DTO/dto';
+import { Types } from 'mongoose';
 
 export const createMockPostModel = () => {
+  const mockResponse = MockGenerator.createMock(ResponseDto, {
+    _id: new Types.ObjectId('507f1f77bcf86cd799439011'),
+    authorEmail: 'test@example.com',
+    author: '테스트 작성자'
+  });
+
   const mockModel = {
     create: jest.fn().mockResolvedValue({
-      toObject: () => mockResponseDto
+      toObject: () => mockResponse
     }),
     find: jest.fn().mockReturnValue({
       select: jest.fn().mockReturnThis(),
@@ -13,21 +21,21 @@ export const createMockPostModel = () => {
       skip: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
       lean: jest.fn().mockReturnThis(),
-      exec: jest.fn().mockResolvedValue([mockResponseDto])
+      exec: jest.fn().mockResolvedValue([mockResponse])
     }),
     findById: jest.fn().mockReturnValue({
       exec: jest.fn().mockResolvedValue({
-        toObject: () => mockResponseDto
+        toObject: () => mockResponse
       })
     }),
     findByIdAndUpdate: jest.fn().mockReturnValue({
       exec: jest.fn().mockResolvedValue({
-        toObject: () => mockResponseDto
+        toObject: () => mockResponse
       })
     }),
     findByIdAndDelete: jest.fn().mockReturnValue({
       exec: jest.fn().mockResolvedValue({
-        toObject: () => mockResponseDto
+        toObject: () => mockResponse
       })
     }),
     countDocuments: jest.fn().mockReturnValue({
