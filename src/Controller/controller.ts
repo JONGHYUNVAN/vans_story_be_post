@@ -59,8 +59,6 @@ export class PostsController {
   @ApiBearerAuth('Authorization')
   @Post()
   create(@Body() createDto: CreateDto, @Request() request: any): Promise<ResponseDto> {
-    console.log('request.user:', request.user);
-    console.log('request.user.sub:', request.user?.sub);
     return this.postsService.create(createDto, request.user.sub);
   }
 

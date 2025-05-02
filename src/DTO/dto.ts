@@ -10,6 +10,7 @@
 import { Field } from '../Mapper/fieldname.extractor';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Types } from 'mongoose';
+import { IsString, IsArray, IsOptional, MinLength, MaxLength, IsEnum, IsUrl } from 'class-validator';
 
 /**
  * 게시글 생성 DTO
@@ -22,42 +23,55 @@ export class CreateDto {
         example: '게시글 제목',
         description: '게시글의 제목'
     })
+    @IsString()
+    @MinLength(1)
+    @MaxLength(100)
     title: string;
 
     @ApiProperty({
         example: '게시글 내용입니다.',
         description: '게시글의 본문 내용'
     })
+    @IsString()
+    @MinLength(1)
     content: string;
 
     @ApiProperty({
         example: 'dark',
         description: '게시글의 테마'
     })
+    @IsString()
     theme: string;
 
     @ApiProperty({
         example: '게시글 설명입니다.',
         description: '게시글의 설명'
     })
+    @IsString()
+    @MaxLength(500)
     description: string;
 
     @ApiProperty({
         example: ['태그1', '태그2'],
         description: '게시글의 태그 목록'
     })
+    @IsArray()
+    @IsString({ each: true })
     tags: string[];
 
     @ApiProperty({
         example: 'introduction',
         description: '게시글의 카테고리'
     })
+    @IsString()
     category: string;
 
     @ApiProperty({
         example: 'Java 알고리즘',
         description: '게시글의 주제'
     })
+    @IsString()
+    @MaxLength(200)
     topic: string;
 }
 
@@ -72,54 +86,79 @@ export class UpdateDto {
         example: '수정된 제목',
         description: '수정할 게시글 제목'
     })
+    @IsOptional()
+    @IsString()
+    @MinLength(1)
+    @MaxLength(100)
     title?: string;
 
     @ApiPropertyOptional({
         example: '수정된 내용입니다.',
         description: '수정할 게시글 내용'
     })
+    @IsOptional()
+    @IsString()
+    @MinLength(1)
     content?: string;
 
     @ApiPropertyOptional({
         example: 'light',
         description: '수정할 테마'
     })
+    @IsOptional()
+    @IsString()
     theme?: string;
 
     @ApiPropertyOptional({
         example: '수정된 설명입니다.',
         description: '수정할 게시글 설명'
     })
+    @IsOptional()
+    @IsString()
+    @MaxLength(500)
     description?: string;
 
     @ApiPropertyOptional({
         example: ['태그1', '태그2'],
         description: '수정할 태그 목록'
     })
+    @IsOptional()
+    @IsArray()
+    @IsString({ each: true })
     tags?: string[];
 
     @ApiPropertyOptional({
         example: 'introduction',
         description: '수정할 카테고리'
     })
+    @IsOptional()
+    @IsString()
+    @IsEnum(['introduction', 'tutorial', 'project', 'review'])
     category?: string;
 
     @ApiPropertyOptional({
         example: 'Java 알고리즘',
         description: '수정할 주제'
     })
+    @IsOptional()
+    @IsString()
+    @MaxLength(200)
     topic?: string;
 
     @ApiPropertyOptional({
         example: 'thumbnail.jpg',
         description: '수정할 썸네일 이미지'
     })
+    @IsOptional()
+    @IsUrl()
     thumbnail?: string;
 
     @ApiPropertyOptional({
         example: 'ko',
         description: '수정할 언어'
     })
+    @IsOptional()
+    @IsString()
     language?: string;
 }
 
@@ -158,12 +197,12 @@ export class ResponseDto {
     author: string;
 
     @Field
-    @ApiProperty({ example: '2024-03-19T09:00:00.000Z' })
-    createdAt: Date;
+    @ApiProperty({ example: '2025. 3. 24. 오후 9:14:10' })
+    createdAt: string;
 
     @Field
-    @ApiProperty({ example: '2024-03-19T09:00:00.000Z' })
-    updatedAt: Date;
+    @ApiProperty({ example: '2025. 4. 27. 오후 7:47:51' })
+    updatedAt: string;
 
     @Field
     @ApiProperty({ example: '게시글 설명입니다.' })

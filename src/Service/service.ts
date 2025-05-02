@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CreateDto, UpdateDto, ResponseDto } from '../DTO/dto';
@@ -36,13 +36,18 @@ export class PostsService {
    * ```
    */
   async create(createDto: CreateDto, authorEmail: string): Promise<ResponseDto> {
-    console.log('createDto:', createDto);
-    console.log('authorEmail:', authorEmail);
+    if (!authorEmail || !authorEmail.includes('@')) {
+      throw new BadRequestException('Invalid author email');
+    }
+
+    if (!createDto.title || !createDto.content) {
+      throw new BadRequestException('Title and content are required');
+    }
+
     const created = await this.postModel.create({
       ...createDto,
       authorEmail
     });
-    console.log('created post:', created);
     return mapToDto(created.toObject(), ResponseDto);
   }
 
@@ -67,6 +72,13 @@ export class PostsService {
    * ```
    */
   async findAll(theme?: string, category?: string, page: number = 1, limit: number = 10): Promise<Paginated<ResponseDto>> {
+    if (page < 1) {
+      throw new BadRequestException('Page number must be greater than 0');
+    }
+    if (limit < 1) {
+      throw new BadRequestException('Limit must be greater than 0');
+    }
+
     const query: any = {};
     
     if (theme && theme.trim() !== '') {
@@ -76,8 +88,6 @@ export class PostsService {
     if (category && category.trim() !== '') {
       query.category = category.trim();
     }
-    
-    console.log('Query:', query); // 디버깅을 위한 로그 추가
     
     const skip = (page - 1) * limit;
     const [posts, total] = await Promise.all([
@@ -265,6 +275,13 @@ export class PostsService {
    * @returns {Promise<ResponseDto[]>} - 검색 결과 게시글 목록
    */
   async findByThemeAndCategory(theme?: string, category?: string, page: number = 1, limit: number = 10): Promise<Paginated<ResponseDto>> {
+    if (page < 1) {
+      throw new BadRequestException('Page number must be greater than 0');
+    }
+    if (limit < 1) {
+      throw new BadRequestException('Limit must be greater than 0');
+    }
+
     const query: any = {};
     
     if (theme) {
@@ -295,24 +312,5 @@ export class PostsService {
         itemsPerPage: limit
       }
     };
-  }
-
-  private mapToDto(entity: any): ResponseDto {
-    const dto = new ResponseDto();
-    const metadata = Reflect.getMetadata('swagger/apiModelPropertiesArray', ResponseDto.prototype);
-    
-    metadata.forEach(({ propertyName, type }) => {
-      if (propertyName === 'content') return; // content 필드 제외
-      if (entity.hasOwnProperty(propertyName)) {
-        const value = entity[propertyName];
-        if (value instanceof Date) {
-          dto[propertyName] = value.toLocaleString();
-        } else {
-          dto[propertyName] = value;
-        }
-      }
-    });
-    
-    return dto;
   }
 }

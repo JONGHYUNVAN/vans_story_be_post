@@ -13,6 +13,7 @@ import * as express from 'express';
 import * as session from 'express-session';
 import { Logger } from '@nestjs/common';
 import { SwaggerAuthMiddleware } from './middleware/swagger.auth.middleware';
+import { ValidationPipe } from '@nestjs/common';
 
 /**
  * 애플리케이션 부트스트랩 함수
@@ -25,6 +26,20 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'debug', 'verbose'],
   });
+
+  // 전역 밸리데이션 파이프 설정
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true, // DTO에 정의되지 않은 속성 제거
+    forbidNonWhitelisted: true, // DTO에 정의되지 않은 속성이 있으면 요청 거부
+    transform: true, // 요청 데이터를 DTO 클래스의 인스턴스로 변환
+    transformOptions: {
+      enableImplicitConversion: true, // 암시적 타입 변환 활성화
+    },
+    validationError: {
+      target: false, // 에러 객체에서 target 제외
+      value: false, // 에러 객체에서 value 제외
+    },
+  }));
 
   // CORS 설정
   app.enableCors({
