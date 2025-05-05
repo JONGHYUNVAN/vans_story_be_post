@@ -12,7 +12,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as express from 'express';
 import * as session from 'express-session';
 import { Logger } from '@nestjs/common';
-import { SwaggerAuthMiddleware } from './middleware/swagger.auth.middleware';
+import { SwaggerAuthMiddleware } from './swagger/middleware/swagger.auth.middleware';
 import { ValidationPipe } from '@nestjs/common';
 
 /**

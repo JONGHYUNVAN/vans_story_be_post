@@ -21,11 +21,11 @@ import {
   Headers,
 } from '@nestjs/common';
 import { PostsService } from '../Service/service';
-import { JwtAuthGuard } from '../utils/Authorization/Guard/auth';
+import { JwtAuthGuard } from '../../../utils/Authorization/Guard/auth';
 import { Roles } from 'src/utils/Authorization/Guard/roles.decorator';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { CreateDto, UpdateDto, ResponseDto } from '../DTO/dto';
-import { Paginated } from '../types/pagination';
+import { Paginated } from '../../../utils/types/pagination';
 
 /**
  * 게시글 컨트롤러 클래스

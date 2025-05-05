@@ -10,7 +10,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
 import * as dotenv from 'dotenv';
-import { PostsModule } from './Module/module';
+import { PostsModule } from './modules/post/Module/module';
 import { AuthModule } from './utils/Authorization/Module/module';
 import { mongooseConfig } from './config/database';
 dotenv.config();

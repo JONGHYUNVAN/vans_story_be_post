@@ -7,7 +7,7 @@
  */
 
 import { Model } from 'mongoose';
-import { Post } from '../../schemas/post.schema';
+import { Post } from '../../modules/post/schemas/post.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 

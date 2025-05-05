@@ -13,8 +13,8 @@ import { HttpModule } from '@nestjs/axios';
 import { PostsController } from '../Controller/controller';
 import { PostsService } from '../Service/service';
 import { Post, PostSchema } from '../schemas/post.schema';
-import { InternalApiClient } from '../utils/Api/api';
-import { PostInitService } from '../database/init/post.init';
+import { InternalApiClient } from '../../../utils/Api/api';
+import { PostInitService } from '../../../database/init/post.init';
 
 /**
  * 게시글 기능 모듈

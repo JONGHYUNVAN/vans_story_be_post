@@ -1,7 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { faker } from '@faker-js/faker/locale/ko';
-import { CreateDto } from '../../src/DTO/dto';
+import { CreateDto, UpdateDto } from '../../src/modules/post/DTO/dto';
 
 export class MockGenerator {
   /**
@@ -35,12 +35,45 @@ export class MockGenerator {
     if (dto instanceof CreateDto) {
       return {
         title: faker.lorem.sentence().slice(0, 100),
-        content: faker.lorem.paragraphs(),
+        content: {
+          type: 'doc',
+          content: [{
+            type: 'paragraph',
+            content: [{
+              type: 'text',
+              text: faker.lorem.paragraphs()
+            }]
+          }]
+        },
         theme: 'light',
         description: faker.lorem.paragraph().slice(0, 500),
         tags: [faker.lorem.word(), faker.lorem.word()],
         category: 'introduction',
         topic: faker.lorem.sentence().slice(0, 200)
+      } as T;
+    }
+
+    // UpdateDto인 경우 특별한 처리
+    if (dto instanceof UpdateDto) {
+      return {
+        title: faker.lorem.sentence().slice(0, 100),
+        content: {
+          type: 'doc',
+          content: [{
+            type: 'paragraph',
+            content: [{
+              type: 'text',
+              text: faker.lorem.paragraphs()
+            }]
+          }]
+        },
+        theme: 'light',
+        description: faker.lorem.paragraph().slice(0, 500),
+        tags: [faker.lorem.word(), faker.lorem.word()],
+        category: 'introduction',
+        topic: faker.lorem.sentence().slice(0, 200),
+        thumbnail: faker.image.url(),
+        language: 'ko'
       } as T;
     }
 
@@ -66,7 +99,16 @@ export class MockGenerator {
           case 'title':
             return faker.lorem.sentence().slice(0, 100);
           case 'content':
-            return faker.lorem.paragraphs();
+            return {
+              type: 'doc',
+              content: [{
+                type: 'paragraph',
+                content: [{
+                  type: 'text',
+                  text: faker.lorem.paragraphs()
+                }]
+              }]
+            };
           case 'theme':
             return 'light';
           case 'description':

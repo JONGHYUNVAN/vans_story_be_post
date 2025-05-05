@@ -18,13 +18,13 @@
  */
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
-import { PostsService } from '../../src/Service/service';
-import { Post } from '../../src/schemas/post.schema';
-import { InternalApiClient } from '../../src/utils/Api/api';
-import { createMockPostModel, createMockApiClient } from '../helpers/test-utils';
+import { PostsService } from '../../../src/modules/post/Service/service';
+import { Post } from '../../../src/modules/post/schemas/post.schema';
+import { InternalApiClient } from '../../../src/utils/Api/api';
+import { createMockPostModel, createMockApiClient } from '../../helpers/test-utils';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
-import { MockGenerator } from '../helpers/mock-generator';
-import { CreateDto, UpdateDto, ResponseDto } from '../../src/DTO/dto';
+import { MockGenerator } from '../../helpers/mock-generator';
+import { CreateDto, UpdateDto, ResponseDto } from '../../../src/modules/post/DTO/dto';
 import { Types } from 'mongoose';
 
 describe('PostsService', () => {
@@ -74,9 +74,21 @@ describe('PostsService', () => {
    * ```typescript
    * const createDto = {
    *   title: '테스트 게시글',
-   *   content: '테스트 내용',
+   *   content: {
+   *     type: 'doc',
+   *     content: [{
+   *       type: 'paragraph',
+   *       content: [{
+   *         type: 'text',
+   *         text: '테스트 내용'
+   *       }]
+   *     }]
+   *   },
    *   theme: 'light',
-   *   category: 'general'
+   *   category: 'general',
+   *   description: '테스트 설명',
+   *   tags: ['테스트'],
+   *   topic: '테스트 주제'
    * };
    * const authorEmail = 'test@example.com';
    * const result = await service.create(createDto, authorEmail);
@@ -227,8 +239,17 @@ describe('PostsService', () => {
    * @example
    * ```typescript
    * const updateDto = {
-   *   title: '수정된 제목',
-   *   content: '수정된 내용'
+   *   title: '수정된 테스트 게시글',
+   *   content: {
+   *     type: 'doc',
+   *     content: [{
+   *       type: 'paragraph',
+   *       content: [{
+   *         type: 'text',
+   *         text: '수정된 테스트 내용'
+   *       }]
+   *     }]
+   *   }
    * };
    * const updatedPost = await service.update('507f1f77bcf86cd799439011', updateDto);
    * ```

@@ -7,7 +7,7 @@
  * @module DTO/dto
  */
 
-import { Field } from '../Mapper/fieldname.extractor';
+import { Field } from '../../../utils/Mapper/fieldname.extractor';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Types } from 'mongoose';
 import { IsString, IsArray, IsOptional, MinLength, MaxLength, IsEnum, IsUrl, IsObject } from 'class-validator';

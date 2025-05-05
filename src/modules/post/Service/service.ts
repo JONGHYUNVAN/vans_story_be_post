@@ -3,9 +3,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CreateDto, UpdateDto, ResponseDto } from '../DTO/dto';
 import { Post, PostDocument } from '../schemas/post.schema';
-import { mapToDto } from '../Mapper/mapper';
-import { Paginated } from '../types/pagination';
-import { InternalApiClient } from '../utils/Api/api';
+import { mapToDto } from '../../../utils/Mapper/mapper';
+import { Paginated } from '../../../utils/types/pagination';
+import { InternalApiClient } from '../../../utils/Api/api';
 /**
  * MongoDB를 사용하는 게시글 관련 비즈니스 로직을 처리하는 서비스 클래스
  * 

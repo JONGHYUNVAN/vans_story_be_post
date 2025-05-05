@@ -4,14 +4,14 @@ process.env.JWT_SECRET = 'dGVzdF9zZWNyZXRfa2V5'; // base64 encoded 'test_secret_
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { AppModule } from '../../src/app.module';
-import { CreateDto } from '../../src/DTO/dto';
-import { MockAuthModule } from '../helpers/mock.module';
-import { JwtAuthGuard } from '../../src/utils/Authorization/Guard/auth';
-import { TestAuthGuard } from '../helpers/test-auth.guard';
-import { InternalApiClient } from '../../src/utils/Api/api';
-import { MockInternalApiClient } from '../helpers/mock-api.client';
-import { MockGenerator } from '../helpers/mock-generator';
+import { AppModule } from '../../../src/app.module';
+import { CreateDto } from '../../../src/modules/post/DTO/dto';
+import { MockAuthModule } from '../../helpers/mock.module';
+import { JwtAuthGuard } from '../../../src/utils/Authorization/Guard/auth';
+import { TestAuthGuard } from '../../helpers/test-auth.guard';
+import { InternalApiClient } from '../../../src/utils/Api/api';
+import { MockInternalApiClient } from '../../helpers/mock-api.client';
+import { MockGenerator } from '../../helpers/mock-generator';
 
 describe('PostsController (e2e)', () => {
   let app: INestApplication;
@@ -49,15 +49,7 @@ describe('PostsController (e2e)', () => {
     });
 
     it('게시글 생성', async () => {
-      const createDto = MockGenerator.createMock(CreateDto, {
-        title: 'E2E 테스트 게시글',
-        content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'E2E 테스트 내용' }] }] },
-        theme: 'light',
-        category: 'general',
-        description: 'E2E 테스트 설명',
-        tags: ['테스트'],
-        topic: 'E2E 테스트 주제'
-      });
+      const createDto = MockGenerator.createMock(CreateDto);
 
       const response = await request(app.getHttpServer())
         .post('/api/v1/posts')
@@ -80,10 +72,7 @@ describe('PostsController (e2e)', () => {
     });
 
     it('게시글 수정', async () => {
-      const updateDto = MockGenerator.createMock(CreateDto, {
-        title: '수정된 E2E 테스트 게시글',
-        content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: '수정된 E2E 테스트 내용' }] }] }
-      });
+      const updateDto = MockGenerator.createMock(CreateDto);
 
       const response = await request(app.getHttpServer())
         .patch(`/api/v1/posts/${createdPostId}`)
@@ -92,7 +81,7 @@ describe('PostsController (e2e)', () => {
         .expect(200);
 
       expect(response.body.title).toBe(updateDto.title);
-      expect(response.body.content).toBe(updateDto.content);
+      expect(response.body.content).toStrictEqual(updateDto.content);
     });
 
     it('게시글 삭제', async () => {
