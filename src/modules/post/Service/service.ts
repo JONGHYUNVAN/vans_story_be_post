@@ -101,8 +101,18 @@ export class PostsService {
       this.postModel.countDocuments(query)
     ]);
 
+    // 각 게시글의 authorEmail을 author(닉네임)로 변환
+    const postsWithAuthor = await Promise.all(
+      posts.map(async (post) => {
+        const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
+        const responseDto = mapToDto(post, ResponseDto);
+        responseDto.author = authorNickname;
+        return responseDto;
+      })
+    );
+
     return {
-      data: posts.map(post => mapToDto(post, ResponseDto)),
+      data: postsWithAuthor,
       meta: {
         totalItems: total,
         currentPage: page,
@@ -241,7 +251,18 @@ export class PostsService {
    */
   async findByAuthor(authorEmail: string): Promise<ResponseDto[]> {
     const posts = await this.postModel.find({ authorEmail }).exec();
-    return posts.map(post => mapToDto(post.toObject(), ResponseDto));
+    
+    // 각 게시글의 authorEmail을 author(닉네임)로 변환
+    const postsWithAuthor = await Promise.all(
+      posts.map(async (post) => {
+        const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
+        const responseDto = mapToDto(post.toObject(), ResponseDto);
+        responseDto.author = authorNickname;
+        return responseDto;
+      })
+    );
+    
+    return postsWithAuthor;
   }
 
   /**
@@ -256,15 +277,24 @@ export class PostsService {
    * ```
    */
   async searchPosts(keyword: string): Promise<ResponseDto[]> {
-    const posts = await this.postModel
-      .find({
-        $or: [
-          { title: { $regex: keyword, $options: 'i' } },
-          { content: { $regex: keyword, $options: 'i' } }
-        ]
+    const posts = await this.postModel.find({
+      $or: [
+        { title: { $regex: keyword, $options: 'i' } },
+        { content: { $regex: keyword, $options: 'i' } }
+      ]
+    }).exec();
+
+    // 각 게시글의 authorEmail을 author(닉네임)로 변환
+    const postsWithAuthor = await Promise.all(
+      posts.map(async (post) => {
+        const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
+        const responseDto = mapToDto(post.toObject(), ResponseDto);
+        responseDto.author = authorNickname;
+        return responseDto;
       })
-      .exec();
-    return posts.map(post => mapToDto(post.toObject(), ResponseDto));
+    );
+
+    return postsWithAuthor;
   }
 
   /**
@@ -303,8 +333,18 @@ export class PostsService {
       this.postModel.countDocuments(query)
     ]);
 
+    // 각 게시글의 authorEmail을 author(닉네임)로 변환
+    const postsWithAuthor = await Promise.all(
+      posts.map(async (post) => {
+        const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
+        const responseDto = mapToDto(post.toObject(), ResponseDto);
+        responseDto.author = authorNickname;
+        return responseDto;
+      })
+    );
+
     return {
-      data: posts.map(post => mapToDto(post.toObject(), ResponseDto)),
+      data: postsWithAuthor,
       meta: {
         totalItems: total,
         currentPage: page,

@@ -10,7 +10,7 @@
 import { Field } from '../../../utils/Mapper/fieldname.extractor';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Types } from 'mongoose';
-import { IsString, IsArray, IsOptional, MinLength, MaxLength, IsEnum, IsUrl, IsObject } from 'class-validator';
+import { IsString, IsArray, IsOptional, MinLength, MaxLength, IsEnum, IsUrl, IsObject, IsBoolean, IsNumber, IsNotEmpty, IsDateString } from 'class-validator';
 
 /**
  * 게시글 생성 DTO
@@ -72,6 +72,23 @@ export class CreateDto {
     @IsString()
     @MaxLength(200)
     topic: string;
+
+    @ApiProperty({
+        example: 'thumbnail.jpg',
+        description: '게시글의 썸네일 이미지'
+    })
+    @IsString()
+    @IsOptional()
+    thumbnail?: string;
+
+    @ApiProperty({
+        example: 'ko',
+        description: '게시글의 언어'
+    })
+    @IsString()
+    @IsOptional()
+    language?: string = 'ko';
+
 }
 
 /**
@@ -131,7 +148,6 @@ export class UpdateDto {
     })
     @IsOptional()
     @IsString()
-    @IsEnum(['introduction', 'tutorial', 'project', 'review'])
     category?: string;
 
     @ApiPropertyOptional({
