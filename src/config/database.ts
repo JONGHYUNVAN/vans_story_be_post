@@ -1,7 +1,7 @@
 /**
  * MongoDB 데이터베이스 연결 설정 파일
  * 
- * MongoDB 연결 설정, 이벤트 리스너 및 헬퍼 함수를 정의합니다.
+ * MongoDB 연결 설정과 이벤트 리스너를 정의합니다.
  * 이 모듈은 애플리케이션에서 MongoDB 연결을 관리하는 데 사용됩니다.
  * 
  * @module config/database
@@ -44,35 +44,4 @@ export const mongooseConfig: MongooseModuleOptions = {
   serverSelectionTimeoutMS: 5000,
   connectTimeoutMS: 10000,
   retryWrites: true,
-};
-
-/**
- * MongoDB 연결 상태 확인을 위한 헬퍼 함수
- * 
- * MongoDB 연결을 시도하고 결과를 콘솔에 출력합니다.
- * 
- * @async
- * @returns {Promise<boolean>} 연결 성공 여부를 반환합니다 (true: 성공, false: 실패)
- * @throws {Error} MongoDB 연결 중 오류가 발생한 경우
- * 
- * @example
- * ```typescript
- * const isConnected = await checkMongoConnection();
- * if (isConnected) {
- *   console.log('데이터베이스 연결 성공');
- * } else {
- *   console.error('데이터베이스 연결 실패');
- * }
- * ```
- */
-export const checkMongoConnection = async () => {
-  try {
-    const mongoose = require('mongoose');
-    const conn = await mongoose.connect(process.env.MONGODB_URI, mongooseConfig);
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-    return true;
-  } catch (error) {
-    console.error(`MongoDB 연결 실패: ${error.message}`);
-    return false;
-  }
 }; 

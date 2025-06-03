@@ -6,9 +6,6 @@ import { Observable } from 'rxjs';
 /**
  * JWT 인증을 처리하는 가드 클래스
  * 
- * @class JwtAuthGuard
- * @extends {AuthGuard('jwt')}
- * @description 
  * HTTP 요청에 대한 JWT 토큰 검증을 수행합니다.
  * 모든 보호된 라우트에 대해 인증을 처리하며, 
  * 유효하지 않은 토큰이나 만료된 토큰에 대한 예외를 발생시킵니다.

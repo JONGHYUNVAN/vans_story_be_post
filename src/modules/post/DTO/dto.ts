@@ -36,7 +36,7 @@ export class CreateDto {
     content: Record<string, any>;
 
     @ApiProperty({
-        example: 'dark',
+        example: 'nest.js',
         description: '게시글의 테마'
     })
     @IsString()

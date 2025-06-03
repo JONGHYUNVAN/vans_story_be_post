@@ -16,6 +16,8 @@ import { Session } from 'express-session';
 /**
  * Swagger 인증 정보를 저장하기 위한 세션 인터페이스
  * 기본 세션에 Swagger 인증 상태를 추가합니다.
+ * 
+ * @internal
  */
 interface CustomSession extends Session {
   swaggerAuthorized?: boolean;
@@ -24,6 +26,8 @@ interface CustomSession extends Session {
 /**
  * 커스텀 세션을 포함하는 요청 인터페이스
  * Express Request 인터페이스를 확장하여 CustomSession을 포함합니다.
+ * 
+ * @internal
  */
 interface CustomRequest extends Request {
   session: CustomSession;

@@ -6,11 +6,11 @@ import { Post, PostDocument } from '../schemas/post.schema';
 import { mapToDto } from '../../../utils/Mapper/mapper';
 import { Paginated } from '../../../utils/types/pagination';
 import { InternalApiClient } from '../../../utils/Api/api';
+
 /**
  * MongoDB를 사용하는 게시글 관련 비즈니스 로직을 처리하는 서비스 클래스
  * 
- * @class PostsService
- * @description 게시글의 생성, 조회, 수정, 삭제 등의 비즈니스 로직을 MongoDB를 통해 처리합니다.
+ * 게시글의 생성, 조회, 수정, 삭제 등의 비즈니스 로직을 MongoDB를 통해 처리합니다.
  */
 @Injectable()
 export class PostsService {
@@ -54,11 +54,11 @@ export class PostsService {
   /**
    * 페이지네이션이 적용된 게시글 목록을 조회합니다.
    * 
-   * @param {PaginateQuery} query - 페이지네이션 쿼리 파라미터
+   * @param {string} [theme] - 필터링할 게시글 테마 (선택사항)
+   * @param {string} [category] - 필터링할 게시글 카테고리 (선택사항)
+   * @param {number} [page=1] - 페이지 번호 (기본값: 1)
+   * @param {number} [limit=10] - 페이지당 게시글 수 (기본값: 10)
    * @returns {Promise<Paginated<ResponseDto>>} 페이지네이션이 적용된 게시글 목록
-   * @property {ResponseDto[]} data - 게시글 목록
-   * @property {Object} meta - 페이지네이션 메타 정보
-   * @property {Object} links - 이전/다음 페이지 링크
    * 
    * @example
    * ```typescript
@@ -121,6 +121,7 @@ export class PostsService {
       }
     };
   }
+
   /**
    * 특정 ID의 게시글을 조회합니다.
    * 
@@ -154,7 +155,8 @@ export class PostsService {
     responseDto.author = authorNickname;
     return responseDto;
   }
-    /**
+
+  /**
    * 게시글의 조회수를 증가시킵니다.
    * 
    * @param {string} id - 조회수를 증가시킬 게시글의 ID
@@ -167,22 +169,21 @@ export class PostsService {
    * await postsService.incrementViewCount('1');
    * ```
    */
-    async incrementViewCount(id: string): Promise<void> {
-      if (!Types.ObjectId.isValid(id)) {
-        throw new NotFoundException(`Invalid post ID: ${id}`);
-      }
-  
-      const result = await this.postModel.findByIdAndUpdate(
-        id,
-        { $inc: { viewCount: 1 } },
-        { new: true }
-      ).exec();
-  
-      if (!result) {
-        throw new NotFoundException(`Post with ID ${id} not found`);
-      }
+  async incrementViewCount(id: string): Promise<void> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException(`Invalid post ID: ${id}`);
     }
-  
+
+    const result = await this.postModel.findByIdAndUpdate(
+      id,
+      { $inc: { viewCount: 1 } },
+      { new: true }
+    ).exec();
+
+    if (!result) {
+      throw new NotFoundException(`Post with ID ${id} not found`);
+    }
+  }
 
   /**
    * 특정 ID의 게시글을 수정합니다.

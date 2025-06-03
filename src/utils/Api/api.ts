@@ -13,8 +13,7 @@ import { Injectable } from '@nestjs/common';
 /**
  * 내부 API 통신을 위한 유틸리티 클래스
  * 
- * @class InternalApiClient
- * @description 다른 내부 서비스와의 HTTP 통신을 처리합니다.
+ * 다른 내부 서비스와의 HTTP 통신을 처리합니다.
  */
 @Injectable()
 export class InternalApiClient {

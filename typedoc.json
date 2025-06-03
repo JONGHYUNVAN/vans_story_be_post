@@ -18,7 +18,7 @@
   "lightHighlightTheme": "github-light",
   "navigationLinks": {
     "GitHub": "https://github.com/JONGHYUNVAN/vans_story_be_post",
-    "API Reference": "modules.html"
+    "Swagger API": "http://localhost:3001/api/posts/swagger"
   },
   "searchInComments": true
 }

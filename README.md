@@ -5,7 +5,6 @@
 - NestJS: 11.0.0
 - TypeScript: 5.1.3
 - Node.js: >=20.0.0
-- MongoDB: 8.11.0
 - Mongoose: 8.11.0
 
 ### 주요 의존성
@@ -51,10 +50,8 @@
 - supertest: ^7.0.0
 
 #### 문서화
-- jsdoc: ^4.0.4
-- better-docs: ^2.7.3
-- typedoc: ^0.28.0
-- typedoc-plugin-markdown: ^4.5.0
+- typedoc: ^0.27.9
+- typedoc-material-theme: ^1.3.0
 
 ### 개발 환경 (dev)
 #### 데이터베이스
@@ -62,11 +59,11 @@
 - 접속 정보는 환경 변수로 관리
 
 #### 서버 설정
-- Port: 3000 (기본값)
+- Port: 3001 (기본값)
 - 메모리 제한: 512MB (`--max-old-space-size=512`)
 
 ### Swagger UI 설정
-- 접근 경로: `http://localhost:3000/api-docs`
+- 접근 경로: `http://localhost:3001/api/posts/swagger`
 - API 문서 기능:
   - API 그룹화
   - 메서드 기반 정렬
@@ -80,17 +77,25 @@
 ## 프로젝트 구조
 
 ### 주요 디렉토리
-- `src/`: 소스 코드
-  - `Controller/`: API 컨트롤러
-  - `Service/`: 비즈니스 로직
-  - `DTO/`: 데이터 전송 객체
-  - `schemas/`: MongoDB 스키마
-  - `Mapper/`: DTO 변환기
-  - `utils/`: 유틸리티 함수
-    - `Api/`: 내부 API 클라이언트
-    - `Authorization/`: 인증 관련 컴포넌트
-  - `middleware/`: 미들웨어
-  - `config/`: 설정 파일
+```
+src/
+├── modules/
+│   └── post/
+│       ├── Controller/      # API 컨트롤러
+│       ├── Service/         # 비즈니스 로직
+│       ├── DTO/            # 데이터 전송 객체
+│       ├── schemas/        # MongoDB 스키마
+│       └── Module/         # NestJS 모듈
+├── utils/
+│   ├── Api/               # 내부 API 클라이언트
+│   ├── Authorization/     # 인증 관련 컴포넌트
+│   ├── Mapper/           # DTO 변환기
+│   ├── pagination/       # 페이지네이션 유틸리티
+│   └── types/           # 타입 정의
+├── config/              # 설정 파일
+├── database/           # 데이터베이스 설정
+└── swagger/           # Swagger 설정
+```
 
 ### 전역 설정
 #### 보안 설정
@@ -102,55 +107,17 @@
 - API 문서 자동화
 - 엔드포인트, DTO 모델 문서화
 
-### 글로벌 컴포넌트
-#### API 응답 형식
-모든 API 응답은 다음 구조를 따릅니다:
-```typescript
-{
-  data: T;        // 응답 데이터 (제네릭 타입)
-  meta?: object;  // 페이지네이션 등 메타데이터 (선택사항)
-  links?: object; // 관련 리소스 링크 (선택사항)
-}
-```
-
-#### 페이지네이션 응답 형식
-```typescript
-{
-  data: T[];      // 페이지 데이터 배열
-  meta: {
-    itemsPerPage: number;
-    totalItems: number;
-    currentPage: number;
-    totalPages: number;
-    sortBy: [string, string][];
-    searchBy: string[];
-    search: string;
-    filter: object;
-    select: string[];
-  };
-  links: {
-    current: string;
-    next: string;
-    previous: string;
-  };
-}
-```
-
-#### 예외 처리
-- **NotFoundException**: 리소스를 찾을 수 없을 때
-- 글로벌 예외 필터를 통한 일관된 오류 응답
-
 ## 주요 API 엔드포인트
 
 ### 게시글 (Post) API
-- **GET /posts**: 모든 게시글 조회 (페이지네이션 지원)
-- **GET /posts/:id**: 특정 ID의 게시글 조회
-- **POST /posts**: 새 게시글 생성
-- **PUT /posts/:id**: 특정 ID의 게시글 업데이트
-- **DELETE /posts/:id**: 특정 ID의 게시글 삭제
-- **GET /posts/author/:email**: 특정 작성자의 게시글 조회
-- **GET /posts/search/:keyword**: 키워드로 게시글 검색
-- **GET /posts/theme-category**: 테마와 카테고리로 게시글 필터링
+API 기본 경로: `/api/v1/posts`
+
+- **GET /api/v1/posts**: 모든 게시글 조회 (페이지네이션 지원)
+  - 쿼리 파라미터: `theme`, `category`, `page`, `limit`
+- **GET /api/v1/posts/:id**: 특정 ID의 게시글 조회
+- **POST /api/v1/posts**: 새 게시글 생성 (관리자 권한 필요)
+- **PATCH /api/v1/posts/:id**: 특정 ID의 게시글 업데이트 (관리자 권한 필요)
+- **DELETE /api/v1/posts/:id**: 특정 ID의 게시글 삭제 (관리자 권한 필요)
 
 ## 인증 아키텍처
 
@@ -177,29 +144,31 @@
 ### 게시글 (Post) 스키마
 ```typescript
 {
-  title: string;        // 게시글 제목
-  content: string;      // 게시글 내용
-  theme: string;        // 게시글 테마
-  category?: string;    // 게시글 카테고리 (선택사항)
-  authorEmail: string;  // 작성자 이메일
-  createdAt: Date;      // 생성 일시
-  updatedAt: Date;      // 수정 일시
+  title: string;           // 게시글 제목
+  topic: string;           // 게시글 주제
+  description: string;     // 게시글 설명
+  content: Record<string, any>;  // 게시글 내용 (Object)
+  theme: string;           // 게시글 테마
+  category: string;        // 게시글 카테고리
+  authorEmail: string;     // 작성자 이메일
+  tags: string[];          // 태그 목록
+  viewCount: number;       // 조회수
+  likeCount: number;       // 좋아요 수
+  thumbnail?: string;      // 썸네일 이미지 (선택사항)
+  language: string;        // 언어 (기본값: 'ko')
+  createdAt: Date;         // 생성 일시 (자동 생성)
+  updatedAt: Date;         // 수정 일시 (자동 생성)
 }
 ```
 
 ## 문서화
 
-프로젝트는 두 가지 문서화 방식을 지원합니다:
+프로젝트는 TypeDoc을 사용하여 문서를 생성합니다:
 
-1. **JSDoc**: HTML 형식의 문서 생성
-   ```bash
-   npm run docs
-   ```
-
-2. **TypeDoc**: Markdown 형식의 문서 생성
-   ```bash
-   npm run docs:typedoc
-   ```
+**TypeDoc**: Material 테마 기반 문서 생성
+```bash
+npm run docs
+```
 
 생성된 문서는 `docs/` 디렉토리에서 확인할 수 있습니다.
 
@@ -238,4 +207,4 @@ npm run test:e2e
 
 ## 라이센스
 이 프로젝트는 개인 블로그 프로젝트로,  
- 비공개(UNLICENSED) 라이센스로 보호됩니다.
+비공개(UNLICENSED) 라이센스로 보호됩니다.
