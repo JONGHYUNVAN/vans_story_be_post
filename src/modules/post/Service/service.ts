@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CreateDto, UpdateDto, ResponseDto } from '../DTO/dto';
@@ -186,23 +186,77 @@ export class PostsService {
   }
 
   /**
+   * 게시글 수정을 위한 조회 메서드입니다.
+   * 
+   * 인증된 사용자가 자신이 작성한 게시글만 수정할 수 있도록 권한을 확인합니다.
+   * 토큰의 이메일과 게시글의 작성자 이메일이 일치하는지 검증합니다.
+   * 
+   * @param {string} id - 조회할 게시글의 ID
+   * @param {string} userEmail - 요청자의 이메일 (JWT 토큰에서 추출)
+   * @returns {Promise<ResponseDto>} 수정 권한이 확인된 게시글 정보
+   * 
+   * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
+   * @throws {ForbiddenException} 작성자가 아닌 사용자가 접근할 경우
+   * 
+   * @example
+   * ```typescript
+   * const post = await postsService.findForEdit('64f7b1c2d3e4f5a6b7c8d9e0', 'user@example.com');
+   * ```
+   */
+  async findForEdit(id: string, userEmail: string): Promise<ResponseDto> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException(`Invalid post ID: ${id}`);
+    }
+
+    const post = await this.postModel.findById(id).exec();
+    if (!post) {
+      throw new NotFoundException(`Post with ID ${id} not found`);
+    }
+
+    // 작성자 권한 확인
+    if (post.authorEmail !== userEmail) {
+      throw new ForbiddenException('Only the author can edit this post');
+    }
+
+    const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
+    const responseDto = mapToDto(post.toObject(), ResponseDto);
+    responseDto.author = authorNickname;
+    return responseDto;
+  }
+
+  /**
    * 특정 ID의 게시글을 수정합니다.
+   * 
+   * 관리자이거나 게시글 작성자만 수정할 수 있습니다.
    * 
    * @param {string} id - 수정할 게시글의 ID
    * @param {UpdateDto} updateDto - 수정할 게시글 데이터
+   * @param {string} userEmail - 요청자의 이메일 (JWT 토큰에서 추출)
+   * @param {string} userRole - 요청자의 역할 (JWT 토큰에서 추출)
    * @returns {Promise<ResponseDto>} 수정된 게시글 정보
    * 
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
+   * @throws {ForbiddenException} 수정 권한이 없는 경우
    * 
    * @example
    * ```typescript
    * const updateDto = { title: '수정된 제목' };
-   * const updatedPost = await postsService.update('1', updateDto);
+   * const updatedPost = await postsService.update('1', updateDto, 'user@example.com', 'user');
    * ```
    */
-  async update(id: string, updateDto: UpdateDto): Promise<ResponseDto> {
+  async update(id: string, updateDto: UpdateDto, userEmail?: string, userRole?: string): Promise<ResponseDto> {
     if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException(`Invalid post ID: ${id}`);
+    }
+
+    const existingPost = await this.postModel.findById(id).exec();
+    if (!existingPost) {
+      throw new NotFoundException(`Post with ID ${id} not found`);
+    }
+
+    // 권한 확인: 관리자이거나 작성자 본인
+    if (userEmail && userRole && userRole !== 'admin' && existingPost.authorEmail !== userEmail) {
+      throw new ForbiddenException('Only the author or admin can edit this post');
     }
 
     const updated = await this.postModel
@@ -212,7 +266,11 @@ export class PostsService {
     if (!updated) {
       throw new NotFoundException(`Post with ID ${id} not found`);
     }
-    return mapToDto(updated.toObject(), ResponseDto);
+
+    const authorNickname = await this.apiClient.getUserNickname(updated.authorEmail);
+    const responseDto = mapToDto(updated.toObject(), ResponseDto);
+    responseDto.author = authorNickname;
+    return responseDto;
   }
 
   /**
@@ -355,3 +413,4 @@ export class PostsService {
     };
   }
 }
+

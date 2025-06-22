@@ -22,7 +22,7 @@ import { PostsService } from '../../../src/modules/post/Service/service';
 import { Post } from '../../../src/modules/post/schemas/post.schema';
 import { InternalApiClient } from '../../../src/utils/Api/api';
 import { createMockPostModel, createMockApiClient } from '../../helpers/test-utils';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { MockGenerator } from '../../helpers/mock-generator';
 import { CreateDto, UpdateDto, ResponseDto } from '../../../src/modules/post/DTO/dto';
 import { Types } from 'mongoose';
@@ -226,15 +226,108 @@ describe('PostsService', () => {
   });
 
   /**
-   * 게시글 수정 테스트
+   * 게시글 수정용 조회 테스트
+   * 
+   * @description
+   * 게시글 수정을 위한 조회 기능을 테스트합니다.
+   * 작성자 권한을 확인하여 본인의 게시글만 조회할 수 있는지 검증합니다.
+   * 
+   * @param {string} id - 조회할 게시글의 ID
+   * @param {string} userEmail - 요청자의 이메일
+   * @returns {Promise<ResponseDto>} 수정 권한이 확인된 게시글 정보
+   * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
+   * @throws {ForbiddenException} 작성자가 아닌 사용자가 접근할 경우
+   * 
+   * @example
+   * ```typescript
+   * // 정상 케이스 (작성자 본인)
+   * const post = await service.findForEdit('507f1f77bcf86cd799439011', 'test@example.com');
+   * 
+   * // 예외 케이스 (다른 사용자)
+   * await service.findForEdit('507f1f77bcf86cd799439011', 'other@example.com');
+   * ```
+   */
+  describe('findForEdit', () => {
+    it('should return post for author', async () => {
+      // Given
+      const id = '507f1f77bcf86cd799439011';
+      const userEmail = 'test@example.com';
+      
+      mockPostModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          _id: id,
+          authorEmail: userEmail,
+          toObject: () => ({ ...mockResponseDto, authorEmail: userEmail })
+        })
+      });
+
+      // When
+      const result = await service.findForEdit(id, userEmail);
+
+      // Then
+      expect(mockPostModel.findById).toHaveBeenCalledWith(id);
+      expect(result).toEqual(expect.objectContaining({
+        authorEmail: userEmail
+      }));
+    });
+
+    it('should throw ForbiddenException when user is not the author', async () => {
+      // Given
+      const id = '507f1f77bcf86cd799439011';
+      const userEmail = 'other@example.com';
+      const authorEmail = 'test@example.com';
+      
+      mockPostModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          _id: id,
+          authorEmail: authorEmail,
+          toObject: () => ({ ...mockResponseDto, authorEmail: authorEmail })
+        })
+      });
+
+      // When & Then
+      await expect(service.findForEdit(id, userEmail)).rejects.toThrow(ForbiddenException);
+      await expect(service.findForEdit(id, userEmail)).rejects.toThrow('Only the author can edit this post');
+    });
+
+    it('should throw NotFoundException for invalid id', async () => {
+      // Given
+      const id = 'invalid-id';
+      const userEmail = 'test@example.com';
+
+      // When & Then
+      await expect(service.findForEdit(id, userEmail)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw NotFoundException when post not found', async () => {
+      // Given
+      const id = '507f1f77bcf86cd799439011';
+      const userEmail = 'test@example.com';
+      
+      mockPostModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null)
+      });
+
+      // When & Then
+      await expect(service.findForEdit(id, userEmail)).rejects.toThrow(NotFoundException);
+      await expect(service.findForEdit(id, userEmail)).rejects.toThrow(`Post with ID ${id} not found`);
+    });
+  });
+
+  /**
+   * 게시글 수정 테스트 (업데이트된 권한 체크 포함)
    * 
    * @description
    * 게시글을 수정하고 수정된 정보가 올바른지 검증합니다.
+   * 관리자이거나 작성자 본인만 수정할 수 있도록 권한을 검증합니다.
    * 
    * @param {string} id - 수정할 게시글의 ID
    * @param {UpdateDto} updateDto - 수정할 게시글 데이터
+   * @param {string} userEmail - 요청자의 이메일
+   * @param {string} userRole - 요청자의 역할
    * @returns {Promise<ResponseDto>} 수정된 게시글 정보
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
+   * @throws {ForbiddenException} 수정 권한이 없는 경우
    * 
    * @example
    * ```typescript
@@ -251,19 +344,100 @@ describe('PostsService', () => {
    *     }]
    *   }
    * };
-   * const updatedPost = await service.update('507f1f77bcf86cd799439011', updateDto);
+   * 
+   * // 작성자 본인
+   * const updatedPost = await service.update('507f1f77bcf86cd799439011', updateDto, 'test@example.com', 'user');
+   * 
+   * // 관리자
+   * const updatedPost = await service.update('507f1f77bcf86cd799439011', updateDto, 'admin@example.com', 'admin');
    * ```
    */
   describe('update', () => {
-    it('should update a post', async () => {
+    it('should update a post by author', async () => {
+      // Given
+      const id = '507f1f77bcf86cd799439011';
+      const userEmail = 'test@example.com';
+      const userRole = 'user';
+      const updateDto = MockGenerator.createMock(UpdateDto);
+
+      mockPostModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          _id: id,
+          authorEmail: userEmail
+        })
+      });
+
+      // When
+      const result = await service.update(id, updateDto, userEmail, userRole);
+
+      // Then
+      expect(mockPostModel.findById).toHaveBeenCalledWith(id);
+      expect(mockPostModel.findByIdAndUpdate).toHaveBeenCalledWith(id, updateDto, { new: true });
+      expect(result).toEqual(mockResponseDto);
+    });
+
+    it('should update a post by admin', async () => {
+      // Given
+      const id = '507f1f77bcf86cd799439011';
+      const userEmail = 'admin@example.com';
+      const userRole = 'admin';
+      const authorEmail = 'test@example.com';
+      const updateDto = MockGenerator.createMock(UpdateDto);
+
+      mockPostModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          _id: id,
+          authorEmail: authorEmail
+        })
+      });
+
+      // When
+      const result = await service.update(id, updateDto, userEmail, userRole);
+
+      // Then
+      expect(mockPostModel.findById).toHaveBeenCalledWith(id);
+      expect(mockPostModel.findByIdAndUpdate).toHaveBeenCalledWith(id, updateDto, { new: true });
+      expect(result).toEqual(mockResponseDto);
+    });
+
+    it('should throw ForbiddenException when user is not author or admin', async () => {
+      // Given
+      const id = '507f1f77bcf86cd799439011';
+      const userEmail = 'other@example.com';
+      const userRole = 'user';
+      const authorEmail = 'test@example.com';
+      const updateDto = MockGenerator.createMock(UpdateDto);
+
+      mockPostModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          _id: id,
+          authorEmail: authorEmail
+        })
+      });
+
+      // When & Then
+      await expect(service.update(id, updateDto, userEmail, userRole)).rejects.toThrow(ForbiddenException);
+      await expect(service.update(id, updateDto, userEmail, userRole)).rejects.toThrow('Only the author or admin can edit this post');
+    });
+
+    it('should update a post without user info (backward compatibility)', async () => {
       // Given
       const id = '507f1f77bcf86cd799439011';
       const updateDto = MockGenerator.createMock(UpdateDto);
+
+      mockPostModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          _id: id,
+          authorEmail: 'test@example.com'
+        })
+      });
 
       // When
       const result = await service.update(id, updateDto);
 
       // Then
+      expect(mockPostModel.findById).toHaveBeenCalledWith(id);
+      expect(mockPostModel.findByIdAndUpdate).toHaveBeenCalledWith(id, updateDto, { new: true });
       expect(result).toEqual(mockResponseDto);
     });
 
@@ -274,6 +448,20 @@ describe('PostsService', () => {
 
       // When & Then
       await expect(service.update(id, updateDto)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw NotFoundException when post not found', async () => {
+      // Given
+      const id = '507f1f77bcf86cd799439011';
+      const updateDto = MockGenerator.createMock(UpdateDto);
+
+      mockPostModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null)
+      });
+
+      // When & Then
+      await expect(service.update(id, updateDto)).rejects.toThrow(NotFoundException);
+      await expect(service.update(id, updateDto)).rejects.toThrow(`Post with ID ${id} not found`);
     });
   });
 

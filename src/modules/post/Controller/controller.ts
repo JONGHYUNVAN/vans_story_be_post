@@ -290,17 +290,98 @@ export class PostsController {
   }
 
   /**
+   * 게시글 수정을 위한 조회 메서드입니다.
+   * 
+   * 인증된 사용자가 자신이 작성한 게시글만 수정할 수 있도록 권한을 확인합니다.
+   * JWT 토큰의 이메일과 게시글의 작성자 이메일이 일치하는지 검증합니다.
+   * 
+   * @param {string} id - 조회할 게시글의 MongoDB ObjectId
+   * @param {Request} request - 인증된 사용자 정보를 포함한 요청 객체
+   * @returns {Promise<ResponseDto>} 수정 권한이 확인된 게시글 정보
+   * 
+   * @throws {UnauthorizedException} 인증되지 않은 사용자가 접근할 경우
+   * @throws {ForbiddenException} 작성자가 아닌 사용자가 접근할 경우
+   * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
+   * 
+   * @example
+   * **Request Headers:**
+   * ```
+   * Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   * ```
+   * 
+   * **Request URL:**
+   * ```
+   * GET /api/v1/posts/507f1f77bcf86cd799439011/edit
+   * ```
+   * 
+   * **Response:**
+   * ```json
+   * {
+   *   "_id": "507f1f77bcf86cd799439011",
+   *   "title": "수정할 게시글 제목",
+   *   "topic": "수정할 주제",
+   *   "description": "수정할 게시글에 대한 상세한 설명입니다.",
+   *   "content": {
+   *     "type": "doc",
+   *     "content": [
+   *       {
+   *         "type": "paragraph",
+   *         "content": [
+   *           {
+   *             "type": "text",
+   *             "text": "수정할 게시글 내용이 여기에 포함됩니다."
+   *           }
+   *         ]
+   *       }
+   *     ]
+   *   },
+   *   "theme": "nest.js",
+   *   "category": "tutorial",
+   *   "authorEmail": "user@example.com",
+   *   "author": "사용자",
+   *   "tags": ["수정", "예제"],
+   *   "viewCount": 42,
+   *   "likeCount": 8,
+   *   "thumbnail": "edit-example.jpg",
+   *   "language": "ko",
+   *   "createdAt": "2025. 1. 20. 오후 2:15:30",
+   *   "updatedAt": "2025. 1. 21. 오전 9:20:15"
+   * }
+   * ```
+   */
+  @Get(':id/edit')
+  @ApiOperation({ summary: '게시글 수정용 조회' })
+  @ApiResponse({ status: 200, description: '게시글 수정용 조회 성공', type: ResponseDto })
+  @ApiResponse({ status: 401, description: '인증되지 않은 사용자' })
+  @ApiResponse({ status: 403, description: '작성자가 아닌 사용자' })
+  @ApiResponse({ status: 404, description: '게시글을 찾을 수 없음' })
+  @ApiParam({ 
+    name: 'id', 
+    description: 'MongoDB ObjectId (24자리 16진수 문자열, 예: 507f1f77bcf86cd799439011)',
+    example: '507f1f77bcf86cd799439011'
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('Authorization')
+  findForEdit(
+    @Param('id') id: string,
+    @Request() request: any
+  ): Promise<ResponseDto> {
+    return this.postsService.findForEdit(id, request.user.sub);
+  }
+
+  /**
    * 특정 ID의 게시글을 수정합니다.
    * 
-   * 관리자 권한을 가진 인증된 사용자만 게시글을 수정할 수 있습니다.
+   * 인증된 사용자가 자신이 작성한 게시글을 수정하거나, 관리자가 모든 게시글을 수정할 수 있습니다.
    * 게시글 ID와 수정할 데이터를 받아 MongoDB에서 해당 게시글을 업데이트합니다.
    * 
    * @param {string} id - 수정할 게시글의 MongoDB ObjectId
    * @param {UpdateDto} updateDto - 수정할 게시글 데이터
+   * @param {Request} request - 인증된 사용자 정보를 포함한 요청 객체
    * @returns {Promise<ResponseDto>} 수정된 게시글 정보
    * 
    * @throws {UnauthorizedException} 인증되지 않은 사용자가 접근할 경우
-   * @throws {ForbiddenException} 관리자 권한이 없는 사용자가 접근할 경우
+   * @throws {ForbiddenException} 작성자나 관리자가 아닌 사용자가 접근할 경우
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
    * 
    * @example
@@ -337,8 +418,8 @@ export class PostsController {
    *   },
    *   "theme": "nest.js",
    *   "category": "tutorial",
-   *   "authorEmail": "admin@example.com",
-   *   "author": "관리자",
+   *   "authorEmail": "user@example.com",
+   *   "author": "사용자",
    *   "tags": ["수정된", "태그", "목록"],
    *   "viewCount": 156,
    *   "likeCount": 23,
@@ -352,13 +433,18 @@ export class PostsController {
   @ApiOperation({ summary: '게시글 수정' })
   @ApiResponse({ status: 200, description: '게시글 수정 성공', type: ResponseDto })
   @ApiResponse({ status: 401, description: '인증되지 않은 사용자' })
+  @ApiResponse({ status: 403, description: '수정 권한이 없는 사용자' })
+  @ApiResponse({ status: 404, description: '게시글을 찾을 수 없음' })
   @ApiParam({ name: 'id', description: 'MongoDB ObjectId' })
   @UseGuards(JwtAuthGuard)
-  @Roles('admin')
   @ApiBearerAuth('Authorization')
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateDto: UpdateDto): Promise<ResponseDto> {
-    return this.postsService.update(id, updateDto);
+  update(
+    @Param('id') id: string, 
+    @Body() updateDto: UpdateDto,
+    @Request() request: any
+  ): Promise<ResponseDto> {
+    return this.postsService.update(id, updateDto, request.user.sub, request.user.role);
   }
 
   /**

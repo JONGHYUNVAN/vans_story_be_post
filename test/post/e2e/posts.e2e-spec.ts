@@ -71,6 +71,24 @@ describe('PostsController (e2e)', () => {
       expect(response.body._id).toBe(createdPostId);
     });
 
+    it('게시글 수정용 조회 - 작성자 본인', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/api/v1/posts/${createdPostId}/edit`)
+        .set('Authorization', testToken)
+        .expect(200);
+
+      expect(response.body._id).toBe(createdPostId);
+      expect(response.body).toHaveProperty('title');
+      expect(response.body).toHaveProperty('content');
+      expect(response.body).toHaveProperty('authorEmail');
+    });
+
+    it('게시글 수정용 조회 - 인증 없음', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/v1/posts/${createdPostId}/edit`)
+        .expect(401);
+    });
+
     it('게시글 수정', async () => {
       const updateDto = MockGenerator.createMock(CreateDto);
 
@@ -94,6 +112,106 @@ describe('PostsController (e2e)', () => {
       await request(app.getHttpServer())
         .get(`/api/v1/posts/${createdPostId}`)
         .set('Authorization', testToken)
+        .expect(404);
+    });
+  });
+
+  describe('게시글 권한 테스트', () => {
+    let authorPostId: string;
+    let otherUserPostId: string;
+    const authorToken = 'Bearer author_token';
+    const otherUserToken = 'Bearer other_user_token'; 
+
+    beforeAll(async () => {
+      // 작성자가 게시글 생성
+      const createDto1 = MockGenerator.createMock(CreateDto);
+      const authorResponse = await request(app.getHttpServer())
+        .post('/api/v1/posts')
+        .set('Authorization', authorToken)
+        .send(createDto1)
+        .expect(201);
+      authorPostId = authorResponse.body._id;
+
+      // 다른 사용자가 게시글 생성
+      const createDto2 = MockGenerator.createMock(CreateDto);
+      const otherResponse = await request(app.getHttpServer())
+        .post('/api/v1/posts')
+        .set('Authorization', otherUserToken)
+        .send(createDto2)
+        .expect(201);
+      otherUserPostId = otherResponse.body._id;
+    });
+
+    afterAll(async () => {
+      // 테스트 후 생성된 게시글들 정리
+      if (authorPostId) {
+        await request(app.getHttpServer())
+          .delete(`/api/v1/posts/${authorPostId}`)
+          .set('Authorization', authorToken);
+      }
+      if (otherUserPostId) {
+        await request(app.getHttpServer())
+          .delete(`/api/v1/posts/${otherUserPostId}`)
+          .set('Authorization', otherUserToken);
+      }
+    });
+
+    it('작성자 본인이 자신의 게시글 수정용 조회 - 성공', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/api/v1/posts/${authorPostId}/edit`)
+        .set('Authorization', authorToken)
+        .expect(200);
+
+      expect(response.body._id).toBe(authorPostId);
+      expect(response.body).toHaveProperty('title');
+      expect(response.body).toHaveProperty('content');
+    });
+
+    it('다른 사용자가 타인의 게시글 수정용 조회 - 403 에러', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/v1/posts/${authorPostId}/edit`)
+        .set('Authorization', otherUserToken)
+        .expect(403);
+    });
+
+    it('작성자 본인이 자신의 게시글 수정 - 성공', async () => {
+      const updateDto = MockGenerator.createMock(CreateDto);
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/v1/posts/${authorPostId}`)
+        .set('Authorization', authorToken)
+        .send(updateDto)
+        .expect(200);
+
+      expect(response.body.title).toBe(updateDto.title);
+      expect(response.body.content).toStrictEqual(updateDto.content);
+    });
+
+    it('다른 사용자가 타인의 게시글 수정 시도 - 403 에러', async () => {
+      const updateDto = MockGenerator.createMock(CreateDto);
+
+      await request(app.getHttpServer())
+        .patch(`/api/v1/posts/${authorPostId}`)
+        .set('Authorization', otherUserToken)
+        .send(updateDto)
+        .expect(403);
+    });
+
+    it('존재하지 않는 게시글 수정용 조회 - 404 에러', async () => {
+      const nonExistentId = '507f1f77bcf86cd799439099';
+      
+      await request(app.getHttpServer())
+        .get(`/api/v1/posts/${nonExistentId}/edit`)
+        .set('Authorization', authorToken)
+        .expect(404);
+    });
+
+    it('잘못된 ID 형식으로 수정용 조회 - 404 에러', async () => {
+      const invalidId = 'invalid-id';
+      
+      await request(app.getHttpServer())
+        .get(`/api/v1/posts/${invalidId}/edit`)
+        .set('Authorization', authorToken)
         .expect(404);
     });
   });
