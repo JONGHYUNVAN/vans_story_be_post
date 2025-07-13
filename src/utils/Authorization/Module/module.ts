@@ -22,7 +22,7 @@ import { JwtModule } from '@nestjs/jwt';
 @Module({
   imports: [PassportModule, JwtModule.register({
     signOptions: { expiresIn: '60s', algorithm: 'HS512' },
-    secret: Buffer.from(process.env.JWT_SECRET, 'base64')
+    secret: Buffer.from(process.env.JWT_SECRET!, 'base64')
   })],
   providers: [JwtStrategy, RolesGuard, Reflector],
   exports: [PassportModule, JwtModule],
