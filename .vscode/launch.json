@@ -7,8 +7,16 @@
       "name": "Launch Program",
       "skipFiles": ["<node_internals>/**"],
       "program": "${workspaceFolder}/dist/main.js",
-      "preLaunchTask": "npm: build",
-      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "console": "integratedTerminal",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "echo": true,
+        "focus": false,
+        "showReuseMessage": true,
+        "clear": false
+      }
     },
     {
       "type": "node",
@@ -26,7 +34,16 @@
       "envFile": "${workspaceFolder}/.env",
       "cwd": "${workspaceRoot}",
       "console": "integratedTerminal",
-      "preLaunchTask": "npm: start:dev"
+      "preLaunchTask": "npm: build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "echo": true,
+        "focus": false,
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "internalConsoleOptions": "openOnSessionStart"
     }
   ]
 } 

@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "nest build",
+    "build": "echo '빌드 시작...' && nest build && echo '빌드 완료!'",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "NODE_OPTIONS='--max-old-space-size=512' nest start",
     "start:dev": "nest start --watch",
@@ -19,7 +19,11 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "test:all": "npm run test && npm run test:e2e",
     "test:all:cov": "npm run test:cov && npm run test:e2e",
-    "docs": "typedoc --options typedoc.json"
+    "docs": "typedoc --options typedoc.json",
+    "swagger:generate:clean": "node scripts/generate-swagger-clean.js",
+    "swagger:build:clean": "npm run build && npm run swagger:generate:clean",
+    "swagger:serve": "npx http-server docs/swagger -p 8080 -o",
+    "swagger:open": "start docs/swagger/clean.html"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.0",
@@ -32,6 +36,7 @@
     "@nestjs/swagger": "^11.0.3",
     "@nestjs/typeorm": "^11.0.0",
     "@types/express-session": "^1.18.1",
+    "@types/swagger-ui-express": "^4.1.8",
     "express-basic-auth": "^1.2.1",
     "express-session": "^1.18.1",
     "mongoose": "^8.11.0",
@@ -41,6 +46,7 @@
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
     "sqlite3": "^5.1.7",
+    "swagger-ui-express": "^5.0.1",
     "typeorm": "^0.3.20"
   },
   "devDependencies": {
@@ -48,6 +54,8 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.0",
+    "@swc/cli": "^0.6.0",
+    "@swc/core": "^1.13.1",
     "@types/express": "^4.17.17",
     "@types/jest": "^29.5.2",
     "@types/mongodb": "^4.0.6",

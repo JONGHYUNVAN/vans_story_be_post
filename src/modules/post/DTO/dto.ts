@@ -202,7 +202,7 @@ export class ResponseDto {
     content: Record<string, any>;
 
     @Field
-    @ApiProperty({ example: 'dark' })
+    @ApiProperty({ example: 'nestjs' })
     theme: string;
 
     @Field

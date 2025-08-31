@@ -5,11 +5,17 @@
       "label": "npm: build",
       "type": "npm",
       "script": "build",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "echo": true,
+        "focus": false,
+        "showReuseMessage": true,
+        "clear": false
+      },
       "problemMatcher": ["$tsc"],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      }
+      "detail": "NestJS 프로젝트 빌드"
     },
     {
       "label": "npm: start:dev",
@@ -19,8 +25,13 @@
       "isBackground": true,
       "presentation": {
         "reveal": "always",
-        "panel": "new"
-      }
+        "panel": "new",
+        "echo": true,
+        "focus": false,
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "detail": "개발 모드로 NestJS 서버 시작"
     }
   ]
 } 

@@ -5,7 +5,8 @@
  * 
  * @module main
  */
-
+import * as dotenv from 'dotenv';
+dotenv.config();
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -24,7 +25,7 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule, {
-    logger: ['error', 'warn', 'debug', 'verbose'],
+    logger: ['error', 'warn', 'debug', 'verbose', 'log', 'verbose'],
   });
 
   // 전역 밸리데이션 파이프 설정

@@ -30,7 +30,7 @@ export class PostsService {
    * 
    * @example
    * ```typescript
-   * const createDto = { title: '제목', content: '내용', theme: 'dark' };
+   * const createDto = { title: '제목', content: '내용', theme: 'nestjs' };
    * const authorEmail = 'user@example.com';
    * const newPost = await postsService.create(createDto, authorEmail);
    * ```

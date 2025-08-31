@@ -147,7 +147,7 @@ export class PostsController {
    * @example
    * **Request URL:**
    * ```
-   * GET /api/v1/posts?theme=dark&category=introduction&page=1&limit=10
+   * GET /api/v1/posts?theme=nestjs&category=introduction&page=1&limit=10
    * ```
    * 
    * **Response:**
