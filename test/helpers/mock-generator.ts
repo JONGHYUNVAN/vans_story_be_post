@@ -1,7 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { faker } from '@faker-js/faker/locale/ko';
-import { CreateDto, UpdateDto } from '../../src/modules/post/DTO/dto';
+import { CreateDto, UpdateDto } from '../../src/modules/post/dto';
 
 export class MockGenerator {
   /**
@@ -45,11 +45,13 @@ export class MockGenerator {
             }]
           }]
         },
-        theme: 'light',
+        mainCategory: 'light',
         description: faker.lorem.paragraph().slice(0, 500),
         tags: [faker.lorem.word(), faker.lorem.word()],
-        category: 'introduction',
-        topic: faker.lorem.sentence().slice(0, 200)
+        subCategory: 'introduction',
+        topic: faker.lorem.sentence().slice(0, 200),
+        language: 'ko',
+        thumbnail: 'thumbnail.jpg'
       } as T;
     }
 
@@ -67,10 +69,10 @@ export class MockGenerator {
             }]
           }]
         },
-        theme: 'light',
+        mainCategory: 'light',
         description: faker.lorem.paragraph().slice(0, 500),
         tags: [faker.lorem.word(), faker.lorem.word()],
-        category: 'introduction',
+        subCategory: 'introduction',
         topic: faker.lorem.sentence().slice(0, 200),
         thumbnail: faker.image.url(),
         language: 'ko'
@@ -109,14 +111,18 @@ export class MockGenerator {
                 }]
               }]
             };
-          case 'theme':
+          case 'mainCategory':
             return 'light';
           case 'description':
             return faker.lorem.paragraph().slice(0, 500);
-          case 'category':
+          case 'subCategory':
             return 'introduction';
           case 'topic':
             return faker.lorem.sentence().slice(0, 200);
+          case 'language':
+            return 'ko';
+          case 'thumbnail':
+            return 'thumbnail.jpg';
           default:
             return faker.lorem.word();
         }

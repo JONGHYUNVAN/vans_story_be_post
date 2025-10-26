@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { CreateDto, UpdateDto, ResponseDto } from '../DTO/dto';
-import { Post, PostDocument } from '../schemas/post.schema';
+import { CreateDto, UpdateDto, ResponseDto } from '../dto';
+import { Post, PostDocument } from '../entities/post.entity';
 import { mapToDto } from '../../../utils/Mapper/mapper';
 import { Paginated } from '../../../utils/types/pagination';
 import { InternalApiClient } from '../../../utils/Api/api';
@@ -71,7 +71,7 @@ export class PostsService {
    * const posts = await postsService.findAll(query);
    * ```
    */
-  async findAll(theme?: string, category?: string, page: number = 1, limit: number = 10): Promise<Paginated<ResponseDto>> {
+  async findAll(mainCategory?: string, subCategory?: string, page: number = 1, limit: number = 10): Promise<Paginated<ResponseDto>> {
     if (page < 1) {
       throw new BadRequestException('Page number must be greater than 0');
     }
@@ -81,12 +81,12 @@ export class PostsService {
 
     const query: any = {};
     
-    if (theme && theme.trim() !== '') {
-      query.theme = theme.trim();
+    if (mainCategory && mainCategory.trim() !== '') {
+      query.mainCategory = mainCategory.trim();
     }
     
-    if (category && category.trim() !== '') {
-      query.category = category.trim();
+    if (subCategory && subCategory.trim() !== '') {
+      query.subCategory = subCategory.trim();
     }
     
     const skip = (page - 1) * limit;
@@ -357,13 +357,13 @@ export class PostsService {
   }
 
   /**
-   * 테마와 카테고리로 게시글을 검색합니다.
+   * 메인 카테고리와 서브 카테고리로 게시글을 검색합니다.
    * 
-   * @param {string} theme - 검색할 테마 (옵션)
-   * @param {string} category - 검색할 카테고리 (옵션)
+   * @param {string} mainCategory - 검색할 메인 카테고리 (기존 테마, 옵션)
+   * @param {string} subCategory - 검색할 서브 카테고리 (기존 카테고리, 옵션)
    * @returns {Promise<ResponseDto[]>} - 검색 결과 게시글 목록
    */
-  async findByThemeAndCategory(theme?: string, category?: string, page: number = 1, limit: number = 10): Promise<Paginated<ResponseDto>> {
+  async findByThemeAndCategory(mainCategory?: string, subCategory?: string, page: number = 1, limit: number = 10): Promise<Paginated<ResponseDto>> {
     if (page < 1) {
       throw new BadRequestException('Page number must be greater than 0');
     }
@@ -373,12 +373,12 @@ export class PostsService {
 
     const query: any = {};
     
-    if (theme) {
-      query.theme = theme;
+    if (mainCategory) {
+      query.mainCategory = mainCategory;
     }
     
-    if (category && category.trim() !== '') {
-      query.category = category;
+    if (subCategory && subCategory.trim() !== '') {
+      query.subCategory = subCategory;
     }
     
     const skip = (page - 1) * limit;

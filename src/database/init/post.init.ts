@@ -7,7 +7,7 @@
  */
 
 import { Model } from 'mongoose';
-import { Post } from '../../modules/post/schemas/post.schema';
+import { Post } from '../../modules/post/entities/post.entity';
 import { InjectModel } from '@nestjs/mongoose';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 
@@ -18,7 +18,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 const initialPosts = [
   {
     title: "샘플 게시글",
-    theme: "next",
+    mainCategory: "next",
     topic: "테스트 토픽",
     description: "테스트 설명",
     content: `<h1>Hello World</h1>
@@ -33,7 +33,7 @@ const initialPosts = [
             <tr><td>내용 1</td><td>내용 2</td></tr>
             </table>`,
     authorEmail: "test@vans-story.com",
-    category: "nextjs",
+    subCategory: "nextjs",
     tags: ["테스트", "태그"],
     thumbnail: "",
     language: "ko"

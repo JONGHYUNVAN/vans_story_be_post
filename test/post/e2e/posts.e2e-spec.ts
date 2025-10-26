@@ -217,29 +217,29 @@ describe('PostsController (e2e)', () => {
   });
 
   describe('게시글 검색 및 필터링 테스트', () => {
-    it('테마로 게시글 검색', async () => {
+    it('메인 카테고리로 게시글 검색', async () => {
       const response = await request(app.getHttpServer())
         .get('/api/v1/posts')
         .set('Authorization', testToken)
-        .query({ theme: 'light' })
+        .query({ mainCategory: 'light' })
         .expect(200);
 
       expect(Array.isArray(response.body.data)).toBe(true);
       response.body.data.forEach(post => {
-        expect(post.theme).toBe('light');
+        expect(post.mainCategory).toBe('light');
       });
     });
 
-    it('카테고리로 게시글 검색', async () => {
+    it('서브 카테고리로 게시글 검색', async () => {
       const response = await request(app.getHttpServer())
         .get('/api/v1/posts')
         .set('Authorization', testToken)
-        .query({ category: 'general' })
+        .query({ subCategory: 'general' })
         .expect(200);
 
       expect(Array.isArray(response.body.data)).toBe(true);
       response.body.data.forEach(post => {
-        expect(post.category).toBe('general');
+        expect(post.subCategory).toBe('general');
       });
     });
   });

@@ -23,7 +23,8 @@
     "swagger:generate:clean": "node scripts/generate-swagger-clean.js",
     "swagger:build:clean": "npm run build && npm run swagger:generate:clean",
     "swagger:serve": "npx http-server docs/swagger -p 8080 -o",
-    "swagger:open": "start docs/swagger/clean.html"
+    "swagger:open": "start docs/swagger/clean.html",
+    "migrate:schema": "node scripts/migrate-schema-fields.js"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.0",

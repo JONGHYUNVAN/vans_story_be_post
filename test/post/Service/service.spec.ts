@@ -19,12 +19,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { PostsService } from '../../../src/modules/post/Service/service';
-import { Post } from '../../../src/modules/post/schemas/post.schema';
+import { Post } from '../../../src/modules/post/entities/post.entity';
 import { InternalApiClient } from '../../../src/utils/Api/api';
 import { createMockPostModel, createMockApiClient } from '../../helpers/test-utils';
 import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { MockGenerator } from '../../helpers/mock-generator';
-import { CreateDto, UpdateDto, ResponseDto } from '../../../src/modules/post/DTO/dto';
+import { CreateDto, UpdateDto, ResponseDto } from '../../../src/modules/post/dto';
 import { Types } from 'mongoose';
 
 describe('PostsService', () => {
@@ -84,8 +84,8 @@ describe('PostsService', () => {
    *       }]
    *     }]
    *   },
-   *   theme: 'light',
-   *   category: 'general',
+   *   mainCategory: 'light',
+   *   subCategory: 'general',
    *   description: '테스트 설명',
    *   tags: ['테스트'],
    *   topic: '테스트 주제'
@@ -127,8 +127,8 @@ describe('PostsService', () => {
    * @description
    * 페이지네이션이 적용된 게시글 목록을 조회하고 결과가 올바른지 검증합니다.
    * 
-   * @param {string} [theme] - 필터링할 테마
-   * @param {string} [category] - 필터링할 카테고리
+   * @param {string} [mainCategory] - 필터링할 메인 카테고리 (기존 테마)
+   * @param {string} [subCategory] - 필터링할 서브 카테고리 (기존 카테고리)
    * @param {number} [page=1] - 페이지 번호
    * @param {number} [limit=10] - 페이지당 게시글 수
    * @returns {Promise<Paginated<ResponseDto>>} 페이지네이션이 적용된 게시글 목록
@@ -145,8 +145,8 @@ describe('PostsService', () => {
   describe('findAll', () => {
     it('should return paginated posts', async () => {
       // Given
-      const theme = 'light';
-      const category = 'general';
+      const mainCategory = 'light';
+      const subCategory = 'general';
       const page = 1;
       const limit = 10;
       const totalItems = 25;
@@ -154,7 +154,7 @@ describe('PostsService', () => {
       mockPostModel.countDocuments.mockResolvedValue(totalItems);
 
       // When
-      const result = await service.findAll(theme, category, page, limit);
+      const result = await service.findAll(mainCategory, subCategory, page, limit);
 
       // Then
       expect(mockPostModel.find).toHaveBeenCalled();

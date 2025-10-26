@@ -1,9 +1,9 @@
 /**
- * 게시글 스키마 정의
+ * Post 엔티티 정의
  * 
  * MongoDB에 저장되는 게시글 데이터의 구조를 정의합니다.
  * 
- * @module schemas/post.schema
+ * @module entities/post.entity
  */
 
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
@@ -15,7 +15,7 @@ import { Document } from 'mongoose';
 export type PostDocument = Post & Document;
 
 /**
- * 게시글 스키마 클래스
+ * 게시글 엔티티 클래스
  */
 @Schema({
   timestamps: true,
@@ -71,16 +71,16 @@ export class Post {
   likeCount: number;
 
   /**
-   * 게시글 테마
+   * 메인 카테고리 (기존 테마)
    */
   @Prop({ required: true })
-  theme: string;
+  mainCategory: string;
 
   /**
-   * 게시글 카테고리
+   * 서브 카테고리 (기존 카테고리)
    */
   @Prop({ required: true })
-  category: string;
+  subCategory: string;
 
   /**
    * 썸네일 이미지 URL
@@ -98,4 +98,4 @@ export class Post {
 /**
  * Post 클래스에서 생성된 Mongoose 스키마
  */
-export const PostSchema = SchemaFactory.createForClass(Post); 
+export const PostSchema = SchemaFactory.createForClass(Post);

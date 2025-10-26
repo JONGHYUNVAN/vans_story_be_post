@@ -1,7 +1,7 @@
 import { Model } from 'mongoose';
-import { Post, PostDocument } from '../../src/modules/post/schemas/post.schema';
+import { Post, PostDocument } from '../../src/modules/post/entities/post.entity';
 import { MockGenerator } from './mock-generator';
-import { ResponseDto } from '../../src/modules/post/DTO/dto';
+import { ResponseDto } from '../../src/modules/post/dto';
 import { Types } from 'mongoose';
 
 export const createMockPostModel = () => {
