@@ -106,7 +106,7 @@ export class PostsService {
       posts.map(async (post) => {
         const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
         const responseDto = mapToDto(post, ResponseDto);
-        responseDto.author = authorNickname;
+        responseDto.author = authorNickname ?? 'Unknown';
         return responseDto;
       })
     );
@@ -152,7 +152,7 @@ export class PostsService {
 
     const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
     const responseDto = mapToDto(post.toObject(), ResponseDto);
-    responseDto.author = authorNickname;
+    responseDto.author = authorNickname ?? 'Unknown';
     return responseDto;
   }
 
@@ -220,7 +220,7 @@ export class PostsService {
 
     const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
     const responseDto = mapToDto(post.toObject(), ResponseDto);
-    responseDto.author = authorNickname;
+    responseDto.author = authorNickname ?? 'Unknown';
     return responseDto;
   }
 
@@ -269,7 +269,7 @@ export class PostsService {
 
     const authorNickname = await this.apiClient.getUserNickname(updated.authorEmail);
     const responseDto = mapToDto(updated.toObject(), ResponseDto);
-    responseDto.author = authorNickname;
+    responseDto.author = authorNickname ?? 'Unknown';
     return responseDto;
   }
 
@@ -316,7 +316,7 @@ export class PostsService {
       posts.map(async (post) => {
         const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
         const responseDto = mapToDto(post.toObject(), ResponseDto);
-        responseDto.author = authorNickname;
+        responseDto.author = authorNickname ?? 'Unknown';
         return responseDto;
       })
     );
@@ -348,7 +348,7 @@ export class PostsService {
       posts.map(async (post) => {
         const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
         const responseDto = mapToDto(post.toObject(), ResponseDto);
-        responseDto.author = authorNickname;
+        responseDto.author = authorNickname ?? 'Unknown';
         return responseDto;
       })
     );
@@ -397,7 +397,7 @@ export class PostsService {
       posts.map(async (post) => {
         const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
         const responseDto = mapToDto(post.toObject(), ResponseDto);
-        responseDto.author = authorNickname;
+        responseDto.author = authorNickname ?? 'Unknown';
         return responseDto;
       })
     );
