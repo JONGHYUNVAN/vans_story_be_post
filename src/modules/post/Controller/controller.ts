@@ -24,7 +24,7 @@ import { PostsService } from '../Service/service';
 import { JwtAuthGuard } from '../../../utils/Authorization/Guard/auth';
 import { Roles } from 'src/utils/Authorization/Guard/roles.decorator';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
-import { CreateDto, UpdateDto, ResponseDto } from '../dto';
+import { CreateDto, UpdateDto, ResponseDto } from '../DTO';
 import { Paginated } from '../../../utils/types/pagination';
 
 /**
