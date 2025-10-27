@@ -205,7 +205,7 @@ export class PostsController {
       parseInt(limit, 10)
     );
   }
-
+ 
   /**
    * 특정 ID의 게시글 상세 정보를 조회합니다.
    * 
