@@ -44,13 +44,13 @@ async function bootstrap() {
 
   // CORS 설정
   app.enableCors({
-    origin: process.env.CORS_ORIGINS.split(','),
+    origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],
     credentials: true,
   });
 
   // 세션 설정
   app.use(session({
-    secret: process.env.JWT_SECRET,
+    secret: process.env.JWT_SECRET || 'fallback-secret',
     resave: false,
     saveUninitialized: false,
     cookie: { secure: process.env.NODE_ENV === 'production' }

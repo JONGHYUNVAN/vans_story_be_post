@@ -25,7 +25,7 @@ export function mapToDto<Entity, Dto>(entity: Entity, dtoClass: new () => Dto): 
   const fields: string[] = Reflect.getMetadata('fields', dtoClass.prototype) || [];
 
   fields.forEach((field) => {
-    if (entity.hasOwnProperty(field)) {
+    if (Object.prototype.hasOwnProperty.call(entity, field)) {
       const fieldValue = (entity as any)[field];
       if (fieldValue instanceof Date) {
         (dto as any)[field] = fieldValue.toLocaleString();

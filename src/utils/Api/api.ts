@@ -38,8 +38,8 @@ export class InternalApiClient {
   constructor(
     private readonly httpService: HttpService,
   ) {
-    this.userServiceUrl = process.env.USER_SERVICE_URL;
-    this.apiKey = process.env.INTERNAL_API_KEY;
+    this.userServiceUrl = process.env.USER_SERVICE_URL || '';
+    this.apiKey = process.env.INTERNAL_API_KEY || '';
 
     if (!this.apiKey || !this.userServiceUrl) {
       throw new Error('Required environment variables are not defined');
