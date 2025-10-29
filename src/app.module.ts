@@ -11,6 +11,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
 import * as dotenv from 'dotenv';
 import { PostsModule } from './modules/post/Module/module';
+import { CategoryModule } from './modules/category/module/category.module';
 import { AuthModule } from './utils/Authorization/Module/module';
 dotenv.config();
 
@@ -25,6 +26,7 @@ dotenv.config();
     MongooseModule.forRoot(process.env.MONGODB_URI!),
     HttpModule,
     PostsModule,
+    CategoryModule,
     AuthModule,
   ],
   controllers: [],

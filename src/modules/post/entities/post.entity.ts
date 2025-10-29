@@ -99,3 +99,5 @@ export class Post {
  * Post 클래스에서 생성된 Mongoose 스키마
  */
 export const PostSchema = SchemaFactory.createForClass(Post);
+
+

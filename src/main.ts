@@ -68,6 +68,8 @@ async function bootstrap() {
     .setTitle('VansDevBlog API')
     .setDescription('VansDevBlog Post Service API description')
     .setVersion('1.0')
+    .addTag('api/v1/posts', 'Posts API')
+    .addTag('api/v1/categories', 'Categories API')
     .addBearerAuth()
     .build();
 
