@@ -1,7 +1,8 @@
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { faker } from '@faker-js/faker/locale/ko';
-import { CreateDto, UpdateDto } from '../../src/modules/post/dto';
+import { CreateDto, UpdateDto, ResponseDto } from '../../src/modules/post/dto';
+import { Types } from 'mongoose';
 
 export class MockGenerator {
   /**
@@ -30,6 +31,37 @@ export class MockGenerator {
    */
   private static generateMockData<T extends object>(dto: T): T {
     const mockData: any = {};
+    
+    // ResponseDto인 경우 특별한 처리
+    if (dto instanceof ResponseDto) {
+      return {
+        _id: new Types.ObjectId('507f1f77bcf86cd799439011'),
+        title: faker.lorem.sentence().slice(0, 100),
+        content: {
+          type: 'doc',
+          content: [{
+            type: 'paragraph',
+            content: [{
+              type: 'text',
+              text: faker.lorem.paragraphs()
+            }]
+          }]
+        },
+        mainCategory: 'light',
+        description: faker.lorem.paragraph().slice(0, 500),
+        tags: [faker.lorem.word(), faker.lorem.word()],
+        subCategory: 'introduction',
+        topic: faker.lorem.sentence().slice(0, 200),
+        language: 'ko',
+        thumbnail: 'thumbnail.jpg',
+        authorEmail: 'test@example.com',
+        author: '테스트 작성자',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        viewCount: 0,
+        likeCount: 0
+      } as T;
+    }
     
     // CreateDto인 경우 특별한 처리
     if (dto instanceof CreateDto) {

@@ -4,12 +4,39 @@ import { MockGenerator } from './mock-generator';
 import { ResponseDto } from '../../src/modules/post/dto';
 import { Types } from 'mongoose';
 
-export const createMockPostModel = () => {
-  const mockResponse = MockGenerator.createMock(ResponseDto, {
+// 고정된 Mock 응답 생성
+const createFixedMockResponse = (): ResponseDto => {
+  return {
     _id: new Types.ObjectId('507f1f77bcf86cd799439011'),
+    title: '테스트 게시글 제목',
+    content: {
+      type: 'doc',
+      content: [{
+        type: 'paragraph',
+        content: [{
+          type: 'text',
+          text: '테스트 게시글 내용입니다.'
+        }]
+      }]
+    },
+    mainCategory: 'light',
+    subCategory: 'introduction',
+    description: '테스트 게시글 설명입니다.',
+    tags: ['테스트', '태그'],
+    topic: '테스트 주제',
+    language: 'ko',
+    thumbnail: 'thumbnail.jpg',
     authorEmail: 'test@example.com',
-    author: '테스트 작성자'
-  });
+    author: '테스트 작성자',
+    createdAt: '2025-11-01T00:00:00.000Z',
+    updatedAt: '2025-11-01T00:00:00.000Z',
+    viewCount: 0,
+    likeCount: 0
+  } as ResponseDto;
+};
+
+export const createMockPostModel = () => {
+  const mockResponse = createFixedMockResponse();
 
   const mockModel = {
     create: jest.fn().mockResolvedValue({
