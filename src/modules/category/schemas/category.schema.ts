@@ -8,7 +8,7 @@
  */
 
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
 /**
  * 카테고리 문서 타입
@@ -21,40 +21,10 @@ export type CategoryDocument = Category & Document & {
 };
 
 /**
- * 서브 카테고리 스키마
- * 
- * @interface SubCategory
- * @property {Types.ObjectId} _id - 서브 카테고리 고유 ID (자동 생성)
- * @property {string} value - 서브 카테고리 값 (URL에 사용되는 키)
- * @property {string} label - 서브 카테고리 표시명
- * @property {string} [description] - 서브 카테고리 설명 (선택사항)
- */
-@Schema({ _id: true })
-export class SubCategory {
-  /**
-   * 서브 카테고리 값 (URL 키)
-   */
-  @Prop({ required: true })
-  value: string;
-
-  /**
-   * 서브 카테고리 표시명
-   */
-  @Prop({ required: true })
-  label: string;
-
-  /**
-   * 서브 카테고리 설명
-   */
-  @Prop({ required: false })
-  description?: string;
-}
-
-/**
  * 카테고리 엔티티 클래스
  * 
- * 메인 카테고리와 해당하는 서브 카테고리들을 관리합니다.
- * 각 카테고리는 고유한 값(value)과 표시명(label), 아이콘 정보를 가집니다.
+ * 메인 카테고리와 서브 카테고리를 모두 관리합니다.
+ * parentId가 null이면 메인 카테고리, 값이 있으면 서브 카테고리입니다.
  * 
  * @class Category
  */
@@ -64,11 +34,20 @@ export class SubCategory {
 })
 export class Category {
   /**
+   * 부모 카테고리 ID (null이면 메인 카테고리)
+   * 
+   * @type {Types.ObjectId | null}
+   */
+  @Prop({ type: Types.ObjectId, ref: 'Category', default: null })
+  parentId: Types.ObjectId | null;
+
+  /**
    * 카테고리 그룹 (Frontend, Backend, Database, IT, Test, Etc)
+   * 메인 카테고리에만 적용
    * 
    * @type {string}
    */
-  @Prop({ required: true })
+  @Prop({ required: false })
   group: string;
 
   /**
@@ -97,18 +76,20 @@ export class Category {
 
   /**
    * 아이콘 이름 (React Icons 라이브러리 기준)
+   * 메인 카테고리에만 적용
    * 
    * @type {string}
    */
-  @Prop({ required: true })
+  @Prop({ required: false })
   iconName: string;
 
   /**
    * 아이콘 색상 (HEX 코드)
+   * 메인 카테고리에만 적용
    * 
    * @type {string}
    */
-  @Prop({ required: true })
+  @Prop({ required: false })
   color: string;
 
   /**
@@ -118,14 +99,6 @@ export class Category {
    */
   @Prop({ required: true })
   path: string;
-
-  /**
-   * 서브 카테고리 목록
-   * 
-   * @type {SubCategory[]}
-   */
-  @Prop({ type: [SubCategory], default: [] })
-  subCategories: SubCategory[];
 
   /**
    * 카테고리 활성화 여부
@@ -143,11 +116,6 @@ export class Category {
   @Prop({ default: 0 })
   sortOrder: number;
 }
-
-/**
- * SubCategory 스키마 생성
- */
-export const SubCategorySchema = SchemaFactory.createForClass(SubCategory);
 
 /**
  * Category 클래스에서 생성된 Mongoose 스키마

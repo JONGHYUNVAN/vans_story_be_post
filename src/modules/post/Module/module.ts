@@ -15,6 +15,7 @@ import { PostsService } from '../Service/service';
 import { Post, PostSchema } from '../schemas/post.schema';
 import { InternalApiClient } from '../../../utils/Api/api';
 import { PostInitService } from '../../../database/init/post.init';
+import { Category, CategorySchema } from '../../category/schemas/category.schema';
 
 /**
  * 게시글 기능 모듈
@@ -25,7 +26,8 @@ import { PostInitService } from '../../../database/init/post.init';
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: Post.name, schema: PostSchema }
+      { name: Post.name, schema: PostSchema },
+      { name: Category.name, schema: CategorySchema }
     ]),
     HttpModule
   ],

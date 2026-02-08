@@ -6,9 +6,10 @@
  * @module dto/index
  */
 
-export { CreateCategoryDto, CreateSubCategoryDto } from './create-category.dto';
+export { CreateCategoryDto } from './create-category.dto';
 export { UpdateCategoryDto } from './update-category.dto';
-export { CategoryResponseDto, SubCategoryResponseDto } from './category-response.dto';
+export { CategoryResponseDto } from './category-response.dto';
+
 
 
 

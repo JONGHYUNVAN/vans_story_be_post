@@ -6,6 +6,7 @@ import { Post, PostDocument } from '../schemas/post.schema';
 import { mapToDto } from '../../../utils/Mapper/mapper';
 import { Paginated } from '../../../utils/types/pagination';
 import { InternalApiClient } from '../../../utils/Api/api';
+import { Category } from '../../category/schemas/category.schema';
 
 /**
  * MongoDB를 사용하는 게시글 관련 비즈니스 로직을 처리하는 서비스 클래스
@@ -16,6 +17,7 @@ import { InternalApiClient } from '../../../utils/Api/api';
 export class PostsService {
   constructor(
     @InjectModel(Post.name) private postModel: Model<PostDocument>,
+    @InjectModel(Category.name) private categoryModel: Model<Category>,
     private readonly apiClient: InternalApiClient,
   ) {}
 
@@ -31,13 +33,10 @@ export class PostsService {
     responseDto.mainCategory = post.mainCategoryId?.value || '';
     responseDto.mainCategoryLabel = post.mainCategoryId?.label || '';
     
-    // subCategory 정보 찾기
-    if (post.mainCategoryId?.subCategories && post.subCategoryId) {
-      const subCat = post.mainCategoryId.subCategories.find(
-        (sub: any) => sub._id.toString() === post.subCategoryId.toString()
-      );
-      responseDto.subCategory = subCat?.value || '';
-      responseDto.subCategoryLabel = subCat?.label || '';
+    // subCategory 정보 추가 (populate된 경우)
+    if (post.subCategoryId) {
+      responseDto.subCategory = post.subCategoryId?.value || '';
+      responseDto.subCategoryLabel = post.subCategoryId?.label || '';
     }
     
     return responseDto;
@@ -76,7 +75,8 @@ export class PostsService {
     // populate로 카테고리 정보 가져오기
     const populated = await this.postModel
       .findById(created._id)
-      .populate('mainCategoryId', 'value label subCategories')
+      .populate('mainCategoryId', 'value label')
+      .populate('subCategoryId', 'value label')
       .lean()
       .exec();
     
@@ -117,18 +117,44 @@ export class PostsService {
 
     const query: any = {};
     
-    // mainCategoryValue가 주어지면 해당 value를 가진 Category의 ObjectId를 찾아서 필터링
+    // mainCategoryValue가 주어지면 해당 value를 가진 Category(메인)의 ObjectId를 찾아서 필터링
     if (mainCategoryValue && mainCategoryValue.trim() !== '') {
-      // 나중에 Category 모델을 추가해야 함
-      // 현재는 일단 주석 처리
-      // const category = await this.categoryModel.findOne({ value: mainCategoryValue.trim() });
-      // if (category) {
-      //   query.mainCategoryId = category._id;
-      // }
+      const category = await this.categoryModel.findOne({ 
+        value: mainCategoryValue.trim(), 
+        parentId: null 
+      });
+      if (category) {
+        query.mainCategoryId = category._id;
+      } else {
+        return { data: [], meta: { totalItems: 0, currentPage: page, totalPages: 0, itemsPerPage: limit } };
+      }
     }
     
+    // subCategoryValue가 주어지면 해당 value를 가진 Category(서브)의 _id를 찾아서 필터링
     if (subCategoryValue && subCategoryValue.trim() !== '') {
-      query.subCategoryValue = subCategoryValue.trim();
+      if (query.mainCategoryId) {
+        // mainCategory가 지정된 경우
+        const subCat = await this.categoryModel.findOne({ 
+          value: subCategoryValue.trim(), 
+          parentId: query.mainCategoryId 
+        });
+        if (subCat) {
+          query.subCategoryId = subCat._id;
+        } else {
+          return { data: [], meta: { totalItems: 0, currentPage: page, totalPages: 0, itemsPerPage: limit } };
+        }
+      } else {
+        // mainCategory가 지정되지 않은 경우
+        const subCategories = await this.categoryModel.find({ 
+          value: subCategoryValue.trim(), 
+          parentId: { $ne: null } 
+        });
+        if (subCategories.length > 0) {
+          query.subCategoryId = { $in: subCategories.map(cat => cat._id) };
+        } else {
+          return { data: [], meta: { totalItems: 0, currentPage: page, totalPages: 0, itemsPerPage: limit } };
+        }
+      }
     }
     
     const skip = (page - 1) * limit;
@@ -136,6 +162,7 @@ export class PostsService {
       this.postModel.find(query)
         .select('-content')
         .populate('mainCategoryId', 'value label')
+        .populate('subCategoryId', 'value label')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -187,6 +214,7 @@ export class PostsService {
     const post = await this.postModel
       .findById(id)
       .populate('mainCategoryId', 'value label')
+      .populate('subCategoryId', 'value label')
       .lean()
       .exec();
       
@@ -261,6 +289,7 @@ export class PostsService {
     const post = await this.postModel
       .findById(id)
       .populate('mainCategoryId', 'value label')
+      .populate('subCategoryId', 'value label')
       .lean()
       .exec();
       
@@ -318,6 +347,7 @@ export class PostsService {
     const updated = await this.postModel
       .findByIdAndUpdate(id, updateDto, { new: true })
       .populate('mainCategoryId', 'value label')
+      .populate('subCategoryId', 'value label')
       .lean()
       .exec();
     
@@ -371,18 +401,13 @@ export class PostsService {
     const posts = await this.postModel
       .find({ authorEmail })
       .populate('mainCategoryId', 'value label')
+      .populate('subCategoryId', 'value label')
       .lean()
       .exec();
     
-    // 각 게시글의 authorEmail을 author(닉네임)로 변환
+    // 각 게시글에 카테고리 정보와 author 추가
     const postsWithAuthor = await Promise.all(
-      posts.map(async (post: any) => {
-        const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
-        const responseDto = mapToDto(post, ResponseDto);
-        responseDto.author = authorNickname ?? 'Unknown';
-        responseDto.mainCategory = post.mainCategoryId?.value || '';
-        return responseDto;
-      })
+      posts.map(async (post: any) => this.enrichPostWithCategoryInfo(post))
     );
     
     return postsWithAuthor;
@@ -407,18 +432,13 @@ export class PostsService {
       ]
     })
     .populate('mainCategoryId', 'value label')
+    .populate('subCategoryId', 'value label')
     .lean()
     .exec();
 
-    // 각 게시글의 authorEmail을 author(닉네임)로 변환
+    // 각 게시글에 카테고리 정보와 author 추가
     const postsWithAuthor = await Promise.all(
-      posts.map(async (post: any) => {
-        const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
-        const responseDto = mapToDto(post, ResponseDto);
-        responseDto.author = authorNickname ?? 'Unknown';
-        responseDto.mainCategory = post.mainCategoryId?.value || '';
-        return responseDto;
-      })
+      posts.map(async (post: any) => this.enrichPostWithCategoryInfo(post))
     );
 
     return postsWithAuthor;
@@ -442,16 +462,44 @@ export class PostsService {
     const query: any = {};
     
     // mainCategoryValue가 주어지면 해당 value를 가진 Category의 ObjectId를 찾아서 필터링
-    // TODO: Category 모델 추가 후 활성화
-    // if (mainCategoryValue) {
-    //   const category = await this.categoryModel.findOne({ value: mainCategoryValue });
-    //   if (category) {
-    //     query.mainCategoryId = category._id;
-    //   }
-    // }
+    if (mainCategoryValue) {
+      const category = await this.categoryModel.findOne({ value: mainCategoryValue, parentId: null });
+      if (category) {
+        query.mainCategoryId = category._id;
+      } else {
+        // 카테고리를 찾을 수 없으면 빈 결과 반환
+        return { data: [], meta: { totalItems: 0, currentPage: page, totalPages: 0, itemsPerPage: limit } };
+      }
+    }
     
-    if (subCategoryValue && subCategoryValue.trim() !== '') {
-      query.subCategoryValue = subCategoryValue.trim();
+    // subCategoryValue가 주어지면 해당 value를 가진 Category(서브)의 _id를 찾아서 필터링
+    if (subCategoryValue) {
+      if (query.mainCategoryId) {
+        // mainCategory가 지정된 경우, 해당 부모를 가진 subCategory 찾기
+        const subCat = await this.categoryModel.findOne({ 
+          value: subCategoryValue, 
+          parentId: query.mainCategoryId 
+        });
+        if (subCat) {
+          query.subCategoryId = subCat._id;
+        } else {
+          // subCategory를 찾을 수 없으면 빈 결과 반환
+          return { data: [], meta: { totalItems: 0, currentPage: page, totalPages: 0, itemsPerPage: limit } };
+        }
+      } else {
+        // mainCategory가 지정되지 않은 경우, 모든 서브 카테고리에서 value로 찾기
+        const subCategories = await this.categoryModel.find({ 
+          value: subCategoryValue, 
+          parentId: { $ne: null } 
+        });
+        
+        if (subCategories.length > 0) {
+          query.subCategoryId = { $in: subCategories.map(cat => cat._id) };
+        } else {
+          // subCategory를 찾을 수 없으면 빈 결과 반환
+          return { data: [], meta: { totalItems: 0, currentPage: page, totalPages: 0, itemsPerPage: limit } };
+        }
+      }
     }
     
     const skip = (page - 1) * limit;
@@ -459,6 +507,7 @@ export class PostsService {
       this.postModel.find(query)
         .select('-content')
         .populate('mainCategoryId', 'value label')
+        .populate('subCategoryId', 'value label')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -467,15 +516,9 @@ export class PostsService {
       this.postModel.countDocuments(query)
     ]);
 
-    // 각 게시글의 authorEmail을 author(닉네임)로 변환
+    // 각 게시글에 카테고리 정보와 author 추가
     const postsWithAuthor = await Promise.all(
-      posts.map(async (post: any) => {
-        const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
-        const responseDto = mapToDto(post, ResponseDto);
-        responseDto.author = authorNickname ?? 'Unknown';
-        responseDto.mainCategory = post.mainCategoryId?.value || '';
-        return responseDto;
-      })
+      posts.map(async (post: any) => this.enrichPostWithCategoryInfo(post))
     );
 
     return {

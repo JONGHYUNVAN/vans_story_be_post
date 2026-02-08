@@ -80,10 +80,11 @@ export class CategoryService {
     const categories = await this.findAll(activeOnly);
     
     return categories.reduce((grouped, category) => {
-      if (!grouped[category.group]) {
-        grouped[category.group] = [];
+      const group = category.group || 'Etc';
+      if (!grouped[group]) {
+        grouped[group] = [];
       }
-      grouped[category.group].push(category);
+      grouped[group].push(category);
       return grouped;
     }, {} as Record<string, CategoryResponseDto[]>);
   }
@@ -202,6 +203,7 @@ export class CategoryService {
   private toResponseDto(category: CategoryDocument): CategoryResponseDto {
     return {
       id: category._id.toString(),
+      parentId: category.parentId ? category.parentId.toString() : null,
       group: category.group,
       value: category.value,
       label: category.label,
@@ -209,7 +211,6 @@ export class CategoryService {
       iconName: category.iconName,
       color: category.color,
       path: category.path,
-      subCategories: category.subCategories || [],
       isActive: category.isActive,
       sortOrder: category.sortOrder,
       createdAt: category.createdAt,
