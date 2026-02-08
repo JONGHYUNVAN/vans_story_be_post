@@ -4,7 +4,7 @@
  * MongoDB에 저장되는 카테고리 데이터의 구조를 정의합니다.
  * 메인 카테고리와 서브 카테고리의 계층 구조를 관리합니다.
  * 
- * @module entities/category.entity
+ * @module schemas/category.schema
  */
 
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
@@ -24,11 +24,12 @@ export type CategoryDocument = Category & Document & {
  * 서브 카테고리 스키마
  * 
  * @interface SubCategory
+ * @property {Types.ObjectId} _id - 서브 카테고리 고유 ID (자동 생성)
  * @property {string} value - 서브 카테고리 값 (URL에 사용되는 키)
  * @property {string} label - 서브 카테고리 표시명
  * @property {string} [description] - 서브 카테고리 설명 (선택사항)
  */
-@Schema({ _id: false })
+@Schema({ _id: true })
 export class SubCategory {
   /**
    * 서브 카테고리 값 (URL 키)

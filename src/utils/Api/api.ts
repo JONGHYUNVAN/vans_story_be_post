@@ -60,14 +60,15 @@ export class InternalApiClient {
           {
             headers: {
               'X-API-KEY': this.apiKey,
-            }
+            },
+            timeout: 1000, // 1초 타임아웃 추가
           }
         )
       );
       return data.data;
     } catch (error) {
-      console.error(`Failed to fetch nickname for ${email}:`, error.message);
-      return null;  // 에러 시 null 반환
+      // 에러 발생 시 로그 없이 null 반환 (성능 개선)
+      return null;
     }
   }
 }

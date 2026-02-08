@@ -188,19 +188,19 @@ export class PostsController {
   @Get()
   @ApiOperation({ summary: '게시글 목록 조회' })
   @ApiResponse({ status: 200, description: '게시글 목록 조회 성공', type: ResponseDto, isArray: true })
-  @ApiQuery({ name: 'mainCategory', required: false, description: '필터링할 메인 카테고리 (기존 테마)' })
-  @ApiQuery({ name: 'subCategory', required: false, description: '필터링할 서브 카테고리 (기존 카테고리)' })
+  @ApiQuery({ name: 'mainCategory', required: false, description: '필터링할 메인 카테고리 value' })
+  @ApiQuery({ name: 'subCategory', required: false, description: '필터링할 서브 카테고리 value' })
   @ApiQuery({ name: 'page', required: false, description: '페이지 번호 (기본값: 1)' })
   @ApiQuery({ name: 'limit', required: false, description: '페이지당 게시글 수 (기본값: 10)' })
   async findAll(
-    @Query('mainCategory') mainCategory?: string,
-    @Query('subCategory') subCategory?: string,
+    @Query('mainCategory') mainCategoryValue?: string,
+    @Query('subCategory') subCategoryValue?: string,
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '10'
   ): Promise<Paginated<ResponseDto>> {
     return this.postsService.findAll(
-      mainCategory, 
-      subCategory, 
+      mainCategoryValue, 
+      subCategoryValue, 
       parseInt(page, 10), 
       parseInt(limit, 10)
     );

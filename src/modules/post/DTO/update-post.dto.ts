@@ -8,7 +8,7 @@
  */
 
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsArray, IsOptional, MinLength, MaxLength, IsObject } from 'class-validator';
+import { IsString, IsArray, IsOptional, MinLength, MaxLength, IsObject, IsMongoId } from 'class-validator';
 
 /**
  * 게시글 수정 DTO 클래스
@@ -33,12 +33,20 @@ export class UpdatePostDto {
     content?: Record<string, any>;
 
     @ApiPropertyOptional({
-        example: 'light',
-        description: '수정할 메인 카테고리 (기존 테마)'
+        example: '507f1f77bcf86cd799439011',
+        description: '수정할 메인 카테고리 ID'
     })
     @IsOptional()
-    @IsString()
-    mainCategory?: string;
+    @IsMongoId()
+    mainCategoryId?: string;
+
+    @ApiPropertyOptional({
+        example: '507f1f77bcf86cd799439012',
+        description: '수정할 서브 카테고리 ID'
+    })
+    @IsOptional()
+    @IsMongoId()
+    subCategoryId?: string;
 
     @ApiPropertyOptional({
         example: '수정된 설명입니다.',
@@ -57,14 +65,6 @@ export class UpdatePostDto {
     @IsArray()
     @IsString({ each: true })
     tags?: string[];
-
-    @ApiPropertyOptional({
-        example: 'introduction',
-        description: '수정할 서브 카테고리 (기존 카테고리)'
-    })
-    @IsOptional()
-    @IsString()
-    subCategory?: string;
 
     @ApiPropertyOptional({
         example: 'Java 알고리즘',

@@ -34,8 +34,28 @@ export class PostResponseDto {
     content: Record<string, any>;
 
     @Field
-    @ApiProperty({ example: 'nestjs' })
+    @ApiProperty({ example: 'nextjs', description: '메인 카테고리 value (populate된 값)' })
     mainCategory: string;
+
+    @Field
+    @ApiProperty({ example: 'Next.js', description: '메인 카테고리 label (표시명)' })
+    mainCategoryLabel: string;
+
+    @Field
+    @ApiProperty({ example: '507f1f77bcf86cd799439011', description: '메인 카테고리 ID' })
+    mainCategoryId: Types.ObjectId;
+
+    @Field
+    @ApiProperty({ example: 'introduction', description: '서브 카테고리 value (populate된 값)' })
+    subCategory: string;
+
+    @Field
+    @ApiProperty({ example: '소개', description: '서브 카테고리 label (표시명)' })
+    subCategoryLabel: string;
+
+    @Field
+    @ApiProperty({ example: '507f1f77bcf86cd799439012', description: '서브 카테고리 ID' })
+    subCategoryId: Types.ObjectId;
 
     @Field
     @ApiProperty({ example: 'user@example.com' })
@@ -68,10 +88,6 @@ export class PostResponseDto {
     @Field
     @ApiProperty({ example: 0 })
     likeCount: number;
-
-    @Field
-    @ApiProperty({ example: 'introduction' })
-    subCategory: string;
 
     @Field
     @ApiProperty({ example: 'thumbnail.jpg' })

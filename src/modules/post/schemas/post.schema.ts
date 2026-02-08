@@ -3,11 +3,11 @@
  * 
  * MongoDB에 저장되는 게시글 데이터의 구조를 정의합니다.
  * 
- * @module entities/post.entity
+ * @module schemas/post.schema
  */
 
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
 /**
  * 게시글 문서 타입
@@ -71,16 +71,16 @@ export class Post {
   likeCount: number;
 
   /**
-   * 메인 카테고리 (기존 테마)
+   * 메인 카테고리 ID (Category 문서 참조)
    */
-  @Prop({ required: true })
-  mainCategory: string;
+  @Prop({ type: Types.ObjectId, ref: 'Category', required: true })
+  mainCategoryId: Types.ObjectId;
 
   /**
-   * 서브 카테고리 (기존 카테고리)
+   * 서브 카테고리 ID (Category.subCategories._id 참조)
    */
-  @Prop({ required: true })
-  subCategory: string;
+  @Prop({ type: Types.ObjectId, required: true })
+  subCategoryId: Types.ObjectId;
 
   /**
    * 썸네일 이미지 URL

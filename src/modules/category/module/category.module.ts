@@ -11,7 +11,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { CategoryService } from '../service/category.service';
 import { CategoryController } from '../controller/category.controller';
-import { Category, CategorySchema } from '../entities/category.entity';
+import { Category, CategorySchema } from '../schemas/category.schema';
 
 /**
  * 카테고리 모듈 클래스

@@ -8,7 +8,7 @@
  */
 
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsArray, IsOptional, MinLength, MaxLength, IsObject } from 'class-validator';
+import { IsString, IsArray, IsOptional, MinLength, MaxLength, IsObject, IsMongoId } from 'class-validator';
 
 /**
  * 게시글 생성 DTO 클래스
@@ -31,11 +31,18 @@ export class CreatePostDto {
     content: Record<string, any>;
 
     @ApiProperty({
-        example: 'nest.js',
-        description: '게시글의 메인 카테고리 (기존 테마)'
+        example: '507f1f77bcf86cd799439011',
+        description: '메인 카테고리 ID (Category ObjectId)'
     })
-    @IsString()
-    mainCategory: string;
+    @IsMongoId()
+    mainCategoryId: string;
+
+    @ApiProperty({
+        example: '507f1f77bcf86cd799439012',
+        description: '서브 카테고리 ID (Category의 subCategories._id)'
+    })
+    @IsMongoId()
+    subCategoryId: string;
 
     @ApiProperty({
         example: '게시글 설명입니다.',
@@ -52,13 +59,6 @@ export class CreatePostDto {
     @IsArray()
     @IsString({ each: true })
     tags: string[];
-
-    @ApiProperty({
-        example: 'introduction',
-        description: '게시글의 서브 카테고리 (기존 카테고리)'
-    })
-    @IsString()
-    subCategory: string;
 
     @ApiProperty({
         example: 'Java 알고리즘',

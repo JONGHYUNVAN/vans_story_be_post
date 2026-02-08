@@ -19,7 +19,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { PostsService } from '../../../src/modules/post/Service/service';
-import { Post } from '../../../src/modules/post/entities/post.entity';
+import { Post } from '../../../src/modules/post/schemas/post.schema';
 import { InternalApiClient } from '../../../src/utils/Api/api';
 import { createMockPostModel, createMockApiClient } from '../../helpers/test-utils';
 import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';

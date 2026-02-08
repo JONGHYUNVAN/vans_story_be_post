@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException 
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CreateDto, UpdateDto, ResponseDto } from '../DTO';
-import { Post, PostDocument } from '../entities/post.entity';
+import { Post, PostDocument } from '../schemas/post.schema';
 import { mapToDto } from '../../../utils/Mapper/mapper';
 import { Paginated } from '../../../utils/types/pagination';
 import { InternalApiClient } from '../../../utils/Api/api';
@@ -18,6 +18,30 @@ export class PostsService {
     @InjectModel(Post.name) private postModel: Model<PostDocument>,
     private readonly apiClient: InternalApiClient,
   ) {}
+
+  /**
+   * Post 데이터에 카테고리 정보를 추가하는 헬퍼 함수
+   */
+  private async enrichPostWithCategoryInfo(post: any): Promise<ResponseDto> {
+    const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
+    const responseDto = mapToDto(post, ResponseDto);
+    responseDto.author = authorNickname ?? 'Unknown';
+    
+    // mainCategory 정보 추가
+    responseDto.mainCategory = post.mainCategoryId?.value || '';
+    responseDto.mainCategoryLabel = post.mainCategoryId?.label || '';
+    
+    // subCategory 정보 찾기
+    if (post.mainCategoryId?.subCategories && post.subCategoryId) {
+      const subCat = post.mainCategoryId.subCategories.find(
+        (sub: any) => sub._id.toString() === post.subCategoryId.toString()
+      );
+      responseDto.subCategory = subCat?.value || '';
+      responseDto.subCategoryLabel = subCat?.label || '';
+    }
+    
+    return responseDto;
+  }
 
   /**
    * 새로운 게시글을 생성합니다.
@@ -48,7 +72,19 @@ export class PostsService {
       ...createDto,
       authorEmail
     });
-    return mapToDto(created.toObject(), ResponseDto);
+    
+    // populate로 카테고리 정보 가져오기
+    const populated = await this.postModel
+      .findById(created._id)
+      .populate('mainCategoryId', 'value label subCategories')
+      .lean()
+      .exec();
+    
+    if (!populated) {
+      throw new BadRequestException('Failed to create post');
+    }
+    
+    return this.enrichPostWithCategoryInfo(populated);
   }
 
   /**
@@ -71,7 +107,7 @@ export class PostsService {
    * const posts = await postsService.findAll(query);
    * ```
    */
-  async findAll(mainCategory?: string, subCategory?: string, page: number = 1, limit: number = 10): Promise<Paginated<ResponseDto>> {
+  async findAll(mainCategoryValue?: string, subCategoryValue?: string, page: number = 1, limit: number = 10): Promise<Paginated<ResponseDto>> {
     if (page < 1) {
       throw new BadRequestException('Page number must be greater than 0');
     }
@@ -81,18 +117,25 @@ export class PostsService {
 
     const query: any = {};
     
-    if (mainCategory && mainCategory.trim() !== '') {
-      query.mainCategory = mainCategory.trim();
+    // mainCategoryValue가 주어지면 해당 value를 가진 Category의 ObjectId를 찾아서 필터링
+    if (mainCategoryValue && mainCategoryValue.trim() !== '') {
+      // 나중에 Category 모델을 추가해야 함
+      // 현재는 일단 주석 처리
+      // const category = await this.categoryModel.findOne({ value: mainCategoryValue.trim() });
+      // if (category) {
+      //   query.mainCategoryId = category._id;
+      // }
     }
     
-    if (subCategory && subCategory.trim() !== '') {
-      query.subCategory = subCategory.trim();
+    if (subCategoryValue && subCategoryValue.trim() !== '') {
+      query.subCategoryValue = subCategoryValue.trim();
     }
     
     const skip = (page - 1) * limit;
     const [posts, total] = await Promise.all([
       this.postModel.find(query)
         .select('-content')
+        .populate('mainCategoryId', 'value label')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -103,10 +146,11 @@ export class PostsService {
 
     // 각 게시글의 authorEmail을 author(닉네임)로 변환
     const postsWithAuthor = await Promise.all(
-      posts.map(async (post) => {
+      posts.map(async (post: any) => {
         const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
         const responseDto = mapToDto(post, ResponseDto);
         responseDto.author = authorNickname ?? 'Unknown';
+        responseDto.mainCategory = post.mainCategoryId?.value || '';
         return responseDto;
       })
     );
@@ -140,7 +184,12 @@ export class PostsService {
       throw new NotFoundException(`Invalid post ID: ${id}`);
     }
 
-    const post = await this.postModel.findById(id).exec();
+    const post = await this.postModel
+      .findById(id)
+      .populate('mainCategoryId', 'value label')
+      .lean()
+      .exec();
+      
     if (!post) {
       throw new NotFoundException(`Post with ID ${id} not found`);
     }
@@ -151,8 +200,9 @@ export class PostsService {
     }
 
     const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
-    const responseDto = mapToDto(post.toObject(), ResponseDto);
+    const responseDto = mapToDto(post, ResponseDto);
     responseDto.author = authorNickname ?? 'Unknown';
+    responseDto.mainCategory = (post.mainCategoryId as any)?.value || '';
     return responseDto;
   }
 
@@ -208,7 +258,12 @@ export class PostsService {
       throw new NotFoundException(`Invalid post ID: ${id}`);
     }
 
-    const post = await this.postModel.findById(id).exec();
+    const post = await this.postModel
+      .findById(id)
+      .populate('mainCategoryId', 'value label')
+      .lean()
+      .exec();
+      
     if (!post) {
       throw new NotFoundException(`Post with ID ${id} not found`);
     }
@@ -219,8 +274,9 @@ export class PostsService {
     }
 
     const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
-    const responseDto = mapToDto(post.toObject(), ResponseDto);
+    const responseDto = mapToDto(post, ResponseDto);
     responseDto.author = authorNickname ?? 'Unknown';
+    responseDto.mainCategory = (post.mainCategoryId as any)?.value || '';
     return responseDto;
   }
 
@@ -261,6 +317,8 @@ export class PostsService {
 
     const updated = await this.postModel
       .findByIdAndUpdate(id, updateDto, { new: true })
+      .populate('mainCategoryId', 'value label')
+      .lean()
       .exec();
     
     if (!updated) {
@@ -268,8 +326,9 @@ export class PostsService {
     }
 
     const authorNickname = await this.apiClient.getUserNickname(updated.authorEmail);
-    const responseDto = mapToDto(updated.toObject(), ResponseDto);
+    const responseDto = mapToDto(updated, ResponseDto);
     responseDto.author = authorNickname ?? 'Unknown';
+    responseDto.mainCategory = (updated.mainCategoryId as any)?.value || '';
     return responseDto;
   }
 
@@ -309,14 +368,19 @@ export class PostsService {
    * ```
    */
   async findByAuthor(authorEmail: string): Promise<ResponseDto[]> {
-    const posts = await this.postModel.find({ authorEmail }).exec();
+    const posts = await this.postModel
+      .find({ authorEmail })
+      .populate('mainCategoryId', 'value label')
+      .lean()
+      .exec();
     
     // 각 게시글의 authorEmail을 author(닉네임)로 변환
     const postsWithAuthor = await Promise.all(
-      posts.map(async (post) => {
+      posts.map(async (post: any) => {
         const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
-        const responseDto = mapToDto(post.toObject(), ResponseDto);
+        const responseDto = mapToDto(post, ResponseDto);
         responseDto.author = authorNickname ?? 'Unknown';
+        responseDto.mainCategory = post.mainCategoryId?.value || '';
         return responseDto;
       })
     );
@@ -341,14 +405,18 @@ export class PostsService {
         { title: { $regex: keyword, $options: 'i' } },
         { content: { $regex: keyword, $options: 'i' } }
       ]
-    }).exec();
+    })
+    .populate('mainCategoryId', 'value label')
+    .lean()
+    .exec();
 
     // 각 게시글의 authorEmail을 author(닉네임)로 변환
     const postsWithAuthor = await Promise.all(
-      posts.map(async (post) => {
+      posts.map(async (post: any) => {
         const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
-        const responseDto = mapToDto(post.toObject(), ResponseDto);
+        const responseDto = mapToDto(post, ResponseDto);
         responseDto.author = authorNickname ?? 'Unknown';
+        responseDto.mainCategory = post.mainCategoryId?.value || '';
         return responseDto;
       })
     );
@@ -359,11 +427,11 @@ export class PostsService {
   /**
    * 메인 카테고리와 서브 카테고리로 게시글을 검색합니다.
    * 
-   * @param {string} mainCategory - 검색할 메인 카테고리 (기존 테마, 옵션)
-   * @param {string} subCategory - 검색할 서브 카테고리 (기존 카테고리, 옵션)
-   * @returns {Promise<ResponseDto[]>} - 검색 결과 게시글 목록
+   * @param {string} mainCategoryValue - 검색할 메인 카테고리 value (옵션)
+   * @param {string} subCategoryValue - 검색할 서브 카테고리 value (옵션)
+   * @returns {Promise<Paginated<ResponseDto>>} - 검색 결과 게시글 목록
    */
-  async findByThemeAndCategory(mainCategory?: string, subCategory?: string, page: number = 1, limit: number = 10): Promise<Paginated<ResponseDto>> {
+  async findByThemeAndCategory(mainCategoryValue?: string, subCategoryValue?: string, page: number = 1, limit: number = 10): Promise<Paginated<ResponseDto>> {
     if (page < 1) {
       throw new BadRequestException('Page number must be greater than 0');
     }
@@ -373,31 +441,39 @@ export class PostsService {
 
     const query: any = {};
     
-    if (mainCategory) {
-      query.mainCategory = mainCategory;
-    }
+    // mainCategoryValue가 주어지면 해당 value를 가진 Category의 ObjectId를 찾아서 필터링
+    // TODO: Category 모델 추가 후 활성화
+    // if (mainCategoryValue) {
+    //   const category = await this.categoryModel.findOne({ value: mainCategoryValue });
+    //   if (category) {
+    //     query.mainCategoryId = category._id;
+    //   }
+    // }
     
-    if (subCategory && subCategory.trim() !== '') {
-      query.subCategory = subCategory;
+    if (subCategoryValue && subCategoryValue.trim() !== '') {
+      query.subCategoryValue = subCategoryValue.trim();
     }
     
     const skip = (page - 1) * limit;
     const [posts, total] = await Promise.all([
       this.postModel.find(query)
         .select('-content')
+        .populate('mainCategoryId', 'value label')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
+        .lean()
         .exec(),
       this.postModel.countDocuments(query)
     ]);
 
     // 각 게시글의 authorEmail을 author(닉네임)로 변환
     const postsWithAuthor = await Promise.all(
-      posts.map(async (post) => {
+      posts.map(async (post: any) => {
         const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
-        const responseDto = mapToDto(post.toObject(), ResponseDto);
+        const responseDto = mapToDto(post, ResponseDto);
         responseDto.author = authorNickname ?? 'Unknown';
+        responseDto.mainCategory = post.mainCategoryId?.value || '';
         return responseDto;
       })
     );

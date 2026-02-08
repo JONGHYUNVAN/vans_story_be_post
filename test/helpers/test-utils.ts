@@ -1,5 +1,5 @@
 import { Model } from 'mongoose';
-import { Post, PostDocument } from '../../src/modules/post/entities/post.entity';
+import { Post, PostDocument } from '../../src/modules/post/schemas/post.schema';
 import { MockGenerator } from './mock-generator';
 import { ResponseDto } from '../../src/modules/post/dto';
 import { Types } from 'mongoose';

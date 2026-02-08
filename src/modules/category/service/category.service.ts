@@ -10,7 +10,7 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Category, CategoryDocument } from '../entities/category.entity';
+import { Category, CategoryDocument } from '../schemas/category.schema';
 import { CreateCategoryDto, UpdateCategoryDto, CategoryResponseDto } from '../dto';
 
 /**
