@@ -7,6 +7,7 @@ import { mapToDto } from '../../../utils/Mapper/mapper';
 import { Paginated } from '../../../utils/types/pagination';
 import { InternalApiClient } from '../../../utils/Api/api';
 import { Category } from '../../category/schemas/category.schema';
+import { indexPost, deletePostIndex, SearchIndexPayload } from '../../../utils/Api/search-index.client';
 
 /**
  * MongoDB를 사용하는 게시글 관련 비즈니스 로직을 처리하는 서비스 클래스
@@ -83,8 +84,32 @@ export class PostsService {
     if (!populated) {
       throw new BadRequestException('Failed to create post');
     }
-    
-    return this.enrichPostWithCategoryInfo(populated);
+
+    const result = await this.enrichPostWithCategoryInfo(populated);
+
+    // fire-and-forget: 검색 인덱스 등록 (응답을 차단하지 않음)
+    const authorNicknameForIndex = result.author ?? 'Unknown';
+    const indexPayload: SearchIndexPayload = {
+      post_id: String((populated as any)._id),
+      title: populated.title,
+      description: populated.description,
+      content: populated.content,
+      topic: populated.topic,
+      tags: populated.tags ?? [],
+      mainCategory: (populated.mainCategoryId as any)?.value || '',
+      subCategory: (populated.subCategoryId as any)?.value || '',
+      language: populated.language,
+      author: authorNicknameForIndex,
+      createdAt: (populated as any).createdAt instanceof Date
+        ? (populated as any).createdAt.toISOString()
+        : String((populated as any).createdAt ?? ''),
+      updatedAt: (populated as any).updatedAt instanceof Date
+        ? (populated as any).updatedAt.toISOString()
+        : String((populated as any).updatedAt ?? ''),
+    };
+    indexPost(indexPayload).catch(err => console.error('[SearchIndex] Failed to index post:', err));
+
+    return result;
   }
 
   /**
@@ -359,6 +384,28 @@ export class PostsService {
     const responseDto = mapToDto(updated, ResponseDto);
     responseDto.author = authorNickname ?? 'Unknown';
     responseDto.mainCategory = (updated.mainCategoryId as any)?.value || '';
+
+    // fire-and-forget: 검색 인덱스 갱신 (응답을 차단하지 않음)
+    const updateIndexPayload: SearchIndexPayload = {
+      post_id: String((updated as any)._id),
+      title: updated.title,
+      description: updated.description,
+      content: updated.content,
+      topic: updated.topic,
+      tags: updated.tags ?? [],
+      mainCategory: (updated.mainCategoryId as any)?.value || '',
+      subCategory: (updated.subCategoryId as any)?.value || '',
+      language: updated.language,
+      author: authorNickname ?? 'Unknown',
+      createdAt: (updated as any).createdAt instanceof Date
+        ? (updated as any).createdAt.toISOString()
+        : String((updated as any).createdAt ?? ''),
+      updatedAt: (updated as any).updatedAt instanceof Date
+        ? (updated as any).updatedAt.toISOString()
+        : String((updated as any).updatedAt ?? ''),
+    };
+    indexPost(updateIndexPayload).catch(err => console.error('[SearchIndex] Failed to index post on update:', err));
+
     return responseDto;
   }
 
@@ -384,6 +431,9 @@ export class PostsService {
     if (!result) {
       throw new NotFoundException(`Post with ID ${id} not found`);
     }
+
+    // fire-and-forget: 검색 인덱스 삭제 (응답을 차단하지 않음)
+    deletePostIndex(id).catch(err => console.error('[SearchIndex] Failed to delete post index:', err));
   }
 
   /**
