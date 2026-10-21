@@ -93,6 +93,7 @@ CLAUDE.md 초안에 추천안을 반영하고, 초안 검토 때 확정한다. �
 
 - [ ] `src/main.ts:82` — `logger.log(\`MongoDB URI: ${process.env.MONGODB_URI}\`)`가 운영 접속 문자열을 로그에 출력한다. 제거. **최우선**
 - [ ] `test/post/e2e/posts.e2e-spec.ts`가 운영 DB에 붙는다. `mongodb-memory-server` 또는 전용 테스트 DB로 분리하기 전까지 로컬 실행 금지
+- [ ] GitHub Dependabot이 기본 브랜치에서 취약점 110건을 보고(2026-10-21 push 시점: critical 2, high 60, moderate 42, low 6). [목록](https://github.com/JONGHYUNVAN/vans_story_be_post/security/dependabot)을 확인해 미사용 패키지 제거(아래 의존성 절)와 mongoose 8/9 마이그레이션으로 해소되는 건을 먼저 걷어내고, 남는 건은 `npm audit`로 개별 처리. critical 2건은 패키지와 영향 범위를 먼저 파악
 
 ### 의존성
 
