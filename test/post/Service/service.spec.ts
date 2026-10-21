@@ -1,69 +1,73 @@
 /**
  * PostsService 단위 테스트
- * 
+ *
  * @module test/Service/service.spec
  * @description
  * 게시글 서비스의 모든 기능에 대한 단위 테스트를 수행합니다.
  * 각 메서드별로 정상 케이스와 예외 케이스를 테스트하며,
- * MongoDB 모델과 API 클라이언트를 모킹하여 독립적인 테스트를 보장합니다.
- * 
+ * MongoDB 모델(Post / Category)과 API 클라이언트, 검색 인덱스 클라이언트를 모킹하여
+ * 독립적인 테스트를 보장합니다.
+ *
+ * 모델 모의 객체는 서비스가 실제로 호출하는 mongoose 쿼리 체인
+ * (`findById(...).populate(...).populate(...).lean().exec()` 등)을 그대로 흉내 냅니다.
+ * 픽스처와 기대 응답은 `test/helpers/test-utils.ts`에 있습니다.
+ *
  * @example
  * ```typescript
  * // 테스트 실행
  * npm test
- * 
+ *
  * // 특정 테스트만 실행
  * npm test -- -t "should create a new post"
  * ```
  */
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
+import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PostsService } from '../../../src/modules/post/Service/service';
 import { Post } from '../../../src/modules/post/schemas/post.schema';
+import { Category } from '../../../src/modules/category/schemas/category.schema';
 import { InternalApiClient } from '../../../src/utils/Api/api';
-import { createMockPostModel, createMockApiClient } from '../../helpers/test-utils';
-import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { indexPost, deletePostIndex } from '../../../src/utils/Api/search-index.client';
+import { CreateDto, UpdateDto } from '../../../src/modules/post/DTO';
 import { MockGenerator } from '../../helpers/mock-generator';
-import { CreateDto, UpdateDto, ResponseDto } from '../../../src/modules/post/dto';
-import { Types } from 'mongoose';
+import {
+  AUTHOR_EMAIL,
+  AUTHOR_NICKNAME,
+  FIXED_DATE,
+  MAIN_CATEGORY_ID,
+  POST_ID,
+  SUB_CATEGORY_ID,
+  createMockApiClient,
+  createMockCategoryModel,
+  createMockPostModel,
+  createPostDocument,
+  expectedEnrichedResponse,
+  expectedMainCategoryOnlyResponse,
+  mockQuery,
+} from '../../helpers/test-utils';
+
+// 검색 인덱스 클라이언트는 fire-and-forget 으로 외부 서비스에 fetch 하므로 모듈째 모킹한다
+jest.mock('../../../src/utils/Api/search-index.client', () => ({
+  indexPost: jest.fn().mockResolvedValue(undefined),
+  deletePostIndex: jest.fn().mockResolvedValue(undefined),
+}));
 
 describe('PostsService', () => {
+  const POST_ID_HEX = POST_ID.toHexString();
+  const INVALID_ID = 'invalid-id';
+
   let service: PostsService;
-  let mockPostModel: any;
-  let mockApiClient: any;
-  let mockResponseDto: ResponseDto;
+  let mockPostModel: ReturnType<typeof createMockPostModel>;
+  let mockCategoryModel: ReturnType<typeof createMockCategoryModel>;
+  let mockApiClient: ReturnType<typeof createMockApiClient>;
 
   beforeEach(async () => {
-    // 고정된 Mock 응답 생성 (랜덤 값 방지)
-    mockResponseDto = {
-      _id: new Types.ObjectId('507f1f77bcf86cd799439011'),
-      title: '테스트 게시글 제목',
-      content: {
-        type: 'doc',
-        content: [{
-          type: 'paragraph',
-          content: [{
-            type: 'text',
-            text: '테스트 게시글 내용입니다.'
-          }]
-        }]
-      },
-      mainCategory: 'light',
-      subCategory: 'introduction',
-      description: '테스트 게시글 설명입니다.',
-      tags: ['테스트', '태그'],
-      topic: '테스트 주제',
-      language: 'ko',
-      thumbnail: 'thumbnail.jpg',
-      authorEmail: 'test@example.com',
-      author: '테스트 작성자',
-      createdAt: '2025-11-01T00:00:00.000Z',
-      updatedAt: '2025-11-01T00:00:00.000Z',
-      viewCount: 0,
-      likeCount: 0
-    } as ResponseDto;
+    // 모듈 모킹(indexPost / deletePostIndex)의 호출 기록 초기화
+    jest.clearAllMocks();
 
     mockPostModel = createMockPostModel();
+    mockCategoryModel = createMockCategoryModel();
     mockApiClient = createMockApiClient();
 
     const module: TestingModule = await Test.createTestingModule({
@@ -72,6 +76,10 @@ describe('PostsService', () => {
         {
           provide: getModelToken(Post.name),
           useValue: mockPostModel,
+        },
+        {
+          provide: getModelToken(Category.name),
+          useValue: mockCategoryModel,
         },
         {
           provide: InternalApiClient,
@@ -85,14 +93,16 @@ describe('PostsService', () => {
 
   /**
    * 게시글 생성 테스트
-   * 
+   *
    * @description
    * 새로운 게시글을 생성하고 생성된 게시글의 정보가 올바른지 검증합니다.
-   * 
+   * 생성 후 populate 된 문서를 다시 읽어 카테고리 value / label 과 작성자 닉네임을 채우고,
+   * 검색 인덱스 등록을 fire-and-forget 으로 요청합니다.
+   *
    * @param {CreateDto} createDto - 게시글 생성에 필요한 데이터
    * @param {string} authorEmail - 게시글 작성자의 이메일
    * @returns {Promise<ResponseDto>} 생성된 게시글 정보
-   * 
+   *
    * @example
    * ```typescript
    * const createDto = {
@@ -107,11 +117,12 @@ describe('PostsService', () => {
    *       }]
    *     }]
    *   },
-   *   mainCategory: 'light',
-   *   subCategory: 'general',
+   *   mainCategoryId: '507f1f77bcf86cd799439021',
+   *   subCategoryId: '507f1f77bcf86cd799439022',
    *   description: '테스트 설명',
    *   tags: ['테스트'],
-   *   topic: '테스트 주제'
+   *   topic: '테스트 주제',
+   *   language: 'ko'
    * };
    * const authorEmail = 'test@example.com';
    * const result = await service.create(createDto, authorEmail);
@@ -120,18 +131,39 @@ describe('PostsService', () => {
   describe('create', () => {
     it('should create a new post', async () => {
       // Given
-      const authorEmail = 'test@example.com';
       const createDto = MockGenerator.createMock(CreateDto);
 
       // When
-      const result = await service.create(createDto, authorEmail);
+      const result = await service.create(createDto, AUTHOR_EMAIL);
 
       // Then
       expect(mockPostModel.create).toHaveBeenCalledWith({
         ...createDto,
-        authorEmail
+        authorEmail: AUTHOR_EMAIL
       });
-      expect(result).toEqual(mockResponseDto);
+
+      // 생성된 _id 로 다시 읽어 카테고리를 populate 한다
+      expect(mockPostModel.findById).toHaveBeenCalledWith(POST_ID);
+      const query = mockPostModel.findById.mock.results[0].value;
+      expect(query.populate).toHaveBeenCalledWith('mainCategoryId', 'value label');
+      expect(query.populate).toHaveBeenCalledWith('subCategoryId', 'value label');
+      expect(query.lean).toHaveBeenCalled();
+
+      // 작성자 닉네임 + 메인/서브 카테고리 value·label 이 모두 채워진 응답
+      expect(mockApiClient.getUserNickname).toHaveBeenCalledWith(AUTHOR_EMAIL);
+      expect(result).toEqual(expectedEnrichedResponse());
+
+      // 검색 인덱스 등록 (fire-and-forget)
+      expect(indexPost).toHaveBeenCalledTimes(1);
+      expect(indexPost).toHaveBeenCalledWith(expect.objectContaining({
+        post_id: POST_ID_HEX,
+        title: '테스트 게시글 제목',
+        mainCategory: 'light',
+        subCategory: 'introduction',
+        author: AUTHOR_NICKNAME,
+        createdAt: FIXED_DATE.toISOString(),
+        updatedAt: FIXED_DATE.toISOString(),
+      }));
     });
 
     it('should throw BadRequestException when author email is invalid', async () => {
@@ -140,52 +172,70 @@ describe('PostsService', () => {
       const createDto = MockGenerator.createMock(CreateDto);
 
       // When & Then
+      await expect(service.create(createDto, invalidEmail)).rejects.toThrow(BadRequestException);
       await expect(service.create(createDto, invalidEmail)).rejects.toThrow('Invalid author email');
+      expect(mockPostModel.create).not.toHaveBeenCalled();
+      expect(indexPost).not.toHaveBeenCalled();
     });
   });
 
   /**
    * 게시글 목록 조회 테스트
-   * 
+   *
    * @description
    * 페이지네이션이 적용된 게시글 목록을 조회하고 결과가 올바른지 검증합니다.
-   * 
-   * @param {string} [mainCategory] - 필터링할 메인 카테고리 (기존 테마)
-   * @param {string} [subCategory] - 필터링할 서브 카테고리 (기존 카테고리)
+   * 카테고리 value 는 Category 컬렉션에서 ObjectId 로 변환한 뒤 Post 필터에 사용됩니다.
+   *
+   * @param {string} [mainCategoryValue] - 필터링할 메인 카테고리 value
+   * @param {string} [subCategoryValue] - 필터링할 서브 카테고리 value
    * @param {number} [page=1] - 페이지 번호
    * @param {number} [limit=10] - 페이지당 게시글 수
    * @returns {Promise<Paginated<ResponseDto>>} 페이지네이션이 적용된 게시글 목록
-   * 
+   *
    * @example
    * ```typescript
    * // 기본 조회
    * const result = await service.findAll();
-   * 
+   *
    * // 필터링 적용
-   * const result = await service.findAll('light', 'general', 1, 10);
+   * const result = await service.findAll('light', 'introduction', 1, 10);
    * ```
    */
   describe('findAll', () => {
-    it('should return paginated posts', async () => {
+    it('should return paginated posts filtered by main and sub category', async () => {
       // Given
       const mainCategory = 'light';
-      const subCategory = 'general';
+      const subCategory = 'introduction';
       const page = 1;
       const limit = 10;
       const totalItems = 25;
 
-      mockPostModel.countDocuments.mockResolvedValue(totalItems);
+      mockPostModel.countDocuments.mockReturnValue(mockQuery(totalItems));
 
       // When
       const result = await service.findAll(mainCategory, subCategory, page, limit);
 
       // Then
-      expect(mockPostModel.find).toHaveBeenCalled();
-      expect(mockPostModel.countDocuments).toHaveBeenCalled();
-      
-      // 데이터 검증
-      expect(result.data[0]).toEqual(mockResponseDto);
-      
+      // 카테고리 value → ObjectId 변환 (서브 카테고리는 메인 카테고리의 자식이어야 한다)
+      expect(mockCategoryModel.findOne).toHaveBeenNthCalledWith(1, { value: mainCategory, parentId: null });
+      expect(mockCategoryModel.findOne).toHaveBeenNthCalledWith(2, { value: subCategory, parentId: MAIN_CATEGORY_ID });
+
+      const filter = { mainCategoryId: MAIN_CATEGORY_ID, subCategoryId: SUB_CATEGORY_ID };
+      expect(mockPostModel.find).toHaveBeenCalledWith(filter);
+      expect(mockPostModel.countDocuments).toHaveBeenCalledWith(filter);
+
+      // 목록은 content 를 제외하고 최신순으로 페이지네이션한다
+      const query = mockPostModel.find.mock.results[0].value;
+      expect(query.select).toHaveBeenCalledWith('-content');
+      expect(query.populate).toHaveBeenCalledWith('mainCategoryId', 'value label');
+      expect(query.populate).toHaveBeenCalledWith('subCategoryId', 'value label');
+      expect(query.sort).toHaveBeenCalledWith({ createdAt: -1 });
+      expect(query.skip).toHaveBeenCalledWith((page - 1) * limit);
+      expect(query.limit).toHaveBeenCalledWith(limit);
+
+      // 목록 응답은 author 와 mainCategory 만 채운다 (label / subCategory 는 없음)
+      expect(result.data).toEqual([expectedMainCategoryOnlyResponse()]);
+
       // 페이지네이션 메타 정보 검증
       expect(result.meta).toEqual({
         totalItems: totalItems,
@@ -194,78 +244,115 @@ describe('PostsService', () => {
         itemsPerPage: limit
       });
     });
+
+    it('should query without category filter when none is given', async () => {
+      // When
+      const result = await service.findAll();
+
+      // Then
+      expect(mockCategoryModel.findOne).not.toHaveBeenCalled();
+      expect(mockCategoryModel.find).not.toHaveBeenCalled();
+      expect(mockPostModel.find).toHaveBeenCalledWith({});
+
+      const query = mockPostModel.find.mock.results[0].value;
+      expect(query.skip).toHaveBeenCalledWith(0);
+      expect(query.limit).toHaveBeenCalledWith(10);
+
+      expect(result.data).toEqual([expectedMainCategoryOnlyResponse()]);
+      expect(result.meta).toEqual({ totalItems: 1, currentPage: 1, totalPages: 1, itemsPerPage: 10 });
+    });
+
+    it('should return an empty page when the main category does not exist', async () => {
+      // When
+      const result = await service.findAll('unknown', undefined, 2, 5);
+
+      // Then
+      expect(mockCategoryModel.findOne).toHaveBeenCalledWith({ value: 'unknown', parentId: null });
+      expect(mockPostModel.find).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        data: [],
+        meta: { totalItems: 0, currentPage: 2, totalPages: 0, itemsPerPage: 5 }
+      });
+    });
   });
 
   /**
    * 단일 게시글 조회 테스트
-   * 
+   *
    * @description
    * ID로 게시글을 조회하고 결과가 올바른지 검증합니다.
-   * 
+   *
    * @param {string} id - 조회할 게시글의 ID
    * @param {boolean} [viewed=false] - 조회수 증가 여부
    * @returns {Promise<ResponseDto>} 조회된 게시글 정보
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
-   * 
+   *
    * @example
    * ```typescript
    * // 기본 조회
    * const post = await service.findOne('507f1f77bcf86cd799439011');
-   * 
+   *
    * // 조회수 증가 없이 조회
    * const post = await service.findOne('507f1f77bcf86cd799439011', true);
    * ```
    */
   describe('findOne', () => {
-    it('should return a post by id', async () => {
-      // Given
-      const id = '507f1f77bcf86cd799439011';
-
+    it('should return a post by id and increment the view count', async () => {
       // When
-      const result = await service.findOne(id);
+      const result = await service.findOne(POST_ID_HEX);
 
       // Then
-      expect(result).toEqual(mockResponseDto);
+      expect(mockPostModel.findById).toHaveBeenCalledWith(POST_ID_HEX);
+      const query = mockPostModel.findById.mock.results[0].value;
+      expect(query.populate).toHaveBeenCalledWith('mainCategoryId', 'value label');
+      expect(query.populate).toHaveBeenCalledWith('subCategoryId', 'value label');
+
+      // viewed 가 false 이면 조회수를 1 증가시킨다
+      expect(mockPostModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        POST_ID_HEX,
+        { $inc: { viewCount: 1 } },
+        { new: true }
+      );
+
+      // 응답은 조회수를 증가시키기 전에 읽은 문서 기준이다 (viewCount: 0)
+      expect(mockApiClient.getUserNickname).toHaveBeenCalledWith(AUTHOR_EMAIL);
+      expect(result).toEqual(expectedMainCategoryOnlyResponse());
     });
 
     it('should throw NotFoundException for invalid id', async () => {
-      // Given
-      const id = 'invalid-id';
-
       // When & Then
-      await expect(service.findOne(id)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(INVALID_ID)).rejects.toThrow(NotFoundException);
+      expect(mockPostModel.findById).not.toHaveBeenCalled();
     });
 
     it('should not increment view count when viewed is true', async () => {
-      // Given
-      const id = '507f1f77bcf86cd799439011';
-
       // When
-      await service.findOne(id, true);
+      const result = await service.findOne(POST_ID_HEX, true);
 
       // Then
       expect(mockPostModel.findByIdAndUpdate).not.toHaveBeenCalled();
+      expect(result).toEqual(expectedMainCategoryOnlyResponse());
     });
   });
 
   /**
    * 게시글 수정용 조회 테스트
-   * 
+   *
    * @description
    * 게시글 수정을 위한 조회 기능을 테스트합니다.
    * 작성자 권한을 확인하여 본인의 게시글만 조회할 수 있는지 검증합니다.
-   * 
+   *
    * @param {string} id - 조회할 게시글의 ID
    * @param {string} userEmail - 요청자의 이메일
    * @returns {Promise<ResponseDto>} 수정 권한이 확인된 게시글 정보
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
    * @throws {ForbiddenException} 작성자가 아닌 사용자가 접근할 경우
-   * 
+   *
    * @example
    * ```typescript
    * // 정상 케이스 (작성자 본인)
    * const post = await service.findForEdit('507f1f77bcf86cd799439011', 'test@example.com');
-   * 
+   *
    * // 예외 케이스 (다른 사용자)
    * await service.findForEdit('507f1f77bcf86cd799439011', 'other@example.com');
    * ```
@@ -273,77 +360,55 @@ describe('PostsService', () => {
   describe('findForEdit', () => {
     it('should return post for author', async () => {
       // Given
-      const id = '507f1f77bcf86cd799439011';
-      const userEmail = 'test@example.com';
-      
-      mockPostModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({
-          _id: id,
-          authorEmail: userEmail,
-          toObject: () => ({ ...mockResponseDto, authorEmail: userEmail })
-        })
-      });
+      const userEmail = AUTHOR_EMAIL;
+      mockPostModel.findById.mockReturnValue(mockQuery(createPostDocument({ authorEmail: userEmail })));
 
       // When
-      const result = await service.findForEdit(id, userEmail);
+      const result = await service.findForEdit(POST_ID_HEX, userEmail);
 
       // Then
-      expect(mockPostModel.findById).toHaveBeenCalledWith(id);
-      expect(result).toEqual(expect.objectContaining({
-        authorEmail: userEmail
-      }));
+      expect(mockPostModel.findById).toHaveBeenCalledWith(POST_ID_HEX);
+      expect(result).toEqual(expectedMainCategoryOnlyResponse(createPostDocument({ authorEmail: userEmail })));
+      expect(result.authorEmail).toBe(userEmail);
+      // 조회수는 증가시키지 않는다
+      expect(mockPostModel.findByIdAndUpdate).not.toHaveBeenCalled();
     });
 
     it('should throw ForbiddenException when user is not the author', async () => {
       // Given
-      const id = '507f1f77bcf86cd799439011';
       const userEmail = 'other@example.com';
-      const authorEmail = 'test@example.com';
-      
-      mockPostModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({
-          _id: id,
-          authorEmail: authorEmail,
-          toObject: () => ({ ...mockResponseDto, authorEmail: authorEmail })
-        })
-      });
+      const authorEmail = AUTHOR_EMAIL;
+      mockPostModel.findById.mockReturnValue(mockQuery(createPostDocument({ authorEmail })));
 
       // When & Then
-      await expect(service.findForEdit(id, userEmail)).rejects.toThrow(ForbiddenException);
-      await expect(service.findForEdit(id, userEmail)).rejects.toThrow('Only the author can edit this post');
+      await expect(service.findForEdit(POST_ID_HEX, userEmail)).rejects.toThrow(ForbiddenException);
+      await expect(service.findForEdit(POST_ID_HEX, userEmail)).rejects.toThrow('Only the author can edit this post');
     });
 
     it('should throw NotFoundException for invalid id', async () => {
-      // Given
-      const id = 'invalid-id';
-      const userEmail = 'test@example.com';
-
       // When & Then
-      await expect(service.findForEdit(id, userEmail)).rejects.toThrow(NotFoundException);
+      await expect(service.findForEdit(INVALID_ID, AUTHOR_EMAIL)).rejects.toThrow(NotFoundException);
+      expect(mockPostModel.findById).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when post not found', async () => {
       // Given
-      const id = '507f1f77bcf86cd799439011';
-      const userEmail = 'test@example.com';
-      
-      mockPostModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null)
-      });
+      mockPostModel.findById.mockReturnValue(mockQuery(null));
 
       // When & Then
-      await expect(service.findForEdit(id, userEmail)).rejects.toThrow(NotFoundException);
-      await expect(service.findForEdit(id, userEmail)).rejects.toThrow(`Post with ID ${id} not found`);
+      await expect(service.findForEdit(POST_ID_HEX, AUTHOR_EMAIL)).rejects.toThrow(NotFoundException);
+      await expect(service.findForEdit(POST_ID_HEX, AUTHOR_EMAIL)).rejects.toThrow(`Post with ID ${POST_ID_HEX} not found`);
     });
   });
 
   /**
    * 게시글 수정 테스트 (업데이트된 권한 체크 포함)
-   * 
+   *
    * @description
    * 게시글을 수정하고 수정된 정보가 올바른지 검증합니다.
    * 관리자이거나 작성자 본인만 수정할 수 있도록 권한을 검증합니다.
-   * 
+   * 수정 후에는 검색 인덱스 갱신을 fire-and-forget 으로 요청합니다.
+   *
    * @param {string} id - 수정할 게시글의 ID
    * @param {UpdateDto} updateDto - 수정할 게시글 데이터
    * @param {string} userEmail - 요청자의 이메일
@@ -351,7 +416,7 @@ describe('PostsService', () => {
    * @returns {Promise<ResponseDto>} 수정된 게시글 정보
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
    * @throws {ForbiddenException} 수정 권한이 없는 경우
-   * 
+   *
    * @example
    * ```typescript
    * const updateDto = {
@@ -367,10 +432,10 @@ describe('PostsService', () => {
    *     }]
    *   }
    * };
-   * 
+   *
    * // 작성자 본인
    * const updatedPost = await service.update('507f1f77bcf86cd799439011', updateDto, 'test@example.com', 'user');
-   * 
+   *
    * // 관리자
    * const updatedPost = await service.update('507f1f77bcf86cd799439011', updateDto, 'admin@example.com', 'admin');
    * ```
@@ -378,131 +443,122 @@ describe('PostsService', () => {
   describe('update', () => {
     it('should update a post by author', async () => {
       // Given
-      const id = '507f1f77bcf86cd799439011';
-      const userEmail = 'test@example.com';
+      const userEmail = AUTHOR_EMAIL;
       const userRole = 'user';
       const updateDto = MockGenerator.createMock(UpdateDto);
 
-      mockPostModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({
-          _id: id,
-          authorEmail: userEmail
-        })
-      });
+      mockPostModel.findById.mockReturnValue(mockQuery(createPostDocument({ authorEmail: userEmail })));
 
       // When
-      const result = await service.update(id, updateDto, userEmail, userRole);
+      const result = await service.update(POST_ID_HEX, updateDto, userEmail, userRole);
 
       // Then
-      expect(mockPostModel.findById).toHaveBeenCalledWith(id);
-      expect(mockPostModel.findByIdAndUpdate).toHaveBeenCalledWith(id, updateDto, { new: true });
-      expect(result).toEqual(mockResponseDto);
+      expect(mockPostModel.findById).toHaveBeenCalledWith(POST_ID_HEX);
+      expect(mockPostModel.findByIdAndUpdate).toHaveBeenCalledWith(POST_ID_HEX, updateDto, { new: true });
+
+      const query = mockPostModel.findByIdAndUpdate.mock.results[0].value;
+      expect(query.populate).toHaveBeenCalledWith('mainCategoryId', 'value label');
+      expect(query.populate).toHaveBeenCalledWith('subCategoryId', 'value label');
+
+      // 수정 응답도 author 와 mainCategory 만 채운다
+      expect(result).toEqual(expectedMainCategoryOnlyResponse());
+
+      // 검색 인덱스 갱신 (fire-and-forget)
+      expect(indexPost).toHaveBeenCalledTimes(1);
+      expect(indexPost).toHaveBeenCalledWith(expect.objectContaining({
+        post_id: POST_ID_HEX,
+        mainCategory: 'light',
+        subCategory: 'introduction',
+        author: AUTHOR_NICKNAME,
+      }));
     });
 
     it('should update a post by admin', async () => {
       // Given
-      const id = '507f1f77bcf86cd799439011';
       const userEmail = 'admin@example.com';
       const userRole = 'admin';
-      const authorEmail = 'test@example.com';
+      const authorEmail = AUTHOR_EMAIL;
       const updateDto = MockGenerator.createMock(UpdateDto);
 
-      mockPostModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({
-          _id: id,
-          authorEmail: authorEmail
-        })
-      });
+      mockPostModel.findById.mockReturnValue(mockQuery(createPostDocument({ authorEmail })));
 
       // When
-      const result = await service.update(id, updateDto, userEmail, userRole);
+      const result = await service.update(POST_ID_HEX, updateDto, userEmail, userRole);
 
       // Then
-      expect(mockPostModel.findById).toHaveBeenCalledWith(id);
-      expect(mockPostModel.findByIdAndUpdate).toHaveBeenCalledWith(id, updateDto, { new: true });
-      expect(result).toEqual(mockResponseDto);
+      expect(mockPostModel.findById).toHaveBeenCalledWith(POST_ID_HEX);
+      expect(mockPostModel.findByIdAndUpdate).toHaveBeenCalledWith(POST_ID_HEX, updateDto, { new: true });
+      expect(result).toEqual(expectedMainCategoryOnlyResponse());
     });
 
     it('should throw ForbiddenException when user is not author or admin', async () => {
       // Given
-      const id = '507f1f77bcf86cd799439011';
       const userEmail = 'other@example.com';
       const userRole = 'user';
-      const authorEmail = 'test@example.com';
+      const authorEmail = AUTHOR_EMAIL;
       const updateDto = MockGenerator.createMock(UpdateDto);
 
-      mockPostModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({
-          _id: id,
-          authorEmail: authorEmail
-        })
-      });
+      mockPostModel.findById.mockReturnValue(mockQuery(createPostDocument({ authorEmail })));
 
       // When & Then
-      await expect(service.update(id, updateDto, userEmail, userRole)).rejects.toThrow(ForbiddenException);
-      await expect(service.update(id, updateDto, userEmail, userRole)).rejects.toThrow('Only the author or admin can edit this post');
+      await expect(service.update(POST_ID_HEX, updateDto, userEmail, userRole)).rejects.toThrow(ForbiddenException);
+      await expect(service.update(POST_ID_HEX, updateDto, userEmail, userRole)).rejects.toThrow('Only the author or admin can edit this post');
+      expect(mockPostModel.findByIdAndUpdate).not.toHaveBeenCalled();
+      expect(indexPost).not.toHaveBeenCalled();
     });
 
     it('should update a post without user info (backward compatibility)', async () => {
       // Given
-      const id = '507f1f77bcf86cd799439011';
       const updateDto = MockGenerator.createMock(UpdateDto);
 
-      mockPostModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({
-          _id: id,
-          authorEmail: 'test@example.com'
-        })
-      });
+      mockPostModel.findById.mockReturnValue(mockQuery(createPostDocument({ authorEmail: AUTHOR_EMAIL })));
 
       // When
-      const result = await service.update(id, updateDto);
+      const result = await service.update(POST_ID_HEX, updateDto);
 
       // Then
-      expect(mockPostModel.findById).toHaveBeenCalledWith(id);
-      expect(mockPostModel.findByIdAndUpdate).toHaveBeenCalledWith(id, updateDto, { new: true });
-      expect(result).toEqual(mockResponseDto);
+      expect(mockPostModel.findById).toHaveBeenCalledWith(POST_ID_HEX);
+      expect(mockPostModel.findByIdAndUpdate).toHaveBeenCalledWith(POST_ID_HEX, updateDto, { new: true });
+      expect(result).toEqual(expectedMainCategoryOnlyResponse());
     });
 
     it('should throw NotFoundException for invalid id', async () => {
       // Given
-      const id = 'invalid-id';
       const updateDto = MockGenerator.createMock(UpdateDto);
 
       // When & Then
-      await expect(service.update(id, updateDto)).rejects.toThrow(NotFoundException);
+      await expect(service.update(INVALID_ID, updateDto)).rejects.toThrow(NotFoundException);
+      expect(mockPostModel.findById).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when post not found', async () => {
       // Given
-      const id = '507f1f77bcf86cd799439011';
       const updateDto = MockGenerator.createMock(UpdateDto);
 
-      mockPostModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null)
-      });
+      mockPostModel.findById.mockReturnValue(mockQuery(null));
 
       // When & Then
-      await expect(service.update(id, updateDto)).rejects.toThrow(NotFoundException);
-      await expect(service.update(id, updateDto)).rejects.toThrow(`Post with ID ${id} not found`);
+      await expect(service.update(POST_ID_HEX, updateDto)).rejects.toThrow(NotFoundException);
+      await expect(service.update(POST_ID_HEX, updateDto)).rejects.toThrow(`Post with ID ${POST_ID_HEX} not found`);
+      expect(mockPostModel.findByIdAndUpdate).not.toHaveBeenCalled();
     });
   });
 
   /**
    * 게시글 조회수 증가 테스트
-   * 
+   *
    * @description
    * 게시글의 조회수를 증가시키는 기능을 테스트합니다.
-   * 
+   *
    * @param {string} id - 조회수를 증가시킬 게시글의 ID
    * @returns {Promise<void>}
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
-   * 
+   *
    * @example
    * ```typescript
    * // 정상 케이스
    * await service.incrementViewCount('507f1f77bcf86cd799439011');
-   * 
+   *
    * // 예외 케이스
    * await service.incrementViewCount('invalid-id');
    * ```
@@ -510,110 +566,95 @@ describe('PostsService', () => {
   describe('incrementViewCount', () => {
     it('should increment view count of a post', async () => {
       // Given
-      const id = '507f1f77bcf86cd799439011';
-      mockPostModel.findByIdAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({
-          _id: id,
-          viewCount: 1
-        })
-      });
+      mockPostModel.findByIdAndUpdate.mockReturnValue(mockQuery(createPostDocument({ viewCount: 1 })));
 
       // When
-      await service.incrementViewCount(id);
+      await service.incrementViewCount(POST_ID_HEX);
 
       // Then
       expect(mockPostModel.findByIdAndUpdate).toHaveBeenCalledWith(
-        id,
+        POST_ID_HEX,
         { $inc: { viewCount: 1 } },
         { new: true }
       );
     });
 
     it('should throw NotFoundException for invalid id', async () => {
-      // Given
-      const id = 'invalid-id';
-
       // When & Then
-      await expect(service.incrementViewCount(id)).rejects.toThrow(NotFoundException);
+      await expect(service.incrementViewCount(INVALID_ID)).rejects.toThrow(NotFoundException);
+      expect(mockPostModel.findByIdAndUpdate).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when post not found', async () => {
       // Given
-      const id = '507f1f77bcf86cd799439011';
-      mockPostModel.findByIdAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null)
-      });
+      mockPostModel.findByIdAndUpdate.mockReturnValue(mockQuery(null));
 
       // When & Then
-      await expect(service.incrementViewCount(id)).rejects.toThrow(NotFoundException);
+      await expect(service.incrementViewCount(POST_ID_HEX)).rejects.toThrow(NotFoundException);
     });
   });
 
   /**
    * 게시글 삭제 테스트
-   * 
+   *
    * @description
    * 게시글을 삭제하고 삭제 작업이 올바르게 수행되는지 검증합니다.
-   * 
+   * 삭제 후에는 검색 인덱스 삭제를 fire-and-forget 으로 요청합니다.
+   *
    * @param {string} id - 삭제할 게시글의 ID
    * @returns {Promise<void>}
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
-   * 
+   *
    * @example
    * ```typescript
    * // 정상 케이스
    * await service.remove('507f1f77bcf86cd799439011');
-   * 
+   *
    * // 예외 케이스
    * await service.remove('invalid-id');
    * ```
    */
   describe('remove', () => {
     it('should remove a post', async () => {
-      // Given
-      const id = '507f1f77bcf86cd799439011';
-
       // When
-      await service.remove(id);
+      await service.remove(POST_ID_HEX);
 
       // Then
-      expect(mockPostModel.findByIdAndDelete).toHaveBeenCalledWith(id);
+      expect(mockPostModel.findByIdAndDelete).toHaveBeenCalledWith(POST_ID_HEX);
+      expect(deletePostIndex).toHaveBeenCalledWith(POST_ID_HEX);
     });
 
     it('should throw NotFoundException for invalid id', async () => {
-      // Given
-      const id = 'invalid-id';
-
       // When & Then
-      await expect(service.remove(id)).rejects.toThrow(NotFoundException);
+      await expect(service.remove(INVALID_ID)).rejects.toThrow(NotFoundException);
+      expect(mockPostModel.findByIdAndDelete).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when post not found', async () => {
       // Given
-      const id = '507f1f77bcf86cd799439011';
-      mockPostModel.findByIdAndDelete.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null)
-      });
+      mockPostModel.findByIdAndDelete.mockReturnValue(mockQuery(null));
 
       // When & Then
-      await expect(service.remove(id)).rejects.toThrow(NotFoundException);
+      await expect(service.remove(POST_ID_HEX)).rejects.toThrow(NotFoundException);
+      expect(deletePostIndex).not.toHaveBeenCalled();
     });
   });
 
   /**
    * 작성자별 게시글 조회 테스트
-   * 
+   *
    * @description
    * 특정 작성자의 게시글 목록을 조회하고 결과가 올바른지 검증합니다.
-   * 
+   * 이 경로는 메인·서브 카테고리의 value 와 label 을 모두 채웁니다.
+   *
    * @param {string} authorEmail - 작성자의 이메일
    * @returns {Promise<ResponseDto[]>} 작성자의 게시글 목록
-   * 
+   *
    * @example
    * ```typescript
    * // 정상 케이스
    * const posts = await service.findByAuthor('test@example.com');
-   * 
+   *
    * // 존재하지 않는 작성자
    * const posts = await service.findByAuthor('nonexistent@example.com');
    * ```
@@ -621,120 +662,102 @@ describe('PostsService', () => {
   describe('findByAuthor', () => {
     it('should return posts by author', async () => {
       // Given
-      const authorEmail = 'test@example.com';
-      mockPostModel.find.mockReturnValue({
-        exec: jest.fn().mockResolvedValue([{
-          toObject: () => mockResponseDto
-        }])
-      });
+      const authorEmail = AUTHOR_EMAIL;
+      mockPostModel.find.mockReturnValue(mockQuery([createPostDocument({ authorEmail })]));
 
       // When
       const result = await service.findByAuthor(authorEmail);
 
       // Then
       expect(mockPostModel.find).toHaveBeenCalledWith({ authorEmail });
-      expect(result).toEqual([mockResponseDto]);
+      const query = mockPostModel.find.mock.results[0].value;
+      expect(query.populate).toHaveBeenCalledWith('mainCategoryId', 'value label');
+      expect(query.populate).toHaveBeenCalledWith('subCategoryId', 'value label');
+      expect(result).toEqual([expectedEnrichedResponse()]);
     });
 
     it('should return empty array for non-existent author', async () => {
       // Given
       const authorEmail = 'nonexistent@example.com';
-      mockPostModel.find.mockReturnValue({
-        exec: jest.fn().mockResolvedValue([])
-      });
+      mockPostModel.find.mockReturnValue(mockQuery([]));
 
       // When
       const result = await service.findByAuthor(authorEmail);
 
       // Then
       expect(mockPostModel.find).toHaveBeenCalledWith({ authorEmail });
+      expect(mockApiClient.getUserNickname).not.toHaveBeenCalled();
       expect(result).toEqual([]);
     });
   });
 
   /**
    * 게시글 검색 테스트
-   * 
+   *
    * @description
    * 키워드로 게시글을 검색하고 결과가 올바른지 검증합니다.
    * 제목과 내용에서 대소문자 구분 없이 키워드를 검색합니다.
-   * 
+   *
    * @param {string} keyword - 검색할 키워드
    * @returns {Promise<ResponseDto[]>} 검색된 게시글 목록
-   * 
+   *
    * @example
    * ```typescript
    * // 정상 케이스
    * const posts = await service.searchPosts('test');
-   * 
+   *
    * // 검색 결과 없음
    * const posts = await service.searchPosts('nonexistent');
-   * 
+   *
    * // 빈 키워드
    * const posts = await service.searchPosts('');
    * ```
    */
   describe('searchPosts', () => {
+    const keywordFilter = (keyword: string) => ({
+      $or: [
+        { title: { $regex: keyword, $options: 'i' } },
+        { content: { $regex: keyword, $options: 'i' } }
+      ]
+    });
+
     it('should return posts matching keyword', async () => {
       // Given
       const keyword = 'test';
-      mockPostModel.find.mockReturnValue({
-        exec: jest.fn().mockResolvedValue([{
-          toObject: () => mockResponseDto
-        }])
-      });
+      mockPostModel.find.mockReturnValue(mockQuery([createPostDocument()]));
 
       // When
       const result = await service.searchPosts(keyword);
 
       // Then
-      expect(mockPostModel.find).toHaveBeenCalledWith({
-        $or: [
-          { title: { $regex: keyword, $options: 'i' } },
-          { content: { $regex: keyword, $options: 'i' } }
-        ]
-      });
-      expect(result).toEqual([mockResponseDto]);
+      expect(mockPostModel.find).toHaveBeenCalledWith(keywordFilter(keyword));
+      expect(result).toEqual([expectedEnrichedResponse()]);
     });
 
     it('should return empty array for no matches', async () => {
       // Given
       const keyword = 'nonexistent';
-      mockPostModel.find.mockReturnValue({
-        exec: jest.fn().mockResolvedValue([])
-      });
+      mockPostModel.find.mockReturnValue(mockQuery([]));
 
       // When
       const result = await service.searchPosts(keyword);
 
       // Then
-      expect(mockPostModel.find).toHaveBeenCalledWith({
-        $or: [
-          { title: { $regex: keyword, $options: 'i' } },
-          { content: { $regex: keyword, $options: 'i' } }
-        ]
-      });
+      expect(mockPostModel.find).toHaveBeenCalledWith(keywordFilter(keyword));
       expect(result).toEqual([]);
     });
 
     it('should handle empty keyword', async () => {
       // Given
       const keyword = '';
-      mockPostModel.find.mockReturnValue({
-        exec: jest.fn().mockResolvedValue([])
-      });
+      mockPostModel.find.mockReturnValue(mockQuery([]));
 
       // When
       const result = await service.searchPosts(keyword);
 
       // Then
-      expect(mockPostModel.find).toHaveBeenCalledWith({
-        $or: [
-          { title: { $regex: keyword, $options: 'i' } },
-          { content: { $regex: keyword, $options: 'i' } }
-        ]
-      });
+      expect(mockPostModel.find).toHaveBeenCalledWith(keywordFilter(keyword));
       expect(result).toEqual([]);
     });
   });
-}); 
+});
