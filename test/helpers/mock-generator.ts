@@ -2,7 +2,13 @@ import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { faker } from '@faker-js/faker/locale/ko';
 import { CreateDto, UpdateDto, ResponseDto } from '../../src/modules/post/DTO';
-import { Types } from 'mongoose';
+import {
+  MAIN_CATEGORY_ID,
+  POST_ID,
+  SUB_CATEGORY_ID,
+  populatedMainCategory,
+  populatedSubCategory,
+} from './test-utils';
 
 export class MockGenerator {
   /**
@@ -35,7 +41,7 @@ export class MockGenerator {
     // ResponseDto인 경우 특별한 처리
     if (dto instanceof ResponseDto) {
       return {
-        _id: new Types.ObjectId('507f1f77bcf86cd799439011'),
+        _id: POST_ID,
         title: faker.lorem.sentence().slice(0, 100),
         content: {
           type: 'doc',
@@ -47,10 +53,14 @@ export class MockGenerator {
             }]
           }]
         },
-        mainCategory: 'light',
+        mainCategoryId: MAIN_CATEGORY_ID,
+        mainCategory: populatedMainCategory.value,
+        mainCategoryLabel: populatedMainCategory.label,
+        subCategoryId: SUB_CATEGORY_ID,
+        subCategory: populatedSubCategory.value,
+        subCategoryLabel: populatedSubCategory.label,
         description: faker.lorem.paragraph().slice(0, 500),
         tags: [faker.lorem.word(), faker.lorem.word()],
-        subCategory: 'introduction',
         topic: faker.lorem.sentence().slice(0, 200),
         language: 'ko',
         thumbnail: 'thumbnail.jpg',
@@ -63,7 +73,7 @@ export class MockGenerator {
       } as T;
     }
     
-    // CreateDto인 경우 특별한 처리
+    // CreateDto인 경우 특별한 처리 (mainCategoryId / subCategoryId 는 @IsMongoId 검증을 통과해야 한다)
     if (dto instanceof CreateDto) {
       return {
         title: faker.lorem.sentence().slice(0, 100),
@@ -77,10 +87,10 @@ export class MockGenerator {
             }]
           }]
         },
-        mainCategory: 'light',
+        mainCategoryId: MAIN_CATEGORY_ID.toHexString(),
+        subCategoryId: SUB_CATEGORY_ID.toHexString(),
         description: faker.lorem.paragraph().slice(0, 500),
         tags: [faker.lorem.word(), faker.lorem.word()],
-        subCategory: 'introduction',
         topic: faker.lorem.sentence().slice(0, 200),
         language: 'ko',
         thumbnail: 'thumbnail.jpg'
@@ -101,10 +111,10 @@ export class MockGenerator {
             }]
           }]
         },
-        mainCategory: 'light',
+        mainCategoryId: MAIN_CATEGORY_ID.toHexString(),
+        subCategoryId: SUB_CATEGORY_ID.toHexString(),
         description: faker.lorem.paragraph().slice(0, 500),
         tags: [faker.lorem.word(), faker.lorem.word()],
-        subCategory: 'introduction',
         topic: faker.lorem.sentence().slice(0, 200),
         thumbnail: faker.image.url(),
         language: 'ko'
@@ -143,12 +153,16 @@ export class MockGenerator {
                 }]
               }]
             };
+          case 'mainCategoryId':
+            return MAIN_CATEGORY_ID.toHexString();
+          case 'subCategoryId':
+            return SUB_CATEGORY_ID.toHexString();
           case 'mainCategory':
-            return 'light';
+            return populatedMainCategory.value;
+          case 'subCategory':
+            return populatedSubCategory.value;
           case 'description':
             return faker.lorem.paragraph().slice(0, 500);
-          case 'subCategory':
-            return 'introduction';
           case 'topic':
             return faker.lorem.sentence().slice(0, 200);
           case 'language':
