@@ -2,32 +2,31 @@
 
 ## 개발 환경
 ### 버전 정보
-- NestJS: 11.0.0
-- TypeScript: 5.1.3
-- Node.js: >=20.0.0
-- Mongoose: 8.11.0
+- NestJS: 12.2.0
+- TypeScript: 6.0.x
+- Node.js: >=26.0.0
+- Mongoose: 7.8.x
 
 ### 주요 의존성
 #### NestJS 핵심 모듈
-- @nestjs/common: ^11.0.0
-- @nestjs/core: ^11.0.0
-- @nestjs/platform-express: ^11.0.0
-- @nestjs/mongoose: ^11.0.1
-- @nestjs/swagger: ^11.0.3
+- @nestjs/common: ^12.2.0
+- @nestjs/core: ^12.2.0
+- @nestjs/platform-express: ^12.2.0
+- @nestjs/mongoose: ^12.0.0
+- @nestjs/swagger: ^12.0.2
 
 #### 보안 관련
-- @nestjs/passport: ^11.0.0
-- @nestjs/jwt: ^11.0.0
+- @nestjs/passport: ^12.0.0
+- @nestjs/jwt: ^12.0.3
 - passport: ^0.7.0
 - passport-jwt: ^4.0.1
 
 #### 데이터베이스
-- mongoose: ^8.11.0
-- @nestjs/typeorm: ^11.0.0 (보조)
+- mongoose: ^7.6.0
+- @nestjs/typeorm: ^12.0.2 (보조)
 - sqlite3: ^5.1.7 (테스트용)
 
 #### 유틸리티
-- nestjs-paginate: ^11.0.0
 - rxjs: ^7.8.1
 - reflect-metadata: ^0.2.0
 
@@ -36,22 +35,22 @@
 - express-basic-auth: ^1.2.1
 
 #### API 통신
-- @nestjs/axios: ^4.0.0
+- @nestjs/axios: ^12.0.1
 
 #### 개발 도구
-- @nestjs/cli: ^11.0.0
-- @nestjs/schematics: ^11.0.0
+- @nestjs/cli: ^12.0.10
+- @nestjs/schematics: ^12.0.10
 - prettier: ^3.0.0
 - eslint: ^8.42.0
 
 #### 테스트
-- @nestjs/testing: ^11.0.0
-- jest: ^29.5.0
+- @nestjs/testing: ^12.2.0
+- jest: ^30.5.2
 - supertest: ^7.0.0
 
 #### 문서화
-- typedoc: ^0.27.9
-- typedoc-material-theme: ^1.3.0
+- typedoc: ^0.28.20
+- typedoc-material-theme: ^1.4.1
 
 ### 개발 환경 (dev)
 #### 데이터베이스

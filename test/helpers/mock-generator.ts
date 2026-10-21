@@ -1,7 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { faker } from '@faker-js/faker/locale/ko';
-import { CreateDto, UpdateDto, ResponseDto } from '../../src/modules/post/dto';
+import { CreateDto, UpdateDto, ResponseDto } from '../../src/modules/post/DTO';
 import { Types } from 'mongoose';
 
 export class MockGenerator {

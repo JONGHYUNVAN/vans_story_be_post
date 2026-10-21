@@ -3,7 +3,7 @@ process.env.JWT_SECRET = 'dGVzdF9zZWNyZXRfa2V5'; // base64 encoded 'test_secret_
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../../../src/app.module';
 import { CreateDto } from '../../../src/modules/post/DTO';
 import { MockAuthModule } from '../../helpers/mock.module';

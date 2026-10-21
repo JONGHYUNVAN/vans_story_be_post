@@ -16,6 +16,7 @@ import { Post, PostSchema } from '../schemas/post.schema';
 import { InternalApiClient } from '../../../utils/Api/api';
 import { PostInitService } from '../../../database/init/post.init';
 import { Category, CategorySchema } from '../../category/schemas/category.schema';
+import { AuthModule } from '../../../utils/Authorization/Module/module';
 
 /**
  * 게시글 기능 모듈
@@ -29,7 +30,9 @@ import { Category, CategorySchema } from '../../category/schemas/category.schema
       { name: Post.name, schema: PostSchema },
       { name: Category.name, schema: CategorySchema }
     ]),
-    HttpModule
+    HttpModule,
+    // Nest 12: 가드(JwtAuthGuard)의 의존성(JwtService)은 가드를 사용하는 모듈 안에서 해석되므로 AuthModule을 명시적으로 import
+    AuthModule
   ],
   controllers: [PostsController],
   providers: [

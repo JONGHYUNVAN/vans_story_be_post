@@ -20,11 +20,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { PostsService } from '../../../src/modules/post/Service/service';
 import { Post } from '../../../src/modules/post/schemas/post.schema';
+import { Category } from '../../../src/modules/category/schemas/category.schema';
 import { InternalApiClient } from '../../../src/utils/Api/api';
 import { createMockPostModel, createMockApiClient } from '../../helpers/test-utils';
 import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { MockGenerator } from '../../helpers/mock-generator';
-import { CreateDto, UpdateDto, ResponseDto } from '../../../src/modules/post/dto';
+import { CreateDto, UpdateDto, ResponseDto } from '../../../src/modules/post/DTO';
 import { Types } from 'mongoose';
 
 describe('PostsService', () => {
@@ -61,7 +62,7 @@ describe('PostsService', () => {
       updatedAt: '2025-11-01T00:00:00.000Z',
       viewCount: 0,
       likeCount: 0
-    } as ResponseDto;
+    } as unknown as ResponseDto;
 
     mockPostModel = createMockPostModel();
     mockApiClient = createMockApiClient();
@@ -72,6 +73,10 @@ describe('PostsService', () => {
         {
           provide: getModelToken(Post.name),
           useValue: mockPostModel,
+        },
+        {
+          provide: getModelToken(Category.name),
+          useValue: { findOne: jest.fn(), findById: jest.fn(), find: jest.fn() },
         },
         {
           provide: InternalApiClient,

@@ -12,6 +12,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { CategoryService } from '../service/category.service';
 import { CategoryController } from '../controller/category.controller';
 import { Category, CategorySchema } from '../schemas/category.schema';
+import { AuthModule } from '../../../utils/Authorization/Module/module';
 
 /**
  * 카테고리 모듈 클래스
@@ -25,7 +26,9 @@ import { Category, CategorySchema } from '../schemas/category.schema';
   imports: [
     MongooseModule.forFeature([
       { name: Category.name, schema: CategorySchema }
-    ])
+    ]),
+    // Nest 12: 가드(JwtAuthGuard)의 의존성(JwtService)은 가드를 사용하는 모듈 안에서 해석되므로 AuthModule을 명시적으로 import
+    AuthModule
   ],
   controllers: [CategoryController],
   providers: [CategoryService],

@@ -1,7 +1,7 @@
 import { Model } from 'mongoose';
 import { Post, PostDocument } from '../../src/modules/post/schemas/post.schema';
 import { MockGenerator } from './mock-generator';
-import { ResponseDto } from '../../src/modules/post/dto';
+import { ResponseDto } from '../../src/modules/post/DTO';
 import { Types } from 'mongoose';
 
 // 고정된 Mock 응답 생성
@@ -32,7 +32,7 @@ const createFixedMockResponse = (): ResponseDto => {
     updatedAt: '2025-11-01T00:00:00.000Z',
     viewCount: 0,
     likeCount: 0
-  } as ResponseDto;
+  } as unknown as ResponseDto;
 };
 
 export const createMockPostModel = () => {
