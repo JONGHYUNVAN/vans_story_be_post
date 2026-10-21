@@ -7,7 +7,7 @@
  * @module middleware/swagger.auth.middleware
  */
 
-import { Injectable, NestMiddleware } from '@nestjs/common';
+import { Injectable, Logger, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -41,6 +41,8 @@ interface CustomRequest extends Request {
  */
 @Injectable()
 export class SwaggerAuthMiddleware implements NestMiddleware {
+  private readonly logger = new Logger(SwaggerAuthMiddleware.name);
+
   /**
    * 미들웨어 처리 함수
    * 
@@ -54,34 +56,29 @@ export class SwaggerAuthMiddleware implements NestMiddleware {
    * @param {NextFunction} next - 다음 미들웨어 실행 함수
    * @returns {void}
    */
-  use(req: CustomRequest, res: Response, next: NextFunction) {
-    console.log('Request path:', req.path);
-    console.log('Request method:', req.method);
-
+  use = (req: CustomRequest, res: Response, next: NextFunction) => {
     // API 문서 페이지가 아닌 경우 통과
     if (!req.path.startsWith('/api/posts/swagger')) {
       return next();
     }
 
-    // 인증 요청 처리 (먼저 체크)
+    // 인증 요청 처리 (먼저 체크). 비밀번호(입력값·기대값)는 어떤 로그에도 남기지 않는다.
     if (req.path === '/api/posts/swagger/auth' && req.method === 'POST') {
-      console.log('Auth request received');
       const { password } = req.body;
-      console.log('Password received:', password);
-      console.log('Expected password:', process.env.SWAGGER_ADMIN_PASSWORD);
-      
-      if (password === process.env.SWAGGER_ADMIN_PASSWORD) {
+      const expected = process.env.SWAGGER_ADMIN_PASSWORD;
+
+      if (expected && password === expected) {
         req.session.swaggerAuthorized = true;
         req.session.save((err) => {
           if (err) {
-            console.error('Session save error:', err);
+            this.logger.error('Session save error', err);
             return res.status(500).json({ message: '세션 저장 실패' });
           }
-          console.log('Auth successful');
+          this.logger.log('Swagger auth successful');
           return res.json({ authorized: true });
         });
       } else {
-        console.log('Auth failed');
+        this.logger.warn('Swagger auth failed');
         return res.status(401).json({ message: '인증 실패' });
       }
       return;
@@ -103,5 +100,5 @@ export class SwaggerAuthMiddleware implements NestMiddleware {
     }
 
     return res.status(401).json({ message: '인증이 필요합니다' });
-  }
-} 
+  };
+}

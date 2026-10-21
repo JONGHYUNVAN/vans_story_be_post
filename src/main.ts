@@ -76,9 +76,9 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/posts/swagger', app, document);
 
-  // 서버 시작
-  await app.listen(3001);
+  // 서버 시작 (PORT 미설정 시 3001)
+  const port = Number(process.env.PORT) || 3001;
+  await app.listen(port);
   logger.log(`Application is running on: ${await app.getUrl()}`);
-  logger.log(`MongoDB URI: ${process.env.MONGODB_URI}`);
 }
 bootstrap();

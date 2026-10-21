@@ -3,8 +3,12 @@
 /node_modules
 /build
 
-# Documentation
-/docs
+# Documentation (생성물만. docs/*.md 와 docs/swagger 는 추적)
+/docs/typedoc
+
+# Claude Code 로컬 설정
+CLAUDE.local.md
+.claude/settings.local.json
 
 # Logs
 logs

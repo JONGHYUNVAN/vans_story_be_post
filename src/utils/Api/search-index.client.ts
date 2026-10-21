@@ -7,6 +7,8 @@
  * @module utils/Api/search-index.client
  */
 
+import { Logger } from '@nestjs/common';
+
 export interface SearchIndexPayload {
   /** MongoDB _id as string */
   post_id: string;
@@ -28,7 +30,13 @@ export interface SearchIndexPayload {
   updatedAt: string;
 }
 
-const INTERNAL_KEY = 'vansdevbloguserinternalapikey1234567890!';
+const logger = new Logger('SearchIndex');
+
+/**
+ * Django 검색 서비스가 `X-Internal-Key`로 검증하는 키.
+ * 사용자 서비스와 같은 `INTERNAL_API_KEY`를 공유한다. 호출 시점에 읽는다(dotenv 호이스팅 때문에 모듈 최상단에서 읽지 않는다).
+ */
+const internalKey = (): string => process.env.INTERNAL_API_KEY ?? '';
 
 /**
  * Django 검색 서비스에 게시물을 인덱싱(upsert)합니다.
@@ -37,7 +45,7 @@ const INTERNAL_KEY = 'vansdevbloguserinternalapikey1234567890!';
 export async function indexPost(payload: SearchIndexPayload): Promise<void> {
   const searchServiceUrl = process.env.SEARCH_SERVICE_URL;
   if (!searchServiceUrl) {
-    console.warn('[SearchIndex] SEARCH_SERVICE_URL is not set — skipping index.');
+    logger.warn('SEARCH_SERVICE_URL is not set — skipping index.');
     return;
   }
 
@@ -49,7 +57,7 @@ export async function indexPost(payload: SearchIndexPayload): Promise<void> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Internal-Key': INTERNAL_KEY,
+        'X-Internal-Key': internalKey(),
       },
       body: JSON.stringify(payload),
       signal: controller.signal,
@@ -57,7 +65,7 @@ export async function indexPost(payload: SearchIndexPayload): Promise<void> {
 
     clearTimeout(timeoutId);
   } catch (err) {
-    console.warn('[SearchIndex] Failed to index post:', (err as Error).message);
+    logger.warn(`Failed to index post: ${(err as Error).message}`);
   }
 }
 
@@ -68,7 +76,7 @@ export async function indexPost(payload: SearchIndexPayload): Promise<void> {
 export async function deletePostIndex(postId: string): Promise<void> {
   const searchServiceUrl = process.env.SEARCH_SERVICE_URL;
   if (!searchServiceUrl) {
-    console.warn('[SearchIndex] SEARCH_SERVICE_URL is not set — skipping delete.');
+    logger.warn('SEARCH_SERVICE_URL is not set — skipping delete.');
     return;
   }
 
@@ -79,13 +87,13 @@ export async function deletePostIndex(postId: string): Promise<void> {
     await fetch(`${searchServiceUrl}/api/internal/search/index/${postId}/`, {
       method: 'DELETE',
       headers: {
-        'X-Internal-Key': INTERNAL_KEY,
+        'X-Internal-Key': internalKey(),
       },
       signal: controller.signal,
     });
 
     clearTimeout(timeoutId);
   } catch (err) {
-    console.warn('[SearchIndex] Failed to delete post index:', (err as Error).message);
+    logger.warn(`Failed to delete post index: ${(err as Error).message}`);
   }
 }
