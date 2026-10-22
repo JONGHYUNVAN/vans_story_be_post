@@ -94,7 +94,8 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 - [ ] `ts-node`, `tsconfig-paths`는 `.vscode/launch.json`의 "Debug Nest Framework" 설정만 쓴다. 그 설정을 안 쓰면 설정과 함께 제거 (이 설정은 `.env`를 읽어 운영 DB에 붙는다)
 - [x] 범위 내 갱신(`npm update`) + `@nestjs/axios`의 peer `axios`를 `^1.20.0`으로 명시(그전엔 npm이 자동 설치한 1.8.3). mongoose 7.8.7→7.8.12(high `$nor` 인젝션 수정), express-session 1.19.0 등. `npm audit` 38건(critical 1, high 11) → 21건(critical 0, high 1), `--omit=dev` 0건 (2026-10-22)
 - [ ] 남은 audit 21건은 모두 dev: `@faker-js/faker` high(10으로 메이저, ESM 전용 — CLAUDE.md 함정 2와 충돌하므로 결정 필요)와 jest 체인 moderate 20건(`babel-plugin-istanbul` → `@istanbuljs/load-nyc-config` → `js-yaml@3`. audit이 제안하는 `jest@25`는 다운그레이드라 무시, 고치려면 `overrides`)
-- [ ] 작은 메이저: `class-validator` 0.15(`@IsIBAN`·`@IsUUID` 변경, 이 코드는 안 씀), `@types/supertest` 7, `dotenv` 17(기본 안내 로그 — 직접 의존성 제거가 먼저면 생략)
+- [x] 작은 메이저: `class-validator` 0.14.4 → 0.15.1(유일한 breaking은 `@IsIBAN` 옵션 인자 — 이 코드는 안 씀. `ValidationPipe`가 빌드된 `CreatePostDto`로 정상·거부 케이스를 그대로 처리함을 확인), `@types/supertest` 6 → 7 (2026-10-22)
+- [ ] `dotenv` 17 — 직접 의존성 제거(설정·구조 절)가 먼저면 생략
 - [ ] eslint 8(EOL) → 10 + `eslint-config-prettier` 10: `.eslintrc.js`를 flat config로 전환. CRLF 정리와 함께
 - [ ] mongoose 7은 EOL. 8/9 마이그레이션은 단위 테스트 통과를 조건으로 별도 작업
 
