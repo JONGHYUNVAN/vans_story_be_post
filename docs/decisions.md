@@ -11,7 +11,7 @@
 
 1. **import 경로는 `src/...` 절대경로** — tsconfig `paths`와 jest `moduleNameMapper`가 이미 지원하고, Nest CLI가 빌드 시 경로를 재작성한다. 대소문자가 섞인 폴더에서 `../../../` 체인보다 읽기 쉽다. 기존 상대경로는 손대는 파일에서만 바꾼다. 대안: Nest 스캐폴딩 기본인 상대경로.
 2. **줄바꿈은 LF** — `.editorconfig`와 `.prettierrc`(`endOfLine: lf`)로 선언. `.gitattributes`에 `*.ts text eol=lf` 추가와 `git add --renormalize .`는 전체 파일이 바뀌는 커밋이라 별도 커밋으로 미룬다. 대안: `endOfLine: auto`(문제를 덮는다).
-3. **환경 변수는 당분간 `process.env` 직접 읽기** — 단, 모듈 최상단이 아닌 생성자·팩토리·함수 안에서 읽고 필수값 누락 시 기동 실패. `@nestjs/config` + 스키마 검증은 문서 작업 범위를 넘어 별도 작업(`TODO.md` 3절).
+3. **환경 변수는 당분간 `process.env` 직접 읽기** — 단, 모듈 최상단이 아닌 생성자·팩토리·함수 안에서 읽고 필수값 누락 시 기동 실패. `@nestjs/config` + 스키마 검증은 문서 작업 범위를 넘어 별도 작업(`TODO.md` 3절). → 같은 날 아래 "`@nestjs/config` 도입"으로 대체.
 4. **명명은 새 파일만 Nest 표준** (`<feature>.<layer>.ts`, 소문자 폴더). 기존 post 모듈·utils의 PascalCase 폴더는 `forceConsistentCasingInFileNames: true` 복구와 함께 별도 작업으로 전환. Windows에서 대소문자만 바꾸는 리네임은 `git mv` 두 단계가 필요하다.
 
 ### CommonJS 출력 유지
@@ -45,6 +45,13 @@
 
 ### 미사용 의존성 제거, TypeORM도 미리 두지 않음
 
-- 무엇: `typeorm`, `@nestjs/typeorm`, `sqlite3`, `swagger-ui-express`, `@types/swagger-ui-express`, `express-basic-auth`, `@nestia/sdk`(+ tsconfig `plugins`), `@types/mongodb`, `source-map-support` 제거와 `db.sqlite` 삭제. `class-validator`·`class-transformer`·`dotenv`는 dependencies로, `@types/express-session`은 devDependencies로 옮겼다(설치 버전 유지 — npm이 `dotenv`를 16.6으로 올리면 `config()`가 기본으로 안내 로그를 찍는다). `ts-node`·`tsconfig-paths`는 VS Code 디버그 설정이 쓰므로 남겼다.
+- 무엇: `typeorm`, `@nestjs/typeorm`, `sqlite3`, `swagger-ui-express`, `@types/swagger-ui-express`, `express-basic-auth`, `@nestia/sdk`(+ tsconfig `plugins`), `@types/mongodb`, `source-map-support` 제거와 `db.sqlite` 삭제. `class-validator`·`class-transformer`·`dotenv`는 dependencies로, `@types/express-session`은 devDependencies로 옮겼다(설치 버전 유지. 정정: 당시 "16.6은 `config()`가 안내 로그를 찍는다"고 적었으나 로그는 16.6.0과 17.x 이상만 찍고 16.6.1은 `quiet` 기본값이 true다). `ts-node`·`tsconfig-paths`는 VS Code 디버그 설정이 쓰므로 남겼다.
 - 왜: knip·depcheck 결과와 `npm ls`·설정 파일 수동 확인이 일치했다. 쓰지 않는 패키지는 Dependabot 경고와 네이티브 빌드(`sqlite3` node-gyp)만 늘린다. MariaDB 도입 계획이 있지만 TypeORM이 필요하면 그때 최신 버전으로 `@nestjs/typeorm typeorm mysql2`를 추가하면 되고, `sqlite3`는 MariaDB와 무관하다.
 - 대안: TypeORM을 MariaDB 도입까지 유지 — 설치 한 줄로 복구되는 것을 미리 둘 이유가 없다. ORM 선택(TypeORM/Prisma/MikroORM 등)도 도입 시점에 정한다.
+
+### `@nestjs/config` 도입
+
+- 무엇: `@nestjs/config` 12.0.1 추가. `AppModule`에 `ConfigModule.forRoot({ isGlobal: true })`, `MongooseModule.forRoot(process.env…)` → `forRootAsync` + `ConfigService.getOrThrow('MONGODB_URI')`, `JwtModule.register` → `registerAsync` + `getOrThrow('JWT_SECRET')`. `main.ts`는 `app.get(ConfigService)`로 읽는다. `dotenv.config()` 호출(`main.ts`, `app.module.ts`) 제거. 스키마 검증과 나머지 `process.env` 읽기 전환은 후속(`TODO.md` 3절).
+- 왜: Nest 표준 방식. 데코레이터 인자에서 `process.env`를 읽으면 `.env` 로드 순서에 기대게 된다 — 실제로 `AuthModule`의 `JwtModule.register`는 `app.module.ts`의 `dotenv.config()`보다 먼저 평가돼 `main.ts`의 호출에만 의존하고 있었다. 팩토리로 옮기면 순서와 무관하고, 필수값 누락이 `Configuration key "…" does not exist`로 기동 시 드러난다. `forRoot`는 schema 없이 쓰면 `.env`를 동기로 읽어 `process.env`에 덮어쓰지 않고 채우므로(기존 `dotenv.config()`와 같음) 아직 `process.env`를 직접 읽는 코드도 그대로 동작한다. 내부적으로 `dotenv.parse`만 써서 안내 로그도 없다.
+- 대안: `import 'dotenv/config'`를 `main.ts` 첫 줄에 두고 나머지 `config()` 삭제 — 가장 작은 수정이지만 데코레이터 평가 순서 의존이 남고, 테스트처럼 `main.ts`를 거치지 않는 경로는 따로 챙겨야 한다.
+- 함께 고침: 이 작업을 검증하다가 `bootstrap.spec.ts`의 `overrideModule(MongooseModule)`이 무효이고 테스트가 운영 Atlas에 연결해 왔음을 발견. `withFakeMongoose`로 교체(CLAUDE.md 함정 8).

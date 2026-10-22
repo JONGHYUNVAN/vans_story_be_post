@@ -66,7 +66,7 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 |---|---|---|---|---|
 | 1 | import 경로 | 상대경로와 `src/...` 절대경로가 같은 파일 안에서도 혼재 | `src/...` 절대경로로 통일. 근거: tsconfig `paths`와 jest `moduleNameMapper`가 이미 지원, Nest CLI가 빌드 시 경로를 재작성, 파일 이동 시 수정 범위가 작음, 대소문자 혼재 폴더에서 `../` 체인보다 읽기 쉬움 | 상대경로(Nest 기본 스캐폴딩 방식) |
 | 2 | 줄바꿈 | `.gitattributes`는 `* text=auto`뿐. Windows autocrlf 체크아웃이라 `npm run lint`가 prettier `Delete ␍` 오류를 수천 건 냄 | `.editorconfig` `end_of_line = lf` + `.gitattributes`에 `*.ts text eol=lf` 등 추가 + `.prettierrc`에 `"endOfLine": "lf"` 명시. 적용 후 `git add --renormalize .` | `.prettierrc`에 `"endOfLine": "auto"`(빠르지만 문제를 덮음) |
-| 3 | 환경 변수 접근 | `@nestjs/config` 없음. `dotenv.config()`가 `main.ts`, `app.module.ts`, `config/database.ts` 3곳에서 호출, `process.env` 직접 읽기 9개 파일 | 단기: 새 코드는 `process.env`를 모듈 최상단이 아닌 생성자·팩토리 안에서 읽고, 필수값 누락 시 기동 실패시킨다. 장기: `@nestjs/config` + 스키마 검증 도입(3절, 함정 2의 dotenv 호이스팅 문제도 함께 해소) | 지금 바로 `@nestjs/config` 도입(문서 작업 범위를 넘음) |
+| 3 | 환경 변수 접근 | **2026-10-22 `@nestjs/config` 도입으로 장기안 착수(3절 설정·구조).** 이하는 도입 전 상태: `@nestjs/config` 없음. `dotenv.config()`가 `main.ts`, `app.module.ts`, `config/database.ts` 3곳에서 호출, `process.env` 직접 읽기 9개 파일 | 단기: 새 코드는 `process.env`를 모듈 최상단이 아닌 생성자·팩토리 안에서 읽고, 필수값 누락 시 기동 실패시킨다. 장기: `@nestjs/config` + 스키마 검증 도입(3절, 함정 2의 dotenv 호이스팅 문제도 함께 해소) | 지금 바로 `@nestjs/config` 도입(문서 작업 범위를 넘음) |
 | 4 | 명명 전환 시점 | post 모듈: PascalCase 폴더 + 일반 명사 파일명(`Controller/controller.ts`). category 모듈: Nest 표준(`controller/category.controller.ts`). utils: 혼재 | 새 코드는 Nest 표준(소문자 폴더, `<feature>.<layer>.ts`). 기존 파일 전환은 별도 작업으로, `forceConsistentCasingInFileNames: true` 복구와 함께 진행. Windows에서 대소문자만 바꾸는 리네임은 `git mv` 두 단계 필요 | 문서 작업과 동시에 전환(리뷰 범위가 커짐) |
 
 ---
@@ -99,7 +99,10 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 - [ ] `src/config/{cors,database,swagger}.ts`는 어디서도 import하지 않는 죽은 코드. 삭제하거나 `main.ts`의 인라인 설정을 이쪽으로 옮기거나 둘 중 하나로 결정
 - [x] `src/main.ts` `app.listen(3001)` 하드코딩 → `PORT` 환경 변수, 기본 3001 (2026-10-22)
 - [ ] `package.json`의 `migrate:schema`, `migrate:categories` 스크립트가 가리키는 `scripts/migrate-*.js`가 없다. 스크립트 항목 삭제
-- [ ] `@nestjs/config` 도입 + 기동 시 환경 변수 스키마 검증(2절 결정 3 장기안)
+- [x] `@nestjs/config` 도입 — `ConfigModule.forRoot({ isGlobal: true })`, `MongooseModule.forRootAsync`, `JwtModule.registerAsync`, `main.ts`는 `ConfigService`. `dotenv.config()` 호출 제거(`main.ts`, `app.module.ts`) (2026-10-22)
+- [ ] 기동 시 환경 변수 스키마 검증 — `ConfigModule.forRoot({ validationSchema })`(Standard Schema: zod 등) 또는 `validate` 함수
+- [ ] 남은 `process.env` 직접 읽기를 `ConfigService`로: `JwtStrategy`, `InternalApiClient`(`utils/Api/api.ts`), `search-index.client.ts`(함수라 주입 불가 — 서비스로 바꾸거나 인자로 받기), `SwaggerAuthMiddleware`
+- [ ] 직접 의존성 `dotenv` 제거 — `src/config/database.ts`(죽은 코드)와 `test/test-setup.ts`(어디서도 import하지 않음)만 쓴다. 둘을 정리한 뒤 `npm uninstall dotenv` (`@nestjs/config`가 자체 dotenv를 가진다)
 - [ ] `npm start`의 `NODE_OPTIONS='--max-old-space-size=512'`는 POSIX 문법이라 Windows 셸에서 실패. `cross-env` 또는 스크립트 분리
 - [ ] 명명 통일 전환(2절 결정 4) + `forceConsistentCasingInFileNames: true` 복구
 

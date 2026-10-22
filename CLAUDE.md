@@ -47,7 +47,7 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
 
 ## 코딩 규칙
 
-- **환경 변수**: `process.env`는 생성자·팩토리·함수 안에서 읽는다. 모듈 최상단 상수로 읽지 않는다 (함정 5). 필수값이 없으면 기동 시 `throw`한다 (`InternalApiClient` 방식). 새 변수는 `.env.example`에 이름을 추가한다.
+- **환경 변수**: `.env`는 `AppModule`의 `ConfigModule.forRoot({ isGlobal: true })`가 읽는다. `dotenv.config()`를 새로 부르지 않는다. 새 코드는 `ConfigService`를 주입받아 읽고, 필수값은 `getOrThrow()`로 기동 시 실패시킨다. 모듈 설정은 `forRootAsync`/`registerAsync` + `inject: [ConfigService]`로 쓴다 — 데코레이터 인자에서 `process.env`를 읽지 않는다 (함정 5). 기존 `process.env` 직접 읽기(생성자·함수 안)는 동작하지만 손대는 김에 바꾼다. 새 변수는 `.env.example`에 이름을 추가한다.
 - **로깅**: `@nestjs/common`의 `Logger` (`new Logger(ClassName.name)`). `console.*` 금지. URI·토큰·비밀번호·API 키는 어떤 레벨에도 찍지 않는다.
 - **`any`**: 새로 쓰지 않는다. `noImplicitAny: false`라 컴파일러가 잡지 않는다. populate 결과는 `test/helpers/test-utils.ts`의 `PopulatedCategoryRef`처럼 타입을 선언한다.
 - **JSDoc**: 공개 클래스·메서드에 한국어 JSDoc (typedoc 생성 대상). 요청/응답 예시는 Swagger 데코레이터에 두고 JSDoc에 중복하지 않는다.
@@ -74,7 +74,7 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
 3. **TypeScript `~6.0.x` 고정**: 7.x로 올리지 않는다. 스키마·DTO는 `strictPropertyInitialization`이 꺼진 상태를 전제로 작성되어 있다.
 4. **Node 24.9 이상에서만 테스트가 돈다**: Nest 12 패키지가 ESM이라 jest가 `require(esm)`을 쓴다. Node 23 이하에서는 `npm test`의 모든 스위트가 "Must use import to load ES Module"로 실패한다 — 코드 문제가 아니다. `node -v`로 먼저 확인하고, 없으면 `nvm install 26` 후 `nvm use 26`. `npx tsc --noEmit`은 23에서도 된다. `engines.node >= 26`은 바꾸지 않는다.
    Windows에서 `npm`이 띄우는 `cmd.exe`가 `node`를 못 찾으면(`'node'은(는) … 아닙니다`) PATH 앞에 `C:\Users\<user>\AppData\Roaming\nvm\v<버전>`을 넣고 다시 실행한다. `npm ci`가 이 이유로 실패하면 exit code는 0이 아니니 `| tail`로 가리지 말 것.
-5. **dotenv 호이스팅**: `import`가 호이스팅되므로 `main.ts`의 `dotenv.config()`보다 `app.module.ts`의 데코레이터(`MongooseModule.forRoot(process.env.MONGODB_URI!)`)가 먼저 평가된다. 그래서 `app.module.ts`에도 `dotenv.config()`가 있다. `@nestjs/config` 도입 전까지 지우지 않는다.
+5. **데코레이터 인자는 import 시점에 평가된다**: `@Module({ imports: [X.register({ secret: process.env.Y })] })`의 인자는 그 파일이 `require`될 때 계산된다. `ConfigModule.forRoot()`가 `.env`를 읽는 것은 `app.module.ts`가 평가될 때인데, `app.module.ts`가 import하는 모듈(`AuthModule` 등)은 그보다 먼저 평가되므로 `.env` 값을 보지 못한다. 그래서 `JwtModule.registerAsync`, `MongooseModule.forRootAsync`처럼 팩토리에서 `ConfigService`로 읽는다. (CJS 출력은 import 순서를 유지한다 — ESM처럼 호이스팅되지 않는다.)
 6. **`NODE_OPTIONS='…'` POSIX 문법**: `npm start`는 Windows PowerShell에서 실패한다 (어차피 실행 금지). 스크립트에 셸 의존 문법을 추가하지 않는다.
 7. **`SwaggerAuthMiddleware.use`는 화살표 속성**: `main.ts`가 `new SwaggerAuthMiddleware().use`로 바인딩 없이 넘기므로 일반 메서드로 바꾸면 `this`가 사라진다.
 8. **`overrideModule(MongooseModule)`은 아무것도 바꾸지 않는다**: Nest는 `===`로 비교하는데 `forRoot()`·`forFeature()`는 동적 모듈 객체를 import하므로 클래스와 일치하지 않는다. 테스트에서는 `overrideProvider(getConnectionToken())`과 모델 토큰을 바꾼다(`withFakeMongoose`). 2026-10-22 이전의 bootstrap 테스트는 이 때문에 `.env`의 운영 Atlas에 연결하고 있었다(문서 읽기·쓰기는 없지만 mongoose 기본 `autoIndex`로 스키마 인덱스 생성은 시도됐을 수 있다).
