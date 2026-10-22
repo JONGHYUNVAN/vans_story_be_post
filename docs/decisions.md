@@ -42,3 +42,9 @@
 
 - 무엇: `.gitignore`의 `/docs`를 `/docs/typedoc`으로 좁히고 typedoc 출력을 `docs/typedoc/`으로 옮겼다. `docs/*.md`와 `docs/swagger/`는 추적한다.
 - 왜: `docs/architecture.md`, `docs/decisions.md`를 커밋해야 하는데 `/docs` 전체가 무시되고 있었다. `docs/swagger/clean.html`을 untrack할지는 외부(GitHub Pages 등) 사용 여부 확인 뒤 결정(`TODO.md` 1-2절).
+
+### 미사용 의존성 제거, TypeORM도 미리 두지 않음
+
+- 무엇: `typeorm`, `@nestjs/typeorm`, `sqlite3`, `swagger-ui-express`, `@types/swagger-ui-express`, `express-basic-auth`, `@nestia/sdk`(+ tsconfig `plugins`), `@types/mongodb`, `source-map-support` 제거와 `db.sqlite` 삭제. `class-validator`·`class-transformer`·`dotenv`는 dependencies로, `@types/express-session`은 devDependencies로 옮겼다(설치 버전 유지 — npm이 `dotenv`를 16.6으로 올리면 `config()`가 기본으로 안내 로그를 찍는다). `ts-node`·`tsconfig-paths`는 VS Code 디버그 설정이 쓰므로 남겼다.
+- 왜: knip·depcheck 결과와 `npm ls`·설정 파일 수동 확인이 일치했다. 쓰지 않는 패키지는 Dependabot 경고와 네이티브 빌드(`sqlite3` node-gyp)만 늘린다. MariaDB 도입 계획이 있지만 TypeORM이 필요하면 그때 최신 버전으로 `@nestjs/typeorm typeorm mysql2`를 추가하면 되고, `sqlite3`는 MariaDB와 무관하다.
+- 대안: TypeORM을 MariaDB 도입까지 유지 — 설치 한 줄로 복구되는 것을 미리 둘 이유가 없다. ORM 선택(TypeORM/Prisma/MikroORM 등)도 도입 시점에 정한다.

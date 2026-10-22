@@ -39,7 +39,7 @@ Claude Code 공식 가이드 기준으로 CLAUDE.md는 200줄 미만, "이 줄�
 - [ ] `SECURITY.md` 축소 — GitHub 커뮤니티 파일 규격대로 "취약점 신고 방법" + 실제 적용된 보호 조치 목록만(30줄 안팎). 현재 394줄 중 빈 템플릿 항목(긴급 연락처 등) 삭제, 아키텍처 설명은 `docs/architecture.md`로
 - [ ] `api.md` 삭제 — 501줄 수기 문서라 Swagger와 드리프트. `swagger-spec.json` → `docs/swagger/clean.html` 생성물로 단일화
 - [ ] `CATEGORY_MIGRATION.md` → `docs/history/category-migration.md`로 이동(기록 가치가 있으니 삭제하지 않음)
-- [ ] 생성물 정리 — `docs/swagger/README.md`, `docs/swagger/clean.html`, `swagger-spec.json`이 강제 추가돼 있다. 생성물은 untrack하고 생성 명령만 CLAUDE.md에 적는다. 0바이트 `db.sqlite` 삭제.
+- [ ] 생성물 정리 — `docs/swagger/README.md`, `docs/swagger/clean.html`, `swagger-spec.json`이 강제 추가돼 있다. 생성물은 untrack하고 생성 명령만 CLAUDE.md에 적는다. ~~0바이트 `db.sqlite` 삭제~~ (2026-10-22 완료, 의존성 정리와 함께)
   (2026-10-22: `.gitignore`를 `/docs` → `/docs/typedoc`으로 좁히고 typedoc `out`을 `docs/typedoc`으로 옮겨 `docs/*.md`를 커밋할 수 있게 했다. swagger 생성물은 아직 추적 중)
   **확인 필요**: Swagger HTML을 GitHub Pages 등 외부에서 쓰고 있으면 untrack하지 않는다.
 
@@ -86,10 +86,11 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 
 ### 의존성
 
-- [ ] `class-validator`, `class-transformer`, `dotenv`가 devDependencies에 있다(런타임 의존성). dependencies로 이동. 미추적 `Dockerfile`의 production 스테이지가 `npm install --omit=dev`라 그 이미지로는 `dotenv` 없이 기동 실패한다
-- [ ] `@types/express-session`, `@types/swagger-ui-express`가 dependencies에 있다. devDependencies로 이동
-- [ ] 미사용 패키지 제거(소스 import 없음 확인): `@nestjs/typeorm`, `typeorm`, `sqlite3`, `swagger-ui-express`, `express-basic-auth`
-- [ ] tsconfig `plugins`의 `@nestia/core`, `@nestia/sdk`, `typia` transform이 어디서도 쓰이지 않는다. 플러그인 설정과 `@nestia/sdk` devDependency 제거
+- [x] `class-validator`, `class-transformer`, `dotenv`가 devDependencies에 있다(런타임 의존성). dependencies로 이동. 미추적 `Dockerfile`의 production 스테이지가 `npm install --omit=dev`라 그 이미지로는 `dotenv` 없이 기동 실패한다 (2026-10-22, 설치 버전 그대로 이동)
+- [x] `@types/express-session`, `@types/swagger-ui-express`가 dependencies에 있다. devDependencies로 이동 (2026-10-22, `@types/swagger-ui-express`는 미사용이라 제거)
+- [x] 미사용 패키지 제거(소스 import 없음 확인): `@nestjs/typeorm`, `typeorm`, `sqlite3`, `swagger-ui-express`, `express-basic-auth` (2026-10-22, knip·depcheck로 재확인. `@types/mongodb`, `source-map-support`도 함께 제거)
+- [x] tsconfig `plugins`의 `@nestia/core`, `@nestia/sdk`, `typia` transform이 어디서도 쓰이지 않는다. 플러그인 설정과 `@nestia/sdk` devDependency 제거 (2026-10-22)
+- [ ] `ts-node`, `tsconfig-paths`는 `.vscode/launch.json`의 "Debug Nest Framework" 설정만 쓴다. 그 설정을 안 쓰면 설정과 함께 제거 (이 설정은 `.env`를 읽어 운영 DB에 붙는다)
 - [ ] mongoose 7은 EOL. 8/9 마이그레이션은 단위 테스트 통과를 조건으로 별도 작업
 
 ### 설정·구조
