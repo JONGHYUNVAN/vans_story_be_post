@@ -5,6 +5,8 @@ paths:
 
 # 테스트 규칙
 
+- 위치(`docs/conventions.md` 1·7절): 새 단위 테스트는 대상 옆 `src/**/*.spec.ts`. 단 `test/helpers`가 필요한 테스트는 경로 별칭이 생기기 전(묶음 F)까지 `test/`에 둔다. 테스트 이름은 한국어.
+
 - 실행은 `npm test`뿐이다 (`--experimental-vm-modules`, `*.spec.ts`만). `npm run test:e2e`, `npm run test:all`은 `.env`의 운영 DB에 붙으므로 로컬에서 실행하지 않는다. e2e 파일(`*.e2e-spec.ts`)은 수정만 하고, 실행은 전용 테스트 DB가 생길 때까지 보류.
 - Service 단위 테스트는 `test/helpers/test-utils.ts`를 쓴다:
   - `createMockPostModel(doc?)`, `createMockCategoryModel(categories?)` — 조회 메서드는 호출마다 새 `mockQuery` 체인을 돌려준다. Category 모의는 `{ value, parentId: null | ObjectId | { $ne: null } }` 필터를 실제로 평가한다.

@@ -6,7 +6,7 @@ paths:
 # 스키마 규칙
 
 - `@Schema({ timestamps: true, collection: '<복수형>' })` 클래스 + `SchemaFactory.createForClass`. `@Prop`만 둔다. 메서드·훅·가상 필드·비즈니스 로직은 Service로.
-- Document 타입은 `export type XDocument = X & Document`. timestamps 필드를 타입에서 쓰려면 `CategoryDocument`처럼 `& { createdAt: Date; updatedAt: Date }`를 덧붙인다.
+- Document 타입: 새 스키마는 `export type XDocument = HydratedDocument<X>`, 주입은 `Model<X>` (`docs/conventions.md` 4절 스키마). 기존 `X & Document`는 묶음 F에서 바꾼다. timestamps 필드를 타입에서 쓰려면 `CategoryDocument`처럼 `& { createdAt: Date; updatedAt: Date }`를 덧붙인다.
 - 참조는 `@Prop({ type: Types.ObjectId, ref: 'Category' })`. `ref` 문자열은 대상 클래스 이름과 같아야 `populate`가 된다.
 - 필드를 추가·삭제하면 함께 확인한다:
   - 생성·수정·응답 DTO

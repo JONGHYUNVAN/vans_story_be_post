@@ -2,7 +2,7 @@
 
 Vans Dev Blog의 게시글·카테고리 서비스. NestJS 12 + mongoose 7(MongoDB Atlas) + TypeScript 6.0, CommonJS 출력, 기본 포트 3001.
 Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임은 Spring 사용자 서비스에서 받아오고, 게시글 변경은 Django 검색 서비스로 fire-and-forget 전송한다.
-정비 계획·기술 부채는 `TODO.md`, 결정 근거는 `docs/decisions.md`, 구조 설명은 `docs/architecture.md`에 있다.
+정비 계획·기술 부채는 `TODO.md`, 결정 근거는 `docs/decisions.md`, 구조 설명은 `docs/architecture.md`, **코드 위치·이름·레이어별 허용/금지는 `docs/conventions.md`**에 있다.
 
 ## 명령
 
@@ -28,6 +28,8 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
 
 ## 요청 흐름과 레이어 책임
 
+아래는 현행 코드 요약이다. 새 코드의 레이어 규칙(무엇을 하고 무엇을 하면 안 되는지)은 `docs/conventions.md` 4절, 현행과 다른 곳은 7절.
+
 `main.ts`: 전역 `ValidationPipe`(whitelist + forbidNonWhitelisted + transform) → CORS → express-session → `express.json`(10mb) → `SwaggerAuthMiddleware`(`/api/posts/swagger*`만)
 → 라우트별 `@UseGuards(JwtAuthGuard)` → Controller → Service → mongoose Model → `mapToDto` → Response DTO
 
@@ -41,9 +43,9 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
 
 ## 명명과 import
 
-- 새 파일은 Nest 표준: 소문자 폴더, `<feature>.<layer>.ts` (예: `src/modules/category/service/category.service.ts`).
+- 새 파일은 `docs/conventions.md` 1·2절: CLI 출력 그대로의 평면 구조(`src/posts/posts.service.ts`), `<이름>.<종류>.ts`. 기존 폴더에 있는 기능에 더할 때는 그 폴더에 표준 파일명으로 둔다(7절). 새 단위 테스트는 대상 옆 `*.spec.ts`.
 - 예외(그대로 둔다): post 모듈은 `Controller/controller.ts`, `DTO/`, `Service/service.ts`, `Module/module.ts`; utils는 `Authorization/Guard/auth.ts`처럼 PascalCase 폴더. 작업 중에 리네임하지 않는다 — Windows에서 대소문자만 바뀐 리네임은 `git mv` 두 단계가 필요하고, `forceConsistentCasingInFileNames`가 꺼져 있어 컴파일러가 잡지 못한다.
-- import는 `src/...` 절대경로 (tsconfig `paths`, jest `moduleNameMapper` 모두 지원). 기존 상대경로는 손대는 파일에서만 바꾼다.
+- import: 같은 기능 폴더 안은 상대경로, 다른 최상위 폴더는 `src/...` 절대경로 (tsconfig `paths`, jest `moduleNameMapper` 모두 지원). 기존 import는 손대는 파일에서만 바꾼다.
 
 ## 코딩 규칙
 
@@ -76,7 +78,7 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
    Windows에서 `npm`이 띄우는 `cmd.exe`가 `node`를 못 찾으면(`'node'은(는) … 아닙니다`) PATH 앞에 `C:\Users\<user>\AppData\Roaming\nvm\v<버전>`을 넣고 다시 실행한다. `npm ci`가 이 이유로 실패하면 exit code는 0이 아니니 `| tail`로 가리지 말 것.
 5. **데코레이터 인자는 import 시점에 평가된다**: `@Module({ imports: [X.register({ secret: process.env.Y })] })`의 인자는 그 파일이 `require`될 때 계산된다. `ConfigModule.forRoot()`가 `.env`를 읽는 것은 `app.module.ts`가 평가될 때인데, `app.module.ts`가 import하는 모듈(`AuthModule` 등)은 그보다 먼저 평가되므로 `.env` 값을 보지 못한다. 그래서 `JwtModule.registerAsync`, `MongooseModule.forRootAsync`처럼 팩토리에서 `ConfigService`로 읽는다. (CJS 출력은 import 순서를 유지한다 — ESM처럼 호이스팅되지 않는다.)
 6. **`NODE_OPTIONS='…'` POSIX 문법**: `npm start`는 Windows PowerShell에서 실패한다 (어차피 실행 금지). 스크립트에 셸 의존 문법을 추가하지 않는다.
-7. **`SwaggerAuthMiddleware.use`는 화살표 속성**: `main.ts`가 `new SwaggerAuthMiddleware().use`로 바인딩 없이 넘기므로 일반 메서드로 바꾸면 `this`가 사라진다.
+7. **`SwaggerAuthMiddleware.use`는 화살표 속성**: `main.ts`가 `new SwaggerAuthMiddleware(configService).use`로 바인딩 없이 넘기므로 일반 메서드로 바꾸면 `this`가 사라진다.
 8. **`overrideModule(MongooseModule)`은 아무것도 바꾸지 않는다**: Nest는 `===`로 비교하는데 `forRoot()`·`forFeature()`는 동적 모듈 객체를 import하므로 클래스와 일치하지 않는다. 테스트에서는 `overrideProvider(getConnectionToken())`과 모델 토큰을 바꾼다(`withFakeMongoose`). 2026-10-22 이전의 bootstrap 테스트는 이 때문에 `.env`의 운영 Atlas에 연결하고 있었다(문서 읽기·쓰기는 없지만 mongoose 기본 `autoIndex`로 스키마 인덱스 생성은 시도됐을 수 있다).
 
 ## 변경 체크리스트
