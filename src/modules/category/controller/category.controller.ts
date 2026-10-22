@@ -30,6 +30,9 @@ import {
 import { CategoryService } from '../service/category.service';
 import { CreateCategoryDto, UpdateCategoryDto, CategoryResponseDto } from '../dto';
 import { JwtAuthGuard } from '../../../utils/Authorization/Guard/auth';
+import { RolesGuard } from 'src/utils/Authorization/Guard/role';
+import { Roles } from 'src/utils/Authorization/Guard/roles.decorator';
+import { Role } from 'src/utils/Authorization/role.enum';
 
 /**
  * 카테고리 컨트롤러 클래스
@@ -56,8 +59,10 @@ export class CategoryController {
    * @returns {Promise<CategoryResponseDto>} 생성된 카테고리 정보
    */
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
   @ApiBearerAuth()
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: '관리자가 아닌 사용자' })
   @ApiOperation({
     summary: '카테고리 생성',
     description: '새로운 카테고리를 생성합니다. 관리자 권한이 필요합니다.',
@@ -200,8 +205,10 @@ export class CategoryController {
    * @returns {Promise<CategoryResponseDto>} 업데이트된 카테고리 정보
    */
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
   @ApiBearerAuth()
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: '관리자가 아닌 사용자' })
   @ApiOperation({
     summary: '카테고리 수정',
     description: '기존 카테고리 정보를 수정합니다. 관리자 권한이 필요합니다.',
@@ -242,8 +249,10 @@ export class CategoryController {
    * @returns {Promise<void>}
    */
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
   @ApiBearerAuth()
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: '관리자가 아닌 사용자' })
   @ApiOperation({
     summary: '카테고리 삭제',
     description: '카테고리를 완전히 삭제합니다. 관리자 권한이 필요합니다.',
@@ -276,8 +285,10 @@ export class CategoryController {
    * @returns {Promise<CategoryResponseDto>} 업데이트된 카테고리 정보
    */
   @Patch(':id/deactivate')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
   @ApiBearerAuth()
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: '관리자가 아닌 사용자' })
   @ApiOperation({
     summary: '카테고리 비활성화',
     description: '카테고리를 비활성화합니다. 관리자 권한이 필요합니다.',
@@ -311,8 +322,10 @@ export class CategoryController {
    * @returns {Promise<CategoryResponseDto>} 업데이트된 카테고리 정보
    */
   @Patch(':id/activate')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
   @ApiBearerAuth()
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: '관리자가 아닌 사용자' })
   @ApiOperation({
     summary: '카테고리 활성화',
     description: '카테고리를 활성화합니다. 관리자 권한이 필요합니다.',

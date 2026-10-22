@@ -46,7 +46,7 @@ HTTP 요청
 | `AppModule` | `src/app.module.ts` | `MongooseModule.forRoot`, `HttpModule` | `PostsModule`, `CategoryModule`, `AuthModule` |
 | `PostsModule` | `src/modules/post/Module/module.ts` | `PostsController`, `PostsService`, `InternalApiClient`, `SearchIndexClient`, `PostInitService` | `MongooseModule.forFeature(Post, Category)`, `HttpModule`, `AuthModule` |
 | `CategoryModule` | `src/modules/category/module/category.module.ts` | `CategoryController`, `CategoryService` | `MongooseModule.forFeature(Category)`, `AuthModule` |
-| `AuthModule` | `src/utils/Authorization/Module/module.ts` | `JwtStrategy`, `RolesGuard`, `Reflector`; exports `PassportModule`, `JwtModule` | `PassportModule`, `JwtModule.registerAsync(HS512)` |
+| `AuthModule` | `src/utils/Authorization/Module/module.ts` | `JwtStrategy`; exports `PassportModule`, `JwtModule` (`RolesGuard`는 `@UseGuards`로 컨트롤러 모듈에서 생성) | `PassportModule`, `JwtModule.registerAsync(HS512)` |
 
 `PostsModule`이 `Category` 모델도 등록하는 이유: 게시글 목록 필터가 카테고리 `value`로 `_id`를 찾아야 해서다.
 
@@ -55,15 +55,17 @@ HTTP 요청
 ```
 Authorization: Bearer <JWT>
  → JwtAuthGuard.canActivate   헤더 없음 → 401 NO_AUTH_HEADER, Bearer 아님 → 401 INVALID_TOKEN_FORMAT
- → passport-jwt (JwtStrategy)  JWT_SECRET(base64 디코딩)으로 HS512 검증, 만료 검사
- → JwtStrategy.validate        payload.sub → user.sub(이메일), payload.auth → user.role
+ → passport-jwt (JwtStrategy)  JWT_SECRET(base64 디코딩)으로 검증. 알고리즘은 HS512만(그 외 401), 만료 검사
+ → JwtStrategy.validate        payload.sub → user.sub(이메일), payload.auth → user.roles(정규화), sub 없으면 401
  → JwtAuthGuard.handleRequest  JsonWebTokenError → INVALID_TOKEN, TokenExpiredError → TOKEN_EXPIRED
- → request.user = { sub, role }
+ → request.user = { sub, roles: Role[] }
+ → RolesGuard                  @Roles()가 있으면 roles 중 하나가 일치해야 함, 아니면 403
 ```
 
-- 토큰은 Spring 사용자 서비스가 발급한다. `auth` 클레임은 Spring의 권한 문자열(`ROLE_ADMIN` 등)이다.
-- **권한 검사는 Service 안에서** 한다. `PostsService.update`는 `userRole !== 'admin'`이면 작성자 본인만 허용, `findForEdit`는 작성자 본인만.
-- `RolesGuard`와 `@Roles()`는 구현만 있고 어떤 라우트에도 등록되어 있지 않다. `@Roles('admin')`이 붙은 생성·삭제도 실제로는 인증만 검사한다. 카테고리 쓰기 엔드포인트는 `@Roles`도 없다. 활성화하려면 Spring 권한 문자열과 맞춰야 한다 (`TODO.md` 3절 보안).
+- 토큰은 Spring 사용자 서비스가 발급한다. `auth` 클레임은 Spring 권한을 쉼표로 이은 문자열이다 — OAuth 로그인은 `ROLE_ADMIN`/`ROLE_USER`(`OAuthService`), 일반 로그인은 `ADMIN`/`USER`(`CustomUserDetailsService`). `JwtStrategy`가 `ROLE_` 접두사·대소문자를 무시하고 `Role`(`admin`/`user`)로 바꾸며, 모르는 권한은 버린다.
+- **역할 검사는 `RolesGuard`**: 게시글 생성·삭제와 카테고리 생성·수정·삭제·활성화·비활성화는 `@Roles(Role.Admin)` — 관리자가 아니면 403.
+- **데이터에 따른 검사는 Service**: `PostsService.update`는 관리자이거나 작성자 본인만 허용하고, 이메일이나 역할이 비어 있으면 게시글을 보기 전에 403(fail-closed). `findForEdit`는 작성자 본인만(관리자 예외 없음).
+- 알려진 한계: Spring이 access·refresh 토큰을 같은 클레임으로 만들어 refresh 토큰(7일)도 통과한다. Spring에 토큰 종류 클레임이 생기면 여기서 거부한다 (`TODO.md` 3절 보안).
 - Swagger UI(`/api/posts/swagger`)는 별도로 `SWAGGER_ADMIN_PASSWORD` + express-session 쿠키로 보호된다.
 
 ### 왜 이 서비스가 JWT를 직접 검증하나
@@ -114,17 +116,17 @@ Authorization: Bearer <JWT>
 | GET | `/api/v1/posts` | 없음 | 목록. `mainCategory`, `subCategory`, `page`, `limit` |
 | GET | `/api/v1/posts/:id` | 없음 | 상세. `x-viewed: true`면 조회수 증가 생략 |
 | GET | `/api/v1/posts/:id/edit` | JWT | 수정용 조회. 작성자 본인만 |
-| POST | `/api/v1/posts` | JWT | 생성 |
-| PATCH | `/api/v1/posts/:id` | JWT | 수정. 작성자 본인 또는 `role === 'admin'` |
-| DELETE | `/api/v1/posts/:id` | JWT | 삭제 |
+| POST | `/api/v1/posts` | JWT 관리자 | 생성 |
+| PATCH | `/api/v1/posts/:id` | JWT | 수정. 작성자 본인 또는 관리자 |
+| DELETE | `/api/v1/posts/:id` | JWT 관리자 | 삭제 |
 | GET | `/api/v1/categories` | 없음 | 목록. `activeOnly` |
 | GET | `/api/v1/categories/grouped` | 없음 | `group`별 묶음 |
 | GET | `/api/v1/categories/:id` | 없음 | |
 | GET | `/api/v1/categories/value/:value` | 없음 | |
-| POST | `/api/v1/categories` | JWT | 생성. `value` 중복 → 409 |
-| PATCH | `/api/v1/categories/:id` | JWT | 수정 |
-| PATCH | `/api/v1/categories/:id/activate`, `.../deactivate` | JWT | `isActive` 토글 |
-| DELETE | `/api/v1/categories/:id` | JWT | |
+| POST | `/api/v1/categories` | JWT 관리자 | 생성. `value` 중복 → 409 |
+| PATCH | `/api/v1/categories/:id` | JWT 관리자 | 수정 |
+| PATCH | `/api/v1/categories/:id/activate`, `.../deactivate` | JWT 관리자 | `isActive` 토글 |
+| DELETE | `/api/v1/categories/:id` | JWT 관리자 | |
 | GET | `/api/posts/swagger` | 세션 | Swagger UI. 비밀번호 로그인 페이지 |
 
 정확한 요청·응답 스키마는 `docs/swagger/clean.html` 또는 실행 중인 서버의 `/api/posts/swagger-json`.

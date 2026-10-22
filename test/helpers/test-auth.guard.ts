@@ -1,10 +1,9 @@
 import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { AuthenticatedUser } from '../../src/utils/Authorization/authenticated-user.interface';
+import { Role } from '../../src/utils/Authorization/role.enum';
 
-interface User {
-  sub: string;
-  role: string;
-}
+type User = AuthenticatedUser;
 
 @Injectable()
 export class TestAuthGuard extends AuthGuard('jwt') {
@@ -21,13 +20,13 @@ export class TestAuthGuard extends AuthGuard('jwt') {
     let user: User;
     switch (authHeader) {
       case 'Bearer test_token':
-        user = { sub: 'test@example.com', role: 'admin' };
+        user = { sub: 'test@example.com', roles: [Role.Admin] };
         break;
       case 'Bearer author_token':
-        user = { sub: 'author@example.com', role: 'user' };
+        user = { sub: 'author@example.com', roles: [Role.User] };
         break;
       case 'Bearer other_user_token':
-        user = { sub: 'other@example.com', role: 'user' };
+        user = { sub: 'other@example.com', roles: [Role.User] };
         break;
       default:
         throw new UnauthorizedException('Invalid token');

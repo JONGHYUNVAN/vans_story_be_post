@@ -23,6 +23,8 @@ import {
 import { PostsService } from '../Service/service';
 import { JwtAuthGuard } from '../../../utils/Authorization/Guard/auth';
 import { Roles } from 'src/utils/Authorization/Guard/roles.decorator';
+import { RolesGuard } from 'src/utils/Authorization/Guard/role';
+import { Role } from 'src/utils/Authorization/role.enum';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { CreateDto, UpdateDto, ResponseDto } from '../DTO';
 import { Paginated } from '../../../utils/types/pagination';
@@ -124,8 +126,9 @@ export class PostsController {
   @ApiOperation({ summary: '게시글 생성' })
   @ApiResponse({ status: 201, description: '게시글 생성 성공', type: ResponseDto })
   @ApiResponse({ status: 401, description: '인증되지 않은 사용자' })
-  @UseGuards(JwtAuthGuard)
-  @Roles('admin')
+  @ApiResponse({ status: 403, description: '관리자가 아닌 사용자' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
   @ApiBearerAuth('Authorization')
   @Post()
   create(@Body() createDto: CreateDto, @Request() request: any): Promise<ResponseDto> {
@@ -444,7 +447,7 @@ export class PostsController {
     @Body() updateDto: UpdateDto,
     @Request() request: any
   ): Promise<ResponseDto> {
-    return this.postsService.update(id, updateDto, request.user.sub, request.user.role);
+    return this.postsService.update(id, updateDto, request.user.sub, request.user.roles);
   }
 
   /**
@@ -480,9 +483,10 @@ export class PostsController {
   @ApiOperation({ summary: '게시글 삭제' })
   @ApiResponse({ status: 204, description: '게시글 삭제 성공' })
   @ApiResponse({ status: 401, description: '인증되지 않은 사용자' })
+  @ApiResponse({ status: 403, description: '관리자가 아닌 사용자' })
   @ApiParam({ name: 'id', description: 'MongoDB ObjectId' })
-  @UseGuards(JwtAuthGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
   @ApiBearerAuth('Authorization')
   @Delete(':id')
   remove(@Param('id') id: string): Promise<void> {

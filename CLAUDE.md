@@ -33,13 +33,13 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
 `main.ts`: 전역 `ValidationPipe`(whitelist + forbidNonWhitelisted + transform) → CORS → express-session → `express.json`(10mb) → `SwaggerAuthMiddleware`(`/api/posts/swagger*`만)
 → 라우트별 `@UseGuards(JwtAuthGuard)` → Controller → Service → mongoose Model → `mapToDto` → Response DTO
 
-- **Controller**: 파라미터 파싱과 Swagger 데코레이터만. 비즈니스 로직·DB 접근 금지. `request.user`는 `{ sub: 이메일, role }`.
+- **Controller**: 파라미터 파싱과 Swagger 데코레이터만. 비즈니스 로직·DB 접근 금지. `request.user`는 `AuthenticatedUser` `{ sub: 이메일, roles: Role[] }`.
 - **Service**: 검증 실패·권한·없음은 Nest `HttpException`(`BadRequest/Forbidden/NotFound/Conflict`)을 던진다. 전역 예외 필터는 없다. try/catch로 삼키지 않는다.
 - **Model 조회 체인**: `.populate('mainCategoryId', 'value label').populate('subCategoryId', 'value label').lean().exec()`. 단위 테스트의 모의 객체가 이 체인을 그대로 흉내 내므로 체인을 바꾸면 `test/helpers/test-utils.ts`의 `mockQuery`도 바꾼다.
 - **Response DTO**: `mapToDto(entity, Dto)`는 `@Field`가 붙은 속성만 복사하고 `Date`는 `toLocaleString()` 문자열로 바꾼다. 새 응답 필드에는 `@Field`와 `@ApiProperty`를 둘 다 붙인다. `author`, `mainCategory` 같은 파생 필드는 Service가 채운다.
 - **페이지네이션**: 응답 타입은 `src/utils/types/pagination.ts`의 `Paginated<T>`. `src/utils/pagination/DTO/dto.ts`는 미사용.
 - **외부 호출**: 사용자 서비스는 `InternalApiClient`(DI, 실패 시 `null`). 검색 서비스는 `SearchIndexClient`(`search-index.client.ts`, DI)의 `indexPost/deletePostIndex`(fire-and-forget, `.catch`로 로그만). 응답을 기다리지 않는다.
-- **권한 검사**는 Service에서 `userEmail`/`userRole`로 한다. `@Roles()`는 `RolesGuard`가 어디에도 등록되어 있지 않아 효력이 없다 (`TODO.md` 3절 보안).
+- **권한 검사**: 역할은 `@UseGuards(JwtAuthGuard, RolesGuard)` + `@Roles(Role.Admin)`(게시글 생성·삭제, 카테고리 쓰기 5개). 작성자 본인 여부는 Service에서 `userEmail`/`userRoles`로. Spring `auth` 클레임(`ROLE_ADMIN`, `ADMIN`, 쉼표 구분)은 `JwtStrategy.validate`가 `Role`로 정규화한다 — 다른 곳에서 권한 문자열을 비교하지 않는다.
 
 ## 명명과 import
 
