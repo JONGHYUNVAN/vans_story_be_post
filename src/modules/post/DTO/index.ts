@@ -9,6 +9,7 @@
 export { CreatePostDto } from './create-post.dto';
 export { UpdatePostDto } from './update-post.dto';
 export { PostResponseDto } from './post-response.dto';
+export { FindPostsQueryDto, MAX_POSTS_PER_PAGE } from './find-posts-query.dto';
 
 // 기존 이름과의 호환성을 위한 alias
 export { CreatePostDto as CreateDto } from './create-post.dto';

@@ -111,9 +111,11 @@ Authorization: Bearer <JWT>
 
 ## 엔드포인트
 
+`:id`가 24자리 16진수 ObjectId가 아니면 모든 라우트에서 400(`ParseObjectIdPipe`). 게시글 생성·카테고리 변경은 메인·서브 카테고리가 실제로 있고 부모 관계가 맞아야 한다(아니면 400).
+
 | 메서드 | 경로 | 인증 | 설명 |
 |---|---|---|---|
-| GET | `/api/v1/posts` | 없음 | 목록. `mainCategory`, `subCategory`, `page`, `limit` |
+| GET | `/api/v1/posts` | 없음 | 목록. `mainCategory`, `subCategory`, `page`(정수 ≥1), `limit`(1~50) — 벗어나면 400 (`FindPostsQueryDto`) |
 | GET | `/api/v1/posts/:id` | 없음 | 상세. `x-viewed: true`면 조회수 증가 생략 |
 | GET | `/api/v1/posts/:id/edit` | JWT | 수정용 조회. 작성자 본인만 |
 | POST | `/api/v1/posts` | JWT 관리자 | 생성 |

@@ -9,6 +9,7 @@
 
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { CategoryGroup } from '../category-group.enum';
 
 /**
  * 카테고리 문서 타입
@@ -42,13 +43,11 @@ export class Category {
   parentId: Types.ObjectId | null;
 
   /**
-   * 카테고리 그룹 (Frontend, Backend, Database, IT, Test, Etc)
+   * 카테고리 그룹 (`CategoryGroup`)
    * 메인 카테고리에만 적용
-   * 
-   * @type {string}
    */
-  @Prop({ required: false })
-  group: string;
+  @Prop({ type: String, enum: Object.values(CategoryGroup), required: false })
+  group?: CategoryGroup;
 
   /**
    * 카테고리 값 (URL에 사용되는 키)

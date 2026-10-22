@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { CreateDto, UpdateDto, ResponseDto } from '../DTO';
 import { Post, PostDocument } from '../schemas/post.schema';
 import { mapToDto } from '../../../utils/Mapper/mapper';
@@ -51,7 +51,8 @@ export class PostsService {
    * @param {CreateDto} createDto - 게시글 생성에 필요한 데이터 (제목, 내용 등)
    * @param {string} authorEmail - 게시글 작성자의 이메일
    * @returns {Promise<ResponseDto>} 생성된 게시글 정보 (MongoDB Document)
-   * 
+   *
+   * @throws {BadRequestException} 작성자 이메일이 없거나, 카테고리 조합이 존재하지 않는 경우
    * @throws {Error} MongoDB 작업 중 발생한 오류
    * 
    * @example
@@ -69,6 +70,8 @@ export class PostsService {
     if (!createDto.title || !createDto.content) {
       throw new BadRequestException('Title and content are required');
     }
+
+    await this.assertCategoryPair(createDto.mainCategoryId, createDto.subCategoryId);
 
     const created = await this.postModel.create({
       ...createDto,
@@ -112,6 +115,27 @@ export class PostsService {
     this.searchIndex.indexPost(indexPayload).catch(err => console.error('[SearchIndex] Failed to index post:', err));
 
     return result;
+  }
+
+  /**
+   * 메인·서브 카테고리 조합이 실제로 있는지 확인합니다.
+   *
+   * 메인은 `parentId`가 없는 카테고리, 서브는 그 메인을 부모로 둔 카테고리여야 합니다.
+   * DTO의 `@IsMongoId()`는 형식만 보므로, 없는 카테고리를 가리키는 게시글이 저장되지 않게 여기서 막습니다.
+   *
+   * @throws {BadRequestException} 카테고리가 없거나 부모 관계가 맞지 않는 경우
+   */
+  private async assertCategoryPair(mainCategoryId: string, subCategoryId: string): Promise<void> {
+    const [main, sub] = await Promise.all([
+      this.categoryModel.findById(mainCategoryId).lean().exec(),
+      this.categoryModel.findById(subCategoryId).lean().exec(),
+    ]);
+    if (!main || main.parentId) {
+      throw new BadRequestException('mainCategoryId가 존재하는 메인 카테고리가 아닙니다.');
+    }
+    if (!sub || String(sub.parentId) !== String(main._id)) {
+      throw new BadRequestException('subCategoryId가 해당 메인 카테고리의 서브 카테고리가 아닙니다.');
+    }
   }
 
   /**
@@ -234,10 +258,6 @@ export class PostsService {
    * ```
    */
   async findOne(id: string, viewed: boolean = false): Promise<ResponseDto> {
-    if (!Types.ObjectId.isValid(id)) {
-      throw new NotFoundException(`Invalid post ID: ${id}`);
-    }
-
     const post = await this.postModel
       .findById(id)
       .populate('mainCategoryId', 'value label')
@@ -275,10 +295,6 @@ export class PostsService {
    * ```
    */
   async incrementViewCount(id: string): Promise<void> {
-    if (!Types.ObjectId.isValid(id)) {
-      throw new NotFoundException(`Invalid post ID: ${id}`);
-    }
-
     const result = await this.postModel.findByIdAndUpdate(
       id,
       { $inc: { viewCount: 1 } },
@@ -309,10 +325,6 @@ export class PostsService {
    * ```
    */
   async findForEdit(id: string, userEmail: string): Promise<ResponseDto> {
-    if (!Types.ObjectId.isValid(id)) {
-      throw new NotFoundException(`Invalid post ID: ${id}`);
-    }
-
     const post = await this.postModel
       .findById(id)
       .populate('mainCategoryId', 'value label')
@@ -349,15 +361,12 @@ export class PostsService {
    *
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
    * @throws {ForbiddenException} 요청자 정보나 역할이 없거나, 관리자도 작성자도 아닌 경우
+   * @throws {BadRequestException} 바꾼 카테고리 조합이 존재하지 않는 경우
    */
   async update(id: string, updateDto: UpdateDto, userEmail: string, userRoles: Role[]): Promise<ResponseDto> {
     // 권한 정보가 없으면 게시글을 보기 전에 거부한다(fail-closed)
     if (!userEmail || !userRoles?.length) {
       throw new ForbiddenException('Only the author or admin can edit this post');
-    }
-
-    if (!Types.ObjectId.isValid(id)) {
-      throw new NotFoundException(`Invalid post ID: ${id}`);
     }
 
     const existingPost = await this.postModel.findById(id).exec();
@@ -370,8 +379,16 @@ export class PostsService {
       throw new ForbiddenException('Only the author or admin can edit this post');
     }
 
+    // 카테고리를 바꾸면 바뀐 뒤의 조합이 맞는지 확인
+    if (updateDto.mainCategoryId || updateDto.subCategoryId) {
+      await this.assertCategoryPair(
+        updateDto.mainCategoryId ?? String(existingPost.mainCategoryId),
+        updateDto.subCategoryId ?? String(existingPost.subCategoryId),
+      );
+    }
+
     const updated = await this.postModel
-      .findByIdAndUpdate(id, updateDto, { new: true })
+      .findByIdAndUpdate(id, updateDto, { new: true, runValidators: true })
       .populate('mainCategoryId', 'value label')
       .populate('subCategoryId', 'value label')
       .lean()
@@ -424,10 +441,6 @@ export class PostsService {
    * ```
    */
   async remove(id: string): Promise<void> {
-    if (!Types.ObjectId.isValid(id)) {
-      throw new NotFoundException(`Invalid post ID: ${id}`);
-    }
-
     const result = await this.postModel.findByIdAndDelete(id).exec();
     if (!result) {
       throw new NotFoundException(`Post with ID ${id} not found`);

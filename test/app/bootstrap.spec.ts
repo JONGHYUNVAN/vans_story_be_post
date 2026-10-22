@@ -139,4 +139,16 @@ describe('AppModule bootstrap (no DB)', () => {
       expect(remove).not.toHaveBeenCalled();
     });
   });
+
+  describe('경로 id 형식 검사 (ParseObjectIdPipe)', () => {
+    it.each([
+      ['게시글 조회', '/api/v1/posts/invalid-id'],
+      ['카테고리 조회', '/api/v1/categories/invalid-id'],
+      ['12자 문자열', '/api/v1/categories/aaaaaaaaaaaa'],
+    ])('%s: ObjectId가 아니면 DB 조회 없이 400', async (_, url) => {
+      const res = await request(app.getHttpServer()).get(url);
+      expect(res.status).toBe(400);
+      expect(JSON.stringify(res.body)).not.toContain('invalid-id');
+    });
+  });
 });

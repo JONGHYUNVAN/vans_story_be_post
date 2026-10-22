@@ -24,6 +24,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Types } from 'mongoose';
 import { PostsService } from '../../../src/modules/post/Service/service';
 import { Post } from '../../../src/modules/post/schemas/post.schema';
 import { Category } from '../../../src/modules/category/schemas/category.schema';
@@ -46,12 +47,13 @@ import {
   createPostDocument,
   expectedEnrichedResponse,
   expectedMainCategoryOnlyResponse,
+  mainCategoryDoc,
   mockQuery,
+  subCategoryDoc,
 } from '../../helpers/test-utils';
 
 describe('PostsService', () => {
   const POST_ID_HEX = POST_ID.toHexString();
-  const INVALID_ID = 'invalid-id';
 
   let service: PostsService;
   let mockPostModel: ReturnType<typeof createMockPostModel>;
@@ -175,6 +177,41 @@ describe('PostsService', () => {
       await expect(service.create(createDto, invalidEmail)).rejects.toThrow('Invalid author email');
       expect(mockPostModel.create).not.toHaveBeenCalled();
       expect(mockSearchIndex.indexPost).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['없는 메인 카테고리', { mainCategoryId: '507f1f77bcf86cd7994390ff' }],
+      ['메인 자리에 서브 카테고리', { mainCategoryId: SUB_CATEGORY_ID.toHexString() }],
+      ['없는 서브 카테고리', { subCategoryId: '507f1f77bcf86cd7994390ff' }],
+      ['서브 자리에 메인 카테고리', { subCategoryId: MAIN_CATEGORY_ID.toHexString() }],
+    ])('%s로 만들면 저장하지 않고 400', async (_, overrides) => {
+      // Given
+      const createDto = MockGenerator.createMock(CreateDto, overrides);
+
+      // When & Then
+      await expect(service.create(createDto, AUTHOR_EMAIL)).rejects.toThrow(BadRequestException);
+      expect(mockPostModel.create).not.toHaveBeenCalled();
+      expect(mockSearchIndex.indexPost).not.toHaveBeenCalled();
+    });
+
+    it('다른 메인 카테고리의 서브 카테고리로 만들면 400', async () => {
+      // Given: 부모가 다른 서브 카테고리
+      const OTHER_MAIN_ID = new Types.ObjectId('507f1f77bcf86cd799439031');
+      const OTHER_SUB_ID = new Types.ObjectId('507f1f77bcf86cd799439032');
+      mockCategoryModel.findById.mockImplementation((id: string) =>
+        mockQuery(
+          String(id) === OTHER_SUB_ID.toHexString()
+            ? { ...subCategoryDoc, _id: OTHER_SUB_ID, parentId: OTHER_MAIN_ID }
+            : String(id) === MAIN_CATEGORY_ID.toHexString() ? mainCategoryDoc : null,
+        ),
+      );
+      const createDto = MockGenerator.createMock(CreateDto, { subCategoryId: OTHER_SUB_ID.toHexString() });
+
+      // When & Then
+      await expect(service.create(createDto, AUTHOR_EMAIL)).rejects.toThrow(
+        'subCategoryId가 해당 메인 카테고리의 서브 카테고리가 아닙니다.',
+      );
+      expect(mockPostModel.create).not.toHaveBeenCalled();
     });
   });
 
@@ -318,12 +355,6 @@ describe('PostsService', () => {
       expect(result).toEqual(expectedMainCategoryOnlyResponse());
     });
 
-    it('should throw NotFoundException for invalid id', async () => {
-      // When & Then
-      await expect(service.findOne(INVALID_ID)).rejects.toThrow(NotFoundException);
-      expect(mockPostModel.findById).not.toHaveBeenCalled();
-    });
-
     it('should not increment view count when viewed is true', async () => {
       // When
       const result = await service.findOne(POST_ID_HEX, true);
@@ -382,12 +413,6 @@ describe('PostsService', () => {
       // When & Then
       await expect(service.findForEdit(POST_ID_HEX, userEmail)).rejects.toThrow(ForbiddenException);
       await expect(service.findForEdit(POST_ID_HEX, userEmail)).rejects.toThrow('Only the author can edit this post');
-    });
-
-    it('should throw NotFoundException for invalid id', async () => {
-      // When & Then
-      await expect(service.findForEdit(INVALID_ID, AUTHOR_EMAIL)).rejects.toThrow(NotFoundException);
-      expect(mockPostModel.findById).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when post not found', async () => {
@@ -452,7 +477,7 @@ describe('PostsService', () => {
 
       // Then
       expect(mockPostModel.findById).toHaveBeenCalledWith(POST_ID_HEX);
-      expect(mockPostModel.findByIdAndUpdate).toHaveBeenCalledWith(POST_ID_HEX, updateDto, { new: true });
+      expect(mockPostModel.findByIdAndUpdate).toHaveBeenCalledWith(POST_ID_HEX, updateDto, { new: true, runValidators: true });
 
       const query = mockPostModel.findByIdAndUpdate.mock.results[0].value;
       expect(query.populate).toHaveBeenCalledWith('mainCategoryId', 'value label');
@@ -482,7 +507,7 @@ describe('PostsService', () => {
 
       // Then
       expect(mockPostModel.findById).toHaveBeenCalledWith(POST_ID_HEX);
-      expect(mockPostModel.findByIdAndUpdate).toHaveBeenCalledWith(POST_ID_HEX, updateDto, { new: true });
+      expect(mockPostModel.findByIdAndUpdate).toHaveBeenCalledWith(POST_ID_HEX, updateDto, { new: true, runValidators: true });
       expect(result).toEqual(expectedMainCategoryOnlyResponse());
     });
 
@@ -516,15 +541,6 @@ describe('PostsService', () => {
       expect(mockPostModel.findByIdAndUpdate).not.toHaveBeenCalled();
     });
 
-    it('id 형식이 틀리면 404', async () => {
-      // Given
-      const updateDto = MockGenerator.createMock(UpdateDto);
-
-      // When & Then
-      await expect(service.update(INVALID_ID, updateDto, AUTHOR_EMAIL, [Role.User])).rejects.toThrow(NotFoundException);
-      expect(mockPostModel.findById).not.toHaveBeenCalled();
-    });
-
     it('게시글이 없으면 404', async () => {
       // Given
       const updateDto = MockGenerator.createMock(UpdateDto);
@@ -536,6 +552,28 @@ describe('PostsService', () => {
       await expect(update()).rejects.toThrow(NotFoundException);
       await expect(update()).rejects.toThrow(`Post with ID ${POST_ID_HEX} not found`);
       expect(mockPostModel.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('서브 카테고리만 바꿔도 기존 메인과의 조합을 확인해 맞지 않으면 400', async () => {
+      // Given: 기존 글의 메인은 MAIN_CATEGORY_ID, 바꾸려는 서브는 메인 카테고리
+      mockPostModel.findById.mockReturnValue(mockQuery(createPostDocument({ authorEmail: AUTHOR_EMAIL })));
+
+      // When & Then
+      await expect(
+        service.update(POST_ID_HEX, { subCategoryId: MAIN_CATEGORY_ID.toHexString() }, AUTHOR_EMAIL, [Role.User]),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockPostModel.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('카테고리를 바꾸지 않으면 카테고리를 조회하지 않는다', async () => {
+      // Given
+      mockPostModel.findById.mockReturnValue(mockQuery(createPostDocument({ authorEmail: AUTHOR_EMAIL })));
+
+      // When
+      await service.update(POST_ID_HEX, { title: '새 제목' }, AUTHOR_EMAIL, [Role.User]);
+
+      // Then
+      expect(mockCategoryModel.findById).not.toHaveBeenCalled();
     });
   });
 
@@ -572,12 +610,6 @@ describe('PostsService', () => {
         { $inc: { viewCount: 1 } },
         { new: true }
       );
-    });
-
-    it('should throw NotFoundException for invalid id', async () => {
-      // When & Then
-      await expect(service.incrementViewCount(INVALID_ID)).rejects.toThrow(NotFoundException);
-      expect(mockPostModel.findByIdAndUpdate).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when post not found', async () => {
@@ -617,12 +649,6 @@ describe('PostsService', () => {
       // Then
       expect(mockPostModel.findByIdAndDelete).toHaveBeenCalledWith(POST_ID_HEX);
       expect(mockSearchIndex.deletePostIndex).toHaveBeenCalledWith(POST_ID_HEX);
-    });
-
-    it('should throw NotFoundException for invalid id', async () => {
-      // When & Then
-      await expect(service.remove(INVALID_ID)).rejects.toThrow(NotFoundException);
-      expect(mockPostModel.findByIdAndDelete).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when post not found', async () => {

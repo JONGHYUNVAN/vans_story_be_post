@@ -33,6 +33,7 @@ import { JwtAuthGuard } from '../../../utils/Authorization/Guard/auth';
 import { RolesGuard } from 'src/utils/Authorization/Guard/role';
 import { Roles } from 'src/utils/Authorization/Guard/roles.decorator';
 import { Role } from 'src/utils/Authorization/role.enum';
+import { ParseObjectIdPipe } from 'src/common/pipes/parse-object-id.pipe';
 
 /**
  * 카테고리 컨트롤러 클래스
@@ -150,6 +151,7 @@ export class CategoryController {
     summary: '카테고리 상세 조회',
     description: 'ID로 특정 카테고리의 상세 정보를 조회합니다.',
   })
+  @ApiResponse({ status: 400, description: 'id가 ObjectId 형식이 아님' })
   @ApiParam({
     name: 'id',
     description: '카테고리 ID',
@@ -164,7 +166,7 @@ export class CategoryController {
     status: HttpStatus.NOT_FOUND,
     description: '카테고리를 찾을 수 없습니다.',
   })
-  async findOne(@Param('id') id: string): Promise<CategoryResponseDto> {
+  async findOne(@Param('id', ParseObjectIdPipe) id: string): Promise<CategoryResponseDto> {
     return this.categoryService.findOne(id);
   }
 
@@ -213,6 +215,7 @@ export class CategoryController {
     summary: '카테고리 수정',
     description: '기존 카테고리 정보를 수정합니다. 관리자 권한이 필요합니다.',
   })
+  @ApiResponse({ status: 400, description: 'id가 ObjectId 형식이 아님' })
   @ApiParam({
     name: 'id',
     description: '카테고리 ID',
@@ -236,7 +239,7 @@ export class CategoryController {
     description: '인증이 필요합니다.',
   })
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
   ): Promise<CategoryResponseDto> {
     return this.categoryService.update(id, updateCategoryDto);
@@ -257,6 +260,7 @@ export class CategoryController {
     summary: '카테고리 삭제',
     description: '카테고리를 완전히 삭제합니다. 관리자 권한이 필요합니다.',
   })
+  @ApiResponse({ status: 400, description: 'id가 ObjectId 형식이 아님' })
   @ApiParam({
     name: 'id',
     description: '카테고리 ID',
@@ -274,7 +278,7 @@ export class CategoryController {
     status: HttpStatus.UNAUTHORIZED,
     description: '인증이 필요합니다.',
   })
-  async remove(@Param('id') id: string): Promise<void> {
+  async remove(@Param('id', ParseObjectIdPipe) id: string): Promise<void> {
     return this.categoryService.remove(id);
   }
 
@@ -293,6 +297,7 @@ export class CategoryController {
     summary: '카테고리 비활성화',
     description: '카테고리를 비활성화합니다. 관리자 권한이 필요합니다.',
   })
+  @ApiResponse({ status: 400, description: 'id가 ObjectId 형식이 아님' })
   @ApiParam({
     name: 'id',
     description: '카테고리 ID',
@@ -311,7 +316,7 @@ export class CategoryController {
     status: HttpStatus.UNAUTHORIZED,
     description: '인증이 필요합니다.',
   })
-  async deactivate(@Param('id') id: string): Promise<CategoryResponseDto> {
+  async deactivate(@Param('id', ParseObjectIdPipe) id: string): Promise<CategoryResponseDto> {
     return this.categoryService.deactivate(id);
   }
 
@@ -330,6 +335,7 @@ export class CategoryController {
     summary: '카테고리 활성화',
     description: '카테고리를 활성화합니다. 관리자 권한이 필요합니다.',
   })
+  @ApiResponse({ status: 400, description: 'id가 ObjectId 형식이 아님' })
   @ApiParam({
     name: 'id',
     description: '카테고리 ID',
@@ -348,7 +354,7 @@ export class CategoryController {
     status: HttpStatus.UNAUTHORIZED,
     description: '인증이 필요합니다.',
   })
-  async activate(@Param('id') id: string): Promise<CategoryResponseDto> {
+  async activate(@Param('id', ParseObjectIdPipe) id: string): Promise<CategoryResponseDto> {
     return this.categoryService.activate(id);
   }
 }

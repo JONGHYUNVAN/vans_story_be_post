@@ -140,7 +140,7 @@ HTTP를 서비스 호출로 번역만 한다.
 | 응답 DTO로 변환해 반환 | mongoose 문서(hydrated document)를 그대로 반환 |
 | 공개 메서드에 한국어 JSDoc | `console.*` (→ `new Logger(ClassName.name)`), `any` |
 
-ObjectId 형식 검사는 서비스가 아니라 컨트롤러의 `ParseObjectIdPipe`가 한다(400). 서비스는 형식이 맞는 id를 받는다고 가정하고 "없음"만 404로 판단한다.
+ObjectId 형식 검사는 서비스가 아니라 컨트롤러의 `ParseObjectIdPipe`(`src/common/pipes/parse-object-id.pipe.ts` — `@nestjs/mongoose`의 같은 이름 파이프가 아니다)가 한다(400). 서비스는 형식이 맞는 id를 받는다고 가정하고 "없음"만 404로 판단한다.
 
 ### DTO (`dto/*.dto.ts`)
 
@@ -148,7 +148,7 @@ ObjectId 형식 검사는 서비스가 아니라 컨트롤러의 `ParseObjectIdP
 |---|---|
 | 클래스로 선언(인터페이스는 런타임 검증·Swagger 메타가 없다) | 메서드·로직 |
 | 요청: 모든 속성에 class-validator + `@ApiProperty`/`@ApiPropertyOptional`. 필수 문자열은 `@IsNotEmpty()` | `@IsString()`만으로 필수 문자열 표현(빈 문자열이 통과한다) |
-| 수정 DTO는 `PartialType(CreateXDto)` (`@nestjs/swagger`), 쿼리 문자열은 Query DTO(`@Type(() => Number) @IsInt() @Min() @Max()`) | 수기 복제, 컨트롤러에서 쿼리를 `string`으로 받아 변환 |
+| 수정 DTO는 `PartialType(CreateXDto, { skipNullProperties: false })` (`@nestjs/swagger` — 기본값이면 `null`이 검증을 건너뛰어 필수 필드를 `null`로 덮어쓴다), 쿼리 문자열은 Query DTO(`@Type(() => Number) @IsInt() @Min() @Max()`) | 수기 복제, 컨트롤러에서 쿼리를 `string`으로 받아 변환 |
 | 고정 값 집합은 enum + `@IsEnum` (Swagger `enum`과 같은 enum 사용) | Swagger에만 `enum`을 적고 검증 없음 |
 | 응답: 실제로 나가는 형태 그대로 선언 | 선언과 다른 형태(populate 객체 등)를 내보내기 |
 
@@ -244,9 +244,6 @@ ObjectId 형식 검사는 서비스가 아니라 컨트롤러의 `ParseObjectIdP
 | `src/utils/Mapper/`, `src/utils/types/pagination.ts` | `common/` 또는 결정 5 결과에 따라 삭제 | F·G |
 | 단위 테스트 `test/post/Service/service.spec.ts` | `src/posts/posts.service.spec.ts` | F |
 | `@Request() request: any` | `@CurrentUser() user: AuthenticatedUser` | F(#24) |
-| 서비스의 `Types.ObjectId.isValid` → 404 | 컨트롤러 `ParseObjectIdPipe` → 400 | A |
-| `page`/`limit`을 `string`으로 받아 `parseInt` | Query DTO | A |
-| `UpdatePostDto` 수기 복제 | `PartialType` | E |
 | `ValidationPipe`를 `main.ts`에서 `useGlobalPipes` | `APP_PIPE` | D |
 | `SwaggerAuthMiddleware` 클래스를 `new` | 함수형 미들웨어 | D |
 | `X & Document` | `HydratedDocument<X>` | F(#25) |
