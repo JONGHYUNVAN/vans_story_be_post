@@ -75,23 +75,17 @@
 ### 주요 디렉토리
 ```
 src/
-├── modules/
-│   └── post/
-│       ├── Controller/      # API 컨트롤러
-│       ├── Service/         # 비즈니스 로직
-│       ├── DTO/            # 데이터 전송 객체
-│       ├── schemas/        # MongoDB 스키마
-│       └── Module/         # NestJS 모듈
-├── utils/
-│   ├── Api/               # 내부 API 클라이언트
-│   ├── Authorization/     # 인증 관련 컴포넌트
-│   ├── Mapper/           # DTO 변환기
-│   ├── pagination/       # 페이지네이션 유틸리티
-│   └── types/           # 타입 정의
-├── config/              # 설정 파일
-├── database/           # 데이터베이스 설정
-└── swagger/           # Swagger 설정
+├── posts/              # 게시글 (controller·service·module, dto/, schemas/)
+├── categories/         # 카테고리 (같은 구성)
+├── auth/               # JWT 인증·역할 인가 (가드·전략·데코레이터)
+├── user-service/       # Spring 사용자 서비스 클라이언트
+├── search-service/     # Django 검색 서비스 클라이언트
+├── common/             # 공용 파이프·인터페이스·직렬화
+├── config/             # 환경 변수 검증
+└── swagger/            # Swagger UI 인증 미들웨어·로그인 페이지
 ```
+
+폴더·이름 규칙은 `docs/conventions.md`.
 
 ### 전역 설정
 #### 보안 설정
@@ -131,7 +125,7 @@ API 기본 경로: `/api/v1/posts`
    - 보호된 리소스 접근 제어
    - 인증되지 않은 요청 거부
 
-3. **InternalApiClient**
+3. **UserServiceClient**
    - 사용자 서비스와의 내부 통신
    - 사용자 정보 (닉네임 등) 조회
 

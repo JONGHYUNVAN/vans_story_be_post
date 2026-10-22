@@ -70,7 +70,7 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 | 2 | 줄바꿈 | `.gitattributes`는 `* text=auto`뿐. Windows autocrlf 체크아웃이라 `npm run lint`가 prettier `Delete ␍` 오류를 수천 건 냄 | `.editorconfig` `end_of_line = lf` + `.gitattributes`에 `*.ts text eol=lf` 등 추가 + `.prettierrc`에 `"endOfLine": "lf"` 명시. 적용 후 `git add --renormalize .` | `.prettierrc`에 `"endOfLine": "auto"`(빠르지만 문제를 덮음) |
 | 3 | 환경 변수 접근 | **2026-10-22 `@nestjs/config` 도입으로 장기안 착수(3절 설정·구조).** 이하는 도입 전 상태: `@nestjs/config` 없음. `dotenv.config()`가 `main.ts`, `app.module.ts`, `config/database.ts` 3곳에서 호출, `process.env` 직접 읽기 9개 파일 | 단기: 새 코드는 `process.env`를 모듈 최상단이 아닌 생성자·팩토리 안에서 읽고, 필수값 누락 시 기동 실패시킨다. 장기: `@nestjs/config` + 스키마 검증 도입(3절, 함정 2의 dotenv 호이스팅 문제도 함께 해소) | 지금 바로 `@nestjs/config` 도입(문서 작업 범위를 넘음) |
 | 4 | 명명 전환 시점 | post 모듈: PascalCase 폴더 + 일반 명사 파일명(`Controller/controller.ts`). category 모듈: Nest 표준(`controller/category.controller.ts`). utils: 혼재. (전수조사 정정: category의 레이어 폴더 `controller/`·`service/`·`module/`도 CLI 출력과 다르다. CLI는 기능 폴더에 평평하게 둔다 — 목표 구조는 결정 6) | 새 코드는 Nest 표준(소문자 폴더, `<feature>.<layer>.ts`). 기존 파일 전환은 별도 작업으로, `forceConsistentCasingInFileNames: true` 복구와 함께 진행. Windows에서 대소문자만 바꾸는 리네임은 `git mv` 두 단계 필요 | 문서 작업과 동시에 전환(리뷰 범위가 커짐) |
-| 5 | 응답 직렬화·날짜·id 필드 (#9, #29, #35) | 커스텀 `@Field` + `mapToDto`, 날짜는 서버 locale에 따르는 `toLocaleString()`, 게시글은 `_id`·카테고리는 `id`, populate 객체가 `mainCategoryId`로 나감 | class-transformer `@Expose()` + `plainToInstance(..., { excludeExtraneousValues: true })`, ISO 날짜, 카테고리 참조는 `{ id, value, label }` | `mapToDto` 유지 + 날짜만 ISO / 현행 유지 + 운영 `TZ`·`LANG` 고정. **프런트 계약 변경** — 운영 컨테이너 locale부터 확인 |
+| 5 | 응답 직렬화·날짜·id 필드 (#9, #29, #35) | 커스텀 `@ResponseField` + `mapToDto`, 날짜는 서버 locale에 따르는 `toLocaleString()`, 게시글은 `_id`·카테고리는 `id`, populate 객체가 `mainCategoryId`로 나감 | class-transformer `@Expose()` + `plainToInstance(..., { excludeExtraneousValues: true })`, ISO 날짜, 카테고리 참조는 `{ id, value, label }` | `mapToDto` 유지 + 날짜만 ISO / 현행 유지 + 운영 `TZ`·`LANG` 고정. **프런트 계약 변경** — 운영 컨테이너 locale부터 확인 |
 | 6 | 폴더 구조 목표 (#31) | **확정 2026-10-22** — `docs/conventions.md` 1절: CLI 출력 그대로 `src/posts/posts.controller.ts`(`modules/` 래퍼 없음), `src/auth/`, `src/common/`, 외부 연동은 `src/user-service/`·`src/search-index/` 모듈. 근거 `docs/decisions.md` "코드 컨벤션" | — | — |
 | 7 | 라우트 prefix·버전 (#23) | `@Controller('api/v1/posts')` 하드코딩, 태그 이름 `'api/v1/posts'` | `setGlobalPrefix('api')` + URI versioning, 외부 URL 유지, `@ApiTags('posts')` | 현행 유지. Swagger 경로 `api/posts/swagger`와 게이트웨이 규칙 확인 필요 |
 | 8 | `JwtModule` 존치 (#13) | 가드가 쓰지 않는 `JwtService`를 주입 → 모듈마다 `AuthModule` import(CLAUDE.md 함정 1). 이 서비스는 서명하지 않음 | 주입 제거 + `JwtModule` 제거. RS256/JWKS 전환(3절 보안)과 함께면 더 자연스럽다 | 주입만 제거, `JwtModule` 유지. `test/app/config.spec.ts`의 `JwtService.sign` 검사가 바뀐다 |
@@ -92,16 +92,16 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 - [x] **`RolesGuard`가 어디에도 등록되어 있지 않다.** `@Roles('admin')`이 붙은 게시글 생성·삭제도 인증만 통과하면 누구나 호출할 수 있다. 게다가 Spring이 발급하는 `auth` 클레임은 `ROLE_ADMIN` 형식이라 `RolesGuard`를 그냥 켜면 관리자도 막힌다. 해결 순서: (1) Spring `JwtProvider`의 `auth` 클레임 형식 확인(쉼표 구분 문자열인지) → (2) `JwtStrategy.validate`에서 `ROLE_ADMIN` → `admin`으로 정규화 또는 `@Roles('ROLE_ADMIN')` → (3) `@UseGuards(JwtAuthGuard, RolesGuard)` 또는 `APP_GUARD` 등록 → (4) `PostsService.update`의 `userRole !== 'admin'` 비교도 같이 맞춤. **최우선** (2026-10-22 `fix/authorization`: `auth`는 `ROLE_ADMIN`/`ADMIN` 쉼표 구분으로 확인 → `JwtStrategy`가 `Role`로 정규화, `@UseGuards(JwtAuthGuard, RolesGuard)`. 프런트에서 일반 사용자에게 생성·삭제 버튼이 보이는지는 미확인)
   - [x] (전수조사 #2) 카테고리 생성·수정·삭제·활성화·비활성화 5개 엔드포인트는 `@Roles`조차 없다(Swagger 설명은 "관리자 권한 필요"). 로그인한 아무 사용자나 카테고리를 바꿀 수 있다 — 같이 처리
   - [x] (전수조사 #3) `PostsService.update`는 `userEmail && userRole && …`이라 role이 없으면 권한 검사를 통과한다(fail-open). 파라미터를 필수로, role 없으면 거부. 이 동작을 고정한 `service.spec.ts`의 "backward compatibility" 테스트를 거부 케이스로 교체
-- [ ] **refresh 토큰이 access 토큰으로 통과한다.** Spring `JwtProvider`가 access(5시간)와 refresh(7일)를 같은 키·같은 클레임(`sub`, `auth`, `exp`)으로 만들고 만료만 다르게 줬다. 그래서 7일짜리 refresh 토큰을 `Authorization: Bearer`에 넣어도 `JwtStrategy`가 받아준다. Spring `fix/token-type` 브랜치(`D:\blog\vans_story_be`)가 두 토큰에 `typ` 클레임(`access`/`refresh`)을 넣고 Spring 필터·refresh 엔드포인트에서 구분한다(전환 정책은 그 레포 `SECURITY.md` "토큰 타입(typ) 클레임"). 이 서비스 할 일: `JwtPayload`에 `typ?: string`을 더하고 `JwtStrategy.validate`(`src/utils/Authorization/Strategy/strategy.ts`, `fix/authorization` 브랜치)에서 `payload.typ !== 'access'`면 거부(`null` 반환 → 401). 테스트는 `typ: 'access'` 통과, `typ: 'refresh'` 거부, `typ` 없음 거부. **순서 제약**: Spring 배포 **후**에만 바꾼다 — 먼저 바꾸면 Spring이 아직 `typ` 없는 토큰을 발급하므로 모든 인증 요청이 401. Spring 배포 직후에도 그 전에 발급된 access 토큰(`typ` 없음, 최대 5시간)이 남아 있으므로, 배포 + 5시간 뒤에 바꾸면 기존 로그인 사용자도 401을 보지 않는다(일찍 바꾸면 프런트의 401 → refresh 재시도로 복구되거나, 실패하면 재로그인)
-- [ ] (전수조사 #4) 목록 `limit` 상한이 없다. `?limit=100000`이면 게시글 10만 건 + 사용자 서비스 호출 10만 번. `?page=abc`는 `NaN`으로 통과. 페이지네이션 Query DTO(`@IsInt @Min(1) @Max(50)`)
+- [ ] **refresh 토큰이 access 토큰으로 통과한다.** Spring `JwtProvider`가 access(5시간)와 refresh(7일)를 같은 키·같은 클레임(`sub`, `auth`, `exp`)으로 만들고 만료만 다르게 줬다. 그래서 7일짜리 refresh 토큰을 `Authorization: Bearer`에 넣어도 `JwtStrategy`가 받아준다. Spring `fix/token-type` 브랜치(`D:\blog\vans_story_be`)가 두 토큰에 `typ` 클레임(`access`/`refresh`)을 넣고 Spring 필터·refresh 엔드포인트에서 구분한다(전환 정책은 그 레포 `SECURITY.md` "토큰 타입(typ) 클레임"). 이 서비스 할 일: `JwtPayload`에 `typ?: string`을 더하고 `JwtStrategy.validate`(`src/auth/jwt.strategy.ts`)에서 `payload.typ !== 'access'`면 거부(`null` 반환 → 401). 테스트는 `typ: 'access'` 통과, `typ: 'refresh'` 거부, `typ` 없음 거부. **순서 제약**: Spring 배포 **후**에만 바꾼다 — 먼저 바꾸면 Spring이 아직 `typ` 없는 토큰을 발급하므로 모든 인증 요청이 401. Spring 배포 직후에도 그 전에 발급된 access 토큰(`typ` 없음, 최대 5시간)이 남아 있으므로, 배포 + 5시간 뒤에 바꾸면 기존 로그인 사용자도 401을 보지 않는다(일찍 바꾸면 프런트의 401 → refresh 재시도로 복구되거나, 실패하면 재로그인)
+- [x] (전수조사 #4) 목록 `limit` 상한이 없다. `?limit=100000`이면 게시글 10만 건 + 사용자 서비스 호출 10만 번. `?page=abc`는 `NaN`으로 통과. 페이지네이션 Query DTO(`@IsInt @Min(1) @Max(50)`) — `FindPostsQueryDto`로 처리(묶음 A)
 - [ ] (전수조사 #10) 세션: secret이 `JWT_SECRET` 재사용(도달 불가한 `'fallback-secret'` 포함), `secure` 쿠키인데 `trust proxy` 미설정(프록시 뒤에서 Swagger 로그인 유지 실패 가능), 운영 MemoryStore, Swagger 비밀번호 `===` 비교 → `SESSION_SECRET`(2절 결정 14), `app.set('trust proxy', 1)`, `crypto.timingSafeEqual`
-- [ ] (전수조사 #11) `InternalApiClient.getUserNickname`이 이메일을 URL 경로에 그대로 넣는다 → `encodeURIComponent`
+- [ ] (전수조사 #11) `UserServiceClient.getNicknameByEmail`이 이메일을 URL 경로에 그대로 넣는다 → `encodeURIComponent`
 - [ ] JWT 서명을 HS512 공유 비밀키에서 RS256/ES256 + JWKS로. 대칭키는 검증하는 쪽이 토큰을 만들 수도 있어, 이 서비스에서 `JWT_SECRET`이 새면 모든 서비스에서 통하는 관리자 토큰을 만들 수 있다. Kotlin 사용자 서버가 개인키로 서명하고 `/.well-known/jwks.json` 공개 → 이 서비스는 `jwks-rsa`의 `secretOrKeyProvider`로 공개키 검증만(비밀값 제거). **레포를 넘는 작업**(사용자 서버 먼저). 만료 전 폐기(로그아웃·차단)가 필요하면 짧은 만료 + 리프레시 또는 민감 엔드포인트만 introspection(RFC 7662)을 따로 결정. 배경: `docs/architecture.md` "인증·권한"
 - [x] `src/main.ts:82` — MongoDB URI 로그 제거 (2026-10-22)
 - [x] `src/swagger/middleware/swagger.auth.middleware.ts` — 입력·기대 비밀번호를 `console.log`로 찍던 줄 제거, `Logger`로 교체. `SWAGGER_ADMIN_PASSWORD` 미설정 시 `undefined === undefined`로 누구나 통과하던 문제도 함께 수정 (2026-10-22)
 - [x] `src/utils/Api/search-index.client.ts` — 하드코딩된 내부 키 리터럴을 `INTERNAL_API_KEY` 환경 변수로 교체 (2026-10-22). git 히스토리에는 남아 있으므로 키 교체(rotate)는 별도 판단
 - [x] `test/app/bootstrap.spec.ts`("no DB")가 실제로는 `.env`의 운영 Atlas에 연결하고 있었다 — `overrideModule(MongooseModule)`이 동적 모듈과 일치하지 않아 무효. `withFakeMongoose`(연결·모델 프로바이더 override)로 교체, 닿을 수 없는 `MONGODB_URI`로도 통과함을 확인 (2026-10-22)
-- [ ] `test/post/e2e/posts.e2e-spec.ts`가 운영 DB에 붙는다. `mongodb-memory-server` 또는 전용 테스트 DB로 분리하기 전까지 로컬 실행 금지
+- [ ] `test/posts.e2e-spec.ts`가 운영 DB에 붙는다. `mongodb-memory-server` 또는 전용 테스트 DB로 분리하기 전까지 로컬 실행 금지
 - [ ] GitHub Dependabot이 기본 브랜치에서 취약점 110건을 보고(2026-10-21 push 시점: critical 2, high 60, moderate 42, low 6). [목록](https://github.com/JONGHYUNVAN/vans_story_be_post/security/dependabot)을 확인해 미사용 패키지 제거(아래 의존성 절)와 mongoose 8/9 마이그레이션으로 해소되는 건을 먼저 걷어내고, 남는 건은 `npm audit`로 개별 처리. critical 2건은 패키지와 영향 범위를 먼저 파악
 
 ### 의존성
@@ -122,18 +122,18 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 
 - [x] `src/config/{cors,database,swagger}.ts` 죽은 코드 정리 (2026-10-23) — `database.ts` 삭제(연결은 `AppModule`의 `forRootAsync`). `cors.ts`·`swagger.ts`는 값이 현행과 달라 삭제하고, `main.ts`의 인라인 설정을 `src/config/cors.config.ts`(`createCorsOptions`)·`src/swagger/swagger.setup.ts`(`setupSwagger`)로 옮겼다. 같이 `@ApiBearerAuth('Authorization')` 4곳을 `@ApiBearerAuth()`로 통일
 - [x] `src/main.ts` `app.listen(3001)` 하드코딩 → `PORT` 환경 변수, 기본 3001 (2026-10-22)
-- [ ] `package.json`의 `migrate:schema`, `migrate:categories` 스크립트가 가리키는 `scripts/migrate-*.js`가 없다. 스크립트 항목 삭제
+- [x] `package.json`의 `migrate:schema`, `migrate:categories` 스크립트가 가리키는 `scripts/migrate-*.js`가 없다. 스크립트 항목 삭제 (2026-10-22 `refactor/naming`)
 - [x] `@nestjs/config` 도입 — `ConfigModule.forRoot({ isGlobal: true })`, `MongooseModule.forRootAsync`, `JwtModule.registerAsync`, `main.ts`는 `ConfigService`. `dotenv.config()` 호출 제거(`main.ts`, `app.module.ts`) (2026-10-22)
 - [x] 기동 시 환경 변수 검증 — `validate` 함수 직접 작성(`src/config/env.validation.ts`, 라이브러리 없음). 필수 4개 + 선택 4개, 문제를 모아 한 번에 던지고 값은 메시지에 넣지 않음 (2026-10-22)
 - [ ] **배포 전 확인**: 클라우드타입의 `NODE_ENV`가 `development|production|test` 중 하나인지, `CORS_ORIGINS`·`USER_SERVICE_URL`·`SEARCH_SERVICE_URL`이 `http(s)://`로 시작하는지. 아니면 기동이 실패한다
 - [x] 남은 `process.env` 직접 읽기를 `ConfigService`로: `JwtStrategy`, `InternalApiClient`, `SwaggerAuthMiddleware`(`main.ts`에서 주입), 검색 클라이언트는 함수 → `SearchIndexClient` 서비스로 전환 (2026-10-22)
 - [x] 직접 의존성 `dotenv` 제거 — `src/config/database.ts`의 `dotenv.config()` 삭제, 미사용 `test/test-setup.ts` 삭제 (2026-10-22)
 - [ ] `npm start`의 `NODE_OPTIONS='--max-old-space-size=512'`는 POSIX 문법이라 Windows 셸에서 실패. `cross-env` 또는 스크립트 분리
-- [ ] 명명 통일 전환(2절 결정 4) + `forceConsistentCasingInFileNames: true` 복구
+- [x] 명명 통일 전환(2절 결정 4) + `forceConsistentCasingInFileNames: true` 복구 (2026-10-22 `refactor/naming`) — `docs/audits/2026-10-22-naming-review.md`
 
 ### 코드 품질
 
-- [ ] `console.*` 남은 곳 → Nest `Logger`: `src/modules/post/Service/service.ts`의 `.catch` 3곳. swagger 미들웨어와 search-index 클라이언트는 2026-10-22 교체 완료
+- [ ] `console.*` 남은 곳 → Nest `Logger`: `src/posts/posts.service.ts`의 `.catch` 3곳(`config/database.ts`·`post.init.ts`는 명명 전환 1단계에서 삭제). swagger 미들웨어와 search-index 클라이언트는 2026-10-22 교체 완료
 - [ ] `any` 축소 — `src` 41곳(2026-10-22 전수조사 시점, 이전 집계 38곳). `noImplicitAny: true`, eslint `no-explicit-any` 활성화 검토
 - [ ] eslint 8 + legacy `.eslintrc.js`. flat config 전환은 @typescript-eslint 8 지원 범위 확인 후
 
@@ -156,22 +156,27 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
   - [x] (검증 N4) 게시글 생성·카테고리 변경 시 메인·서브 카테고리 존재와 부모 관계 확인(400)
 - [x] **B. 권한** (2026-10-22 `fix/authorization`) — 위 보안 절 RolesGuard 항목(Spring `auth` 클레임 형식 확인이 선행). `Role` enum(#19)과 `AuthModule`의 `RolesGuard`·`Reflector` 정리(#14)를 같이
 - [ ] **C. Swagger·문서 정확성** (`docs/swagger-contract`)
-  - [ ] #7 게시글의 `@ApiBearerAuth('Authorization')`가 문서에 없는 스킴 이름(등록된 건 `bearer`) → Swagger UI가 토큰을 안 붙임. DELETE는 204로 문서화했지만 `@HttpCode` 없어 200. 목록 응답을 `ResponseDto[]`로 선언(실제 `{ data, meta }`). `thumbnail`이 필수로 표시
+  - [ ] #7 게시글의 `@ApiBearerAuth('Authorization')`가 문서에 없는 스킴 이름(등록된 건 `bearer`) → Swagger UI가 토큰을 안 붙임. DELETE는 204로 문서화했지만 `@HttpCode` 없어 200. 목록 응답을 `ResponseDto[]`로 선언(실제 `{ data, meta }`). `thumbnail`이 필수로 표시 — 스킴 이름은 명명 전환에서 `@ApiBearerAuth()`로 고침, 나머지 남음
   - [ ] #8 `swagger-spec.json` 생성 스크립트(1-2절 생성물 정리와 같이)
-  - [ ] #30 JSDoc 오류: `x-viewed` 설명이 동작과 반대, `JwtStrategy.validate` 반환 설명(`{email, role}` → 실제 `{sub, role}`), 서브 카테고리 설명이 마이그레이션 전 구조(Swagger에 노출), 컨트롤러 JSDoc의 요청/응답 JSON 예시(옛 `theme`/`category` 필드) 삭제, `@module` 값 정리
+  - [ ] #30 JSDoc 오류: `x-viewed` 설명이 동작과 반대, 서브 카테고리 설명이 마이그레이션 전 구조(Swagger에 노출), 컨트롤러 JSDoc의 요청/응답 JSON 예시(옛 `theme`/`category` 필드) 삭제, `@module` 값 정리
 - [ ] **D. 설정·파이프라인·로깅** (`refactor/pipeline`)
   - [ ] #10·#11은 위 보안 절. #20 `APP_PIPE`(2절 결정 9), #21 `app.useBodyParser('json', { limit: '10mb' })`, #22 Swagger 미들웨어 형태(결정 10)와 `express-session` `SessionData` 선언 병합
-  - [ ] #12 외부 클라이언트 오류 은닉: `InternalApiClient`는 실패를 로그 없이 `null`, `SearchIndexClient`는 `res.ok`를 확인하지 않음
-  - [ ] #26 `SearchIndexClient`: 필수 `INTERNAL_API_KEY`를 호출마다 `get() ?? ''`로 읽음 → 생성자 `getOrThrow`, Logger 이름 `SearchIndexClient.name`
-  - [ ] #14 `AppModule`의 `HttpModule`, 쓰이지 않는 export(`PostsService`, `CategoryService`, `PassportModule`) 제거
+  - [ ] #12 외부 클라이언트 오류 은닉: `UserServiceClient`는 실패를 로그 없이 `null`, `SearchServiceClient`는 `res.ok`를 확인하지 않음
+  - [ ] #26 `SearchServiceClient`: 필수 `INTERNAL_API_KEY`를 호출마다 `get() ?? ''`로 읽음 → 생성자 `getOrThrow` (Logger 이름은 명명 전환에서 `SearchServiceClient.name`)
+  - [ ] #14 `AppModule`의 `HttpModule`, 쓰이지 않는 export(`PostsService`, `CategoriesService`, `PassportModule`) 제거
   - [ ] #27 `main.ts` 정리: logger 배열(`'verbose'` 중복, 전체가 기본값과 같음), `@nestjs/common` import 두 줄, `void bootstrap()`
 - [ ] **E. 죽은 코드·중복** (`refactor/cleanup`)
-  - [ ] #16 `src/utils/pagination/DTO/dto.ts`, ~~`PostInitService`(`src/database/init/post.init.ts`, 빈 시드)~~ 2026-10-23 삭제, 미사용 조회 메서드 3개와 테스트(2절 결정 13), `MockAuthModule`의 쓰이지 않는 `APP_GUARD` import·`JwtAuthGuard` provider, `package.json`의 `swagger:serve`·`swagger:open`
+  - [ ] #16 미사용 조회 메서드 3개(`findByAuthor`·`searchPosts`·`findByThemeAndCategory`)와 테스트 — 2절 결정 13. 나머지(`pagination/DTO/dto.ts`, `PostInitService`, `MockAuthModule`, `swagger:serve`·`swagger:open`, `config/*`)는 명명 전환 1단계에서 삭제
   - [ ] #17 `PostsService` 중복: populate 체인 8회, `SearchIndexPayload` 조립 2회, 경로마다 다른 응답 필드(`findAll/findOne/findForEdit/update`는 `mainCategory`만 채움). A의 #1과 같이 보면 좋다
   - [x] #18 `UpdatePostDto` → `PartialType(CreatePostDto, { skipNullProperties: false })` — A의 #5와 같이 처리(2026-10-22)
-  - [x] #15 `PostsModule`이 `Category` 모델을 다시 `forFeature` → `CategoryModule`이 `MongooseModule` export (2026-10-23)
+  - [x] #15 `PostsModule`이 `Category` 모델을 다시 `forFeature` → `CategoriesModule`이 `MongooseModule` export (2026-10-23)
   - [ ] #13 `JwtAuthGuard`의 미사용 `JwtService` 주입 제거(2절 결정 8)
-- [ ] **F. 명명·구조 전환** — 위 설정·구조 절 "명명 통일 전환" 항목의 실행 계획. 목표는 2절 결정 6, 리네임 목록은 감사 문서 2절. 커밋 순서: `.gitattributes`+renormalize → `git mv`만(`DTO→dto`는 두 단계) → import → 클래스명 → 문서·`.claude/rules` `paths`. #24 `@CurrentUser()` 데코레이터, #25 `HydratedDocument`(`.claude/rules/schemas.md`도), #28 테스트 이름·위치(결정 11)와 카테고리 테스트 추가, #33 서식, #34 `build` 스크립트 `echo` 제거·`tsconfig.build.json` `include`·jest `collectCoverageFrom`
+- [x] **F. 명명·구조 전환** (2026-10-22 `refactor/naming`) — 폴더·파일(CLI 평면 구조), 클래스·메서드·변수·상수, 테스트 이름·위치, `test/*` 별칭, `forceConsistentCasingInFileNames`. 계획·결과는 `docs/audits/2026-10-22-naming-review.md`, 규칙은 `docs/conventions.md` 2절
+  - [ ] #24 `@CurrentUser()` 데코레이터(컨트롤러의 `@Request() request: any`)
+  - [ ] #25 `HydratedDocument<X>`, 주입 타입 `Model<X>`로 통일
+  - [ ] #28 `CategoriesService` 단위 테스트(정상·예외)
+  - [ ] #33 서식(4칸 들여쓰기, 끝 개행) — CRLF 정리(결정 2) 후 `prettier --write`
+  - [ ] #34 `build` 스크립트 `echo` 제거, `tsconfig.build.json` `include: ["src"]`, jest `collectCoverageFrom`을 `src/**`로
 - [ ] **G. API 계약 변경** — 2절 결정 5·7 확정 후 프런트(`vans_story`)와 같이 배포
 
 ---

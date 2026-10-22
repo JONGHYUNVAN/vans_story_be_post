@@ -142,3 +142,11 @@
 - `jest-e2e.json`의 `rootDir`는 `test/`라 `test/posts.e2e-spec.ts`도 잡히고, `^test/` 매핑은 `<rootDir>/$1`
 - 계획 안의 모순 하나 수정: 결정 13 보류 메서드(`findByAuthor`)를 3절에서 바꾸려 했던 것을 뺐다
 - 문서 경로 참조 11곳(README·CLAUDE.md·.claude·architecture·conventions)은 5단계에서 같이 고친다
+
+## 7. 결과
+
+5단계 그대로 커밋했다(`refactor/naming`: 죽은 파일 삭제 → 파일 이동 → 운영 식별자 → 테스트 → 문서). 커밋마다 `tsc`·`npm test`(127건, 14 스위트)·`npm run build` 통과. 계획과 달라진 점:
+
+- 외부 연동 모듈(`UserServiceModule`, `SearchServiceModule`)은 2단계가 아니라 클래스 이름을 바꾸는 3단계에서 만들었다
+- `posts.service.spec.ts`의 describe별 JSDoc(옛 시그니처·옛 이름 예시)을 지웠고, `create-*.dto.spec.ts`의 Update 테스트를 `update-*.dto.spec.ts`로 분리했다(카테고리도)
+- `AUTHOR_EMAIL` 픽스처를 `author@example.com`으로 바꿨다(e2e 관리자 `admin@example.com`과 분리)

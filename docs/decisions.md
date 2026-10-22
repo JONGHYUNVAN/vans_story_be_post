@@ -68,6 +68,12 @@
 - 왜: 사용자 요청("Nest 표준 코드 컨벤션") — CLI 출력과 공식 문서를 기준으로 삼으면 `nest g`로 만든 파일이 손대지 않아도 규칙에 맞는다. `APP_PIPE`는 DI가 되고 `Test.createTestingModule`에서도 검증이 돈다(pipes "Global scoped pipes"). 함수형 미들웨어는 middleware "Global middleware"가 `app.use`에 권하는 형태이고 함정 7(`this` 바인딩)이 사라진다. 상대경로 구체화는 평면 구조에서 같은 폴더 import가 `./dto`처럼 짧아지기 때문.
 - 대안: 전수조사 추천안(`src/modules/posts/…`, 테스트는 `test/` 유지) — 표준 출력과 달라 `nest g` 결과를 매번 옮겨야 한다. 결정 5(직렬화)·7(prefix)·8(`JwtModule`)·12~14는 이 문서로 정하지 않았다.
 
+### 명명 전수 검토와 전환 (`refactor/naming`)
+
+- 무엇: `src/`·`test/`·`scripts/`·`package.json`의 모든 이름을 검토하고(`docs/audits/2026-10-22-naming-review.md`) 통일 규칙을 `docs/conventions.md` 2절 "통일 규칙"으로 확정했다. 파일 46개를 CLI 평면 구조로 옮기고 클래스·메서드·변수·상수·테스트 이름을 바꿨다. 주요 결정: 외부 연동 클라이언트는 환경 변수 이름을 따라 `UserServiceClient`/`SearchServiceClient`(conventions 1절의 `search-index/`를 `search-service/`로 정정)와 각자 모듈, `request.user`의 이메일 필드는 `email`(JWT 클레임 이름 `sub`는 전략 안에만), DTO 별칭 폐지, 테스트 더블은 `createMock*`(jest.fn)과 `Fake*`(손으로 짠 구현)로 구분, `CategoryGroup`처럼 저장된 값을 쓰는 enum은 값 그대로(새 enum만 소문자 값).
+- 왜: 같은 개념이 `userEmail`/`authorEmail`/`email`/`sub`, `mainCategory`/`mainCategoryValue`, `apiClient`/`InternalApiClient`/`createMockApiClient`처럼 여러 이름으로 흩어져 있었고, `findByGroup`(실제로는 전체를 묶음), `TestAuthGuard`(passport를 쓰지 않음), `MockGenerator`(픽스처를 만듦)처럼 이름이 하는 일과 달랐다. 리네임은 diff를 덮으므로 동작 수정(묶음 A·B) 뒤에 한 번에 했다.
+- 대안: 감사 문서 2절 목표(`src/modules/posts/…`, `common/clients/`) — 결정 6에서 CLI 출력 그대로로 정했다. API 계약에 속한 이름(`mainCategory` 응답 필드, `author`, `_id`, `post_id`, 오류 코드)은 규칙과 달라도 바꾸지 않았다(결정 5·7, 묶음 G). 결정 13 보류 메서드는 이름을 그대로 두었다.
+
 ## 2026-10-23
 
 ### 앱 설정은 `.env` + `ConfigService`를 받는 TS 함수, YAML 설정 파일은 쓰지 않음
