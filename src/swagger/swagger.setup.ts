@@ -9,7 +9,7 @@
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
-import { SwaggerAuthMiddleware } from './middleware/swagger.auth.middleware';
+import { SwaggerAuthMiddleware } from './swagger-auth.middleware';
 
 /**
  * 문서 메타데이터를 만든다.

@@ -10,11 +10,11 @@ import { Test } from '@nestjs/testing';
 import { SwaggerModule } from '@nestjs/swagger';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
-import './env';
-import { AppModule } from '../../src/app.module';
-import { createSwaggerConfig } from '../../src/swagger/swagger.setup';
+import './dummy-env';
+import { AppModule } from 'src/app.module';
+import { createSwaggerConfig } from 'src/swagger/swagger.setup';
 import { withFakeMongoose } from '../helpers/fake-mongoose';
-import { CategoryService } from '../../src/modules/category/service/category.service';
+import { CategoryService } from 'src/categories/categories.service';
 
 /** `test/app/env.ts`의 `JWT_SECRET`으로 Spring과 같은 형식(HS512, `sub`·`auth`)의 토큰을 만든다. */
 const token = (auth: string, algorithm: 'HS512' | 'HS256' = 'HS512') =>

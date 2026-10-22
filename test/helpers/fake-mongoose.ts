@@ -1,7 +1,7 @@
 import { TestingModuleBuilder } from '@nestjs/testing';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
-import { Post } from 'src/modules/post/schemas/post.schema';
-import { Category } from 'src/modules/category/schemas/category.schema';
+import { Post } from 'src/posts/schemas/post.schema';
+import { Category } from 'src/categories/schemas/category.schema';
 
 /**
  * Mongoose 연결·모델 프로바이더를 가짜로 바꿔 DB 연결 없이 `AppModule`을 기동한다.

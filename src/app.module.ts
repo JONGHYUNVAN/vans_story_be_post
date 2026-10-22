@@ -10,10 +10,10 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
-import { PostsModule } from './modules/post/Module/module';
-import { CategoryModule } from './modules/category/module/category.module';
-import { AuthModule } from './utils/Authorization/Module/module';
-import { validateEnv } from './config/env.validation';
+import { PostsModule } from 'src/posts/posts.module';
+import { CategoryModule } from 'src/categories/categories.module';
+import { AuthModule } from 'src/auth/auth.module';
+import { validateEnv } from 'src/config/env.validation';
 
 /**
  * 애플리케이션 루트 모듈 클래스
