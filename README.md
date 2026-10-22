@@ -163,10 +163,10 @@ API 기본 경로: `/api/v1/posts`
 
 **TypeDoc**: Material 테마 기반 문서 생성
 ```bash
-npm run docs
+npm run docs:typedoc
 ```
 
-생성된 문서는 `docs/` 디렉토리에서 확인할 수 있습니다.
+생성된 문서는 `docs/typedoc/` 디렉토리에서 확인할 수 있습니다.
 
 ## 환경 설정
 

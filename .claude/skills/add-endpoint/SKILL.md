@@ -20,5 +20,5 @@ description: 이 NestJS 서비스에 새 REST 엔드포인트(라우트·API)를
    - 정적 경로(`grouped`, `value/:value`, `:id/edit`)는 `:id`보다 **앞에** 선언한다.
    - 가드를 쓰는 모듈이 `AuthModule`을 import하는지 확인한다 (`CLAUDE.md` 함정 1).
 4. **단위 테스트** (대상 옆 `*.spec.ts`, `test/helpers`가 필요하면 당분간 `test/` — `.claude/rules/testing.md`): 정상 1건 + 예외 각각. `npm test`.
-5. **문서**: `README.md`의 "주요 API 엔드포인트" 목록에 한 줄 추가. `npm run swagger:build:clean`으로 `docs/swagger/clean.html` 재생성(추적되는 파일).
+5. **문서**: `README.md`의 "주요 API 엔드포인트" 목록에 한 줄 추가. `npm run swagger:html`로 `docs/swagger/clean.html` 재생성(추적되는 파일, 입력 `swagger-spec.json`이 낡았다는 점은 `TODO.md` 1-2).
 6. **검증**: `npx tsc --noEmit -p tsconfig.json` → `npm test` → 손댄 파일 `npx prettier --check`.

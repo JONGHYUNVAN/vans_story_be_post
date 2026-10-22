@@ -13,8 +13,8 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
 | 단일 테스트 | `npm test -- -t "테스트 이름"` |
 | 빌드 | `npm run build` → `dist/` |
 | 포맷 확인 | `npx prettier --check <새 파일>` — 전체 `npm run lint`·`npm run format`은 실행하지 않는다 (CRLF 체크아웃의 `Delete ␍` 오류 수천 건 + 기존 파일 전체가 재포맷되어 diff가 터진다) |
-| Swagger HTML | `npm run swagger:build:clean` → `docs/swagger/clean.html` (추적됨) |
-| typedoc | `npm run docs` → `docs/typedoc/` (gitignore) |
+| Swagger HTML | `npm run swagger:html` → `docs/swagger/clean.html` (추적됨). 입력은 커밋된 `swagger-spec.json`이고 이를 만드는 코드는 아직 없다(`TODO.md` 1-2) |
+| typedoc | `npm run docs:typedoc` → `docs/typedoc/` (gitignore) |
 
 실행 금지 — `.claude/settings.json`이 deny한다:
 
@@ -24,7 +24,6 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
 | `npm run test:e2e`, `npm run test:all*` | e2e가 운영 DB에 쓴다 |
 | `.env` 읽기 | 비밀값. 변수 이름은 `.env.example` |
 
-`npm run migrate:*`는 참조하는 스크립트 파일이 없다 (`scripts/`에는 `generate-swagger-clean.js`뿐).
 
 ## 요청 흐름과 레이어 책임
 

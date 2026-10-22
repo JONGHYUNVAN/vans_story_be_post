@@ -9,7 +9,6 @@ import request from 'supertest';
 import { AppModule } from '../../../src/app.module';
 import { CreateDto } from '../../../src/modules/post/DTO';
 import { Post } from '../../../src/modules/post/schemas/post.schema';
-import { MockAuthModule } from '../../helpers/mock.module';
 import { JwtAuthGuard } from '../../../src/utils/Authorization/Guard/auth';
 import { TestAuthGuard } from '../../helpers/test-auth.guard';
 import { InternalApiClient } from '../../../src/utils/Api/api';
@@ -26,7 +25,7 @@ describe('PostsController (e2e)', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule, MockAuthModule],
+      imports: [AppModule],
     })
     .overrideGuard(JwtAuthGuard)
     .useClass(TestAuthGuard)

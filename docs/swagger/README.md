@@ -13,17 +13,8 @@
 ## 명령어
 
 ```bash
-# 간단한 문서 생성
-npm run swagger:generate:simple
-
-# 기본 문서 생성
-npm run swagger:generate
-
-# 브라우저에서 열기
-npm run swagger:open
-
-# 로컬 서버로 실행
-npm run swagger:serve
+# swagger-spec.json → clean.html
+npm run swagger:html
 ```
 
 ## 생성 날짜

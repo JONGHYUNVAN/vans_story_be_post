@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // 깔끔한 Swagger UI HTML 템플릿 (헤더 제거, Try it out 기능 제거)
-const cleanSwaggerHtmlTemplate = (swaggerSpec) => `
+const swaggerHtmlTemplate = (swaggerSpec) => `
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -132,7 +132,7 @@ function readSwaggerSpec() {
 }
 
 // 깔끔한 Swagger HTML 파일 생성
-function generateCleanSwaggerHtml() {
+function generateSwaggerHtml() {
     const swaggerSpec = readSwaggerSpec();
     
     if (!swaggerSpec) {
@@ -140,7 +140,7 @@ function generateCleanSwaggerHtml() {
         return;
     }
 
-    const htmlContent = cleanSwaggerHtmlTemplate(swaggerSpec);
+    const htmlContent = swaggerHtmlTemplate(swaggerSpec);
     const outputDir = path.join(__dirname, '..', 'docs', 'swagger');
     const outputPath = path.join(outputDir, 'clean.html');
 
@@ -155,4 +155,4 @@ function generateCleanSwaggerHtml() {
 }
 
 // 스크립트 실행
-generateCleanSwaggerHtml(); 
+generateSwaggerHtml(); 

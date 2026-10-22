@@ -43,7 +43,7 @@ Claude Code 공식 가이드 기준으로 CLAUDE.md는 200줄 미만, "이 줄�
 - [ ] 생성물 정리 — `docs/swagger/README.md`, `docs/swagger/clean.html`, `swagger-spec.json`이 강제 추가돼 있다. 생성물은 untrack하고 생성 명령만 CLAUDE.md에 적는다. ~~0바이트 `db.sqlite` 삭제~~ (2026-10-22 완료, 의존성 정리와 함께)
   (2026-10-22: `.gitignore`를 `/docs` → `/docs/typedoc`으로 좁히고 typedoc `out`을 `docs/typedoc`으로 옮겨 `docs/*.md`를 커밋할 수 있게 했다. swagger 생성물은 아직 추적 중)
   **확인 필요**: Swagger HTML을 GitHub Pages 등 외부에서 쓰고 있으면 untrack하지 않는다.
-  (전수조사 #8: `swagger-spec.json`을 만드는 코드가 없어 낡았다 — 카테고리 API가 없고 스키마 이름이 옛 `CreateDto/ResponseDto`. `swagger:build:clean`은 이 낡은 JSON으로 HTML을 만든다. untrack하든 유지하든 앱에서 문서를 생성하는 스크립트가 먼저)
+  (전수조사 #8: `swagger-spec.json`을 만드는 코드가 없어 낡았다 — 카테고리 API가 없고 스키마 이름이 옛 `CreateDto/ResponseDto`. `swagger:html`(옛 `swagger:build:clean`)은 이 낡은 JSON으로 HTML을 만든다. untrack하든 유지하든 앱에서 문서를 생성하는 스크립트가 먼저)
 
 ### 1-3. 만들지 않기로 한 것
 
