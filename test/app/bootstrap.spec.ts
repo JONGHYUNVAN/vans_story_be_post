@@ -1,20 +1,17 @@
 /**
  * 애플리케이션 부트스트랩 스모크 테스트
  *
- * MongooseModule을 가짜 모델 프로바이더로 대체해 DB 연결 없이 AppModule 전체를 기동합니다.
+ * Mongoose 연결·모델 프로바이더를 가짜로 대체해 DB 연결 없이 AppModule 전체를 기동합니다.
  * 모듈 간 의존성 주입(가드, 전략, HttpModule), 라이프사이클 훅, Swagger 문서 생성,
  * Express 5를 통한 비인증 요청 거부(401)까지 한 번에 검증합니다.
  * (Nest 12 업그레이드 시 가드 의존성 해석 변경을 잡아낸 테스트입니다.)
  */
-import { Global, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { MongooseModule, getModelToken } from '@nestjs/mongoose';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import request from 'supertest';
 import './env';
 import { AppModule } from '../../src/app.module';
-import { Post } from '../../src/modules/post/schemas/post.schema';
-import { Category } from '../../src/modules/category/schemas/category.schema';
+import { withFakeMongoose } from '../helpers/fake-mongoose';
 
 describe('AppModule bootstrap (no DB)', () => {
   let app: any;
@@ -28,20 +25,10 @@ describe('AppModule bootstrap (no DB)', () => {
       create: jest.fn(),
     };
 
-    @Global()
-    @Module({
-      providers: [
-        { provide: getModelToken(Post.name), useValue: fakeModel },
-        { provide: getModelToken(Category.name), useValue: fakeModel },
-      ],
-      exports: [getModelToken(Post.name), getModelToken(Category.name)],
-    })
-    class FakeMongooseModule {}
-
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideModule(MongooseModule)
-      .useModule(FakeMongooseModule)
-      .compile();
+    const moduleRef = await withFakeMongoose(
+      Test.createTestingModule({ imports: [AppModule] }),
+      fakeModel,
+    ).compile();
 
     app = moduleRef.createNestApplication();
     const config = new DocumentBuilder()

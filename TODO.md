@@ -81,6 +81,7 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 - [x] `src/main.ts:82` — MongoDB URI 로그 제거 (2026-10-22)
 - [x] `src/swagger/middleware/swagger.auth.middleware.ts` — 입력·기대 비밀번호를 `console.log`로 찍던 줄 제거, `Logger`로 교체. `SWAGGER_ADMIN_PASSWORD` 미설정 시 `undefined === undefined`로 누구나 통과하던 문제도 함께 수정 (2026-10-22)
 - [x] `src/utils/Api/search-index.client.ts` — 하드코딩된 내부 키 리터럴을 `INTERNAL_API_KEY` 환경 변수로 교체 (2026-10-22). git 히스토리에는 남아 있으므로 키 교체(rotate)는 별도 판단
+- [x] `test/app/bootstrap.spec.ts`("no DB")가 실제로는 `.env`의 운영 Atlas에 연결하고 있었다 — `overrideModule(MongooseModule)`이 동적 모듈과 일치하지 않아 무효. `withFakeMongoose`(연결·모델 프로바이더 override)로 교체, 닿을 수 없는 `MONGODB_URI`로도 통과함을 확인 (2026-10-22)
 - [ ] `test/post/e2e/posts.e2e-spec.ts`가 운영 DB에 붙는다. `mongodb-memory-server` 또는 전용 테스트 DB로 분리하기 전까지 로컬 실행 금지
 - [ ] GitHub Dependabot이 기본 브랜치에서 취약점 110건을 보고(2026-10-21 push 시점: critical 2, high 60, moderate 42, low 6). [목록](https://github.com/JONGHYUNVAN/vans_story_be_post/security/dependabot)을 확인해 미사용 패키지 제거(아래 의존성 절)와 mongoose 8/9 마이그레이션으로 해소되는 건을 먼저 걷어내고, 남는 건은 `npm audit`로 개별 처리. critical 2건은 패키지와 영향 범위를 먼저 파악
 

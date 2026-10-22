@@ -57,7 +57,7 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
 
 - `npm test`는 DB·네트워크 없이 돈다. 새 테스트도 그래야 한다.
 - Service 단위 테스트: `test/helpers/test-utils.ts`의 `createMockPostModel / createMockCategoryModel / createMockApiClient / mockQuery`와 픽스처를 쓴다. 검색 클라이언트는 `jest.mock(...search-index.client)`.
-- 모듈 기동 테스트: `test/app/bootstrap.spec.ts` 패턴 — `import './env'`를 `AppModule`보다 먼저, `overrideModule(MongooseModule).useModule(FakeMongooseModule)`.
+- 모듈 기동 테스트: `test/app/bootstrap.spec.ts` 패턴 — `import './env'`를 `AppModule`보다 먼저, `withFakeMongoose(Test.createTestingModule(...))`(`test/helpers/fake-mongoose.ts`). `overrideModule(MongooseModule)`은 효과가 없다 — 운영 DB에 실제로 연결된다(함정 8).
 - DTO 모의 데이터: `MockGenerator.createMock(CreateDto)` (class-validator 검증 통과를 보장).
 - 상세: `.claude/rules/testing.md`.
 
@@ -77,6 +77,7 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
 5. **dotenv 호이스팅**: `import`가 호이스팅되므로 `main.ts`의 `dotenv.config()`보다 `app.module.ts`의 데코레이터(`MongooseModule.forRoot(process.env.MONGODB_URI!)`)가 먼저 평가된다. 그래서 `app.module.ts`에도 `dotenv.config()`가 있다. `@nestjs/config` 도입 전까지 지우지 않는다.
 6. **`NODE_OPTIONS='…'` POSIX 문법**: `npm start`는 Windows PowerShell에서 실패한다 (어차피 실행 금지). 스크립트에 셸 의존 문법을 추가하지 않는다.
 7. **`SwaggerAuthMiddleware.use`는 화살표 속성**: `main.ts`가 `new SwaggerAuthMiddleware().use`로 바인딩 없이 넘기므로 일반 메서드로 바꾸면 `this`가 사라진다.
+8. **`overrideModule(MongooseModule)`은 아무것도 바꾸지 않는다**: Nest는 `===`로 비교하는데 `forRoot()`·`forFeature()`는 동적 모듈 객체를 import하므로 클래스와 일치하지 않는다. 테스트에서는 `overrideProvider(getConnectionToken())`과 모델 토큰을 바꾼다(`withFakeMongoose`). 2026-10-22 이전의 bootstrap 테스트는 이 때문에 `.env`의 운영 Atlas에 연결하고 있었다(문서 읽기·쓰기는 없지만 mongoose 기본 `autoIndex`로 스키마 인덱스 생성은 시도됐을 수 있다).
 
 ## 변경 체크리스트
 
