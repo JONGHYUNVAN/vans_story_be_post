@@ -3,8 +3,6 @@
  * 
  * MongoDB에 저장되는 카테고리 데이터의 구조를 정의합니다.
  * 메인 카테고리와 서브 카테고리의 계층 구조를 관리합니다.
- * 
- * @module schemas/category.schema
  */
 
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';

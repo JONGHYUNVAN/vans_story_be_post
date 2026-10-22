@@ -3,8 +3,6 @@
  * 
  * 클라이언트에게 카테고리 데이터를 반환할 때 사용되는 데이터 전송 객체입니다.
  * API 응답의 일관성을 보장하고 불필요한 내부 데이터를 제외합니다.
- * 
- * @module dto/category-response.dto
  */
 
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';

@@ -2,8 +2,6 @@
  * Post 엔티티 정의
  * 
  * MongoDB에 저장되는 게시글 데이터의 구조를 정의합니다.
- * 
- * @module schemas/post.schema
  */
 
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';

@@ -1,7 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { faker } from '@faker-js/faker/locale/ko';
-import { CreateDto, UpdateDto, ResponseDto } from 'src/posts/dto';
+import { CreatePostDto, UpdatePostDto, PostResponseDto } from 'src/posts/dto';
 import {
   MAIN_CATEGORY_ID,
   POST_ID,
@@ -39,7 +39,7 @@ export class MockGenerator {
     const mockData: any = {};
     
     // ResponseDto인 경우 특별한 처리
-    if (dto instanceof ResponseDto) {
+    if (dto instanceof PostResponseDto) {
       return {
         _id: POST_ID,
         title: faker.lorem.sentence().slice(0, 100),
@@ -74,7 +74,7 @@ export class MockGenerator {
     }
     
     // CreateDto인 경우 특별한 처리 (mainCategoryId / subCategoryId 는 @IsMongoId 검증을 통과해야 한다)
-    if (dto instanceof CreateDto) {
+    if (dto instanceof CreatePostDto) {
       return {
         title: faker.lorem.sentence().slice(0, 100),
         content: {
@@ -98,7 +98,7 @@ export class MockGenerator {
     }
 
     // UpdateDto인 경우 특별한 처리
-    if (dto instanceof UpdateDto) {
+    if (dto instanceof UpdatePostDto) {
       return {
         title: faker.lorem.sentence().slice(0, 100),
         content: {

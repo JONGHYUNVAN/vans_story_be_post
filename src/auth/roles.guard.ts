@@ -2,8 +2,6 @@
  * 역할 기반 접근 제어(RBAC) 가드
  * 
  * 사용자의 역할에 따라 API 접근 권한을 제어하는 가드를 제공합니다.
- * 
- * @module utils/Authorization/Guard/role
  */
 
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';

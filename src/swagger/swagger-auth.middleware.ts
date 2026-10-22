@@ -3,8 +3,6 @@
  * 
  * Swagger API 문서에 대한 접근을 제한하고 인증을 처리하는 미들웨어입니다.
  * 인증된 사용자만 API 문서에 접근할 수 있도록 세션 기반 인증을 구현합니다.
- * 
- * @module middleware/swagger.auth.middleware
  */
 
 import { Injectable, Logger, NestMiddleware } from '@nestjs/common';
@@ -13,6 +11,7 @@ import { Request, Response, NextFunction } from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Session } from 'express-session';
+import { SWAGGER_PATH } from './swagger.constants';
 
 /**
  * Swagger 인증 정보를 저장하기 위한 세션 인터페이스
@@ -44,7 +43,7 @@ interface CustomRequest extends Request {
 export class SwaggerAuthMiddleware implements NestMiddleware {
   private readonly logger = new Logger(SwaggerAuthMiddleware.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly configService: ConfigService) {}
 
   /**
    * 미들웨어 처리 함수
@@ -61,20 +60,20 @@ export class SwaggerAuthMiddleware implements NestMiddleware {
    */
   use = (req: CustomRequest, res: Response, next: NextFunction) => {
     // API 문서 페이지가 아닌 경우 통과
-    if (!req.path.startsWith('/api/posts/swagger')) {
+    if (!req.path.startsWith(`/${SWAGGER_PATH}`)) {
       return next();
     }
 
     // 인증 요청 처리 (먼저 체크). 비밀번호(입력값·기대값)는 어떤 로그에도 남기지 않는다.
-    if (req.path === '/api/posts/swagger/auth' && req.method === 'POST') {
+    if (req.path === `/${SWAGGER_PATH}/auth` && req.method === 'POST') {
       const { password } = req.body;
-      const expected = this.config.get<string>('SWAGGER_ADMIN_PASSWORD');
+      const adminPassword = this.configService.get<string>('SWAGGER_ADMIN_PASSWORD');
 
-      if (expected && password === expected) {
+      if (adminPassword && password === adminPassword) {
         req.session.swaggerAuthorized = true;
-        req.session.save((err) => {
-          if (err) {
-            this.logger.error('Session save error', err);
+        req.session.save((error) => {
+          if (error) {
+            this.logger.error('Session save error', error);
             return res.status(500).json({ message: '세션 저장 실패' });
           }
           this.logger.log('Swagger auth successful');
@@ -88,13 +87,13 @@ export class SwaggerAuthMiddleware implements NestMiddleware {
     }
 
     // API 문서 HTML 페이지 요청인 경우
-    if (req.path === '/api/posts/swagger' && req.method === 'GET') {
+    if (req.path === `/${SWAGGER_PATH}` && req.method === 'GET') {
       if (req.session.swaggerAuthorized) {
         return next();
       }
-      const htmlPath = path.join(__dirname, 'views', 'swagger-auth.html');
+      const loginPagePath = path.join(__dirname, 'views', 'swagger-auth.html');
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      return fs.createReadStream(htmlPath, { encoding: 'utf8' }).pipe(res);
+      return fs.createReadStream(loginPagePath, { encoding: 'utf8' }).pipe(res);
     }
 
     // Swagger UI 리소스 요청이나 API 호출인 경우 세션 체크

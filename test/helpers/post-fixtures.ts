@@ -6,12 +6,12 @@
  *   흉내 내는 thenable 쿼리 모의 객체(`mockQuery`)
  * - populate 결과가 포함된 lean 게시글 문서 픽스처(`createPostDocument`)
  * - 서비스 경로별 기대 응답(`expectedEnrichedResponse`, `expectedMainCategoryOnlyResponse`)
- * - Post / Category 모델과 InternalApiClient 모의 객체
+ * - Post / Category 모델과 UserServiceClient 모의 객체
  *
  * @module test/helpers/test-utils
  */
 import { Types } from 'mongoose';
-import { ResponseDto } from 'src/posts/dto';
+import { PostResponseDto } from 'src/posts/dto';
 
 // ---------------------------------------------------------------- 고정 식별자
 
@@ -140,7 +140,7 @@ export const createPostDocument = (overrides: Partial<PostLeanDoc> = {}): PostLe
  * `mapToDto`가 lean 문서의 populate 결과를 그대로 복사하므로, 응답의 `mainCategoryId` / `subCategoryId`는
  * DTO 타입(`Types.ObjectId`)과 달리 `{ _id, value, label }` 서브문서다.
  */
-export type PostResponse = Omit<ResponseDto, 'mainCategoryId' | 'subCategoryId'> & {
+export type PostResponse = Omit<PostResponseDto, 'mainCategoryId' | 'subCategoryId'> & {
   mainCategoryId: PopulatedCategoryRef;
   subCategoryId: PopulatedCategoryRef;
 };
@@ -173,7 +173,7 @@ export const expectedMainCategoryOnlyResponse = (
 });
 
 /**
- * `enrichPostWithCategoryInfo` 경로(create / findByAuthor / searchPosts / findByThemeAndCategory)의 기대 응답.
+ * `toResponseDto` 경로(create / findByAuthor / searchPosts / findByThemeAndCategory)의 기대 응답.
  * 메인·서브 카테고리의 value와 label이 모두 채워진다.
  */
 export const expectedEnrichedResponse = (doc: PostLeanDoc = createPostDocument()): PostResponse => ({
@@ -268,11 +268,11 @@ export const createMockCategoryModel = (categories: CategoryFixture[] = [mainCat
 });
 
 export const createMockApiClient = () => ({
-  getUserNickname: jest.fn().mockResolvedValue(AUTHOR_NICKNAME),
+  getNicknameByEmail: jest.fn().mockResolvedValue(AUTHOR_NICKNAME),
 });
 
 /** 검색 인덱스 클라이언트는 fire-and-forget 으로 외부 서비스에 fetch 하므로 호출 기록만 남기는 모의 객체로 바꾼다 */
 export const createMockSearchIndexClient = () => ({
   indexPost: jest.fn().mockResolvedValue(undefined),
-  deletePostIndex: jest.fn().mockResolvedValue(undefined),
+  removePostFromIndex: jest.fn().mockResolvedValue(undefined),
 });

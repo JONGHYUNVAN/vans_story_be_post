@@ -1,38 +1,23 @@
-/**
- * 필드 메타데이터 추출기
- * 
- * 클래스 속성에 메타데이터를 추가하기 위한 데코레이터를 제공합니다.
- * 리플렉션 메타데이터를 사용하여 DTO 클래스의 필드를 추적합니다.
- * 
- * @module Mapper/fieldname.extractor
- */
-
 import 'reflect-metadata';
 
+/** `@ResponseField`가 붙은 속성 이름 목록을 담는 메타데이터 키 */
+export const RESPONSE_FIELDS_KEY = 'fields';
+
 /**
- * Field 데코레이터
- * 
- * 클래스 속성에 적용되어 해당 속성이 DTO 매핑 대상임을 표시합니다.
- * 'fields' 메타데이터 배열에 속성 이름을 추가합니다.
- * 
- * @param {Object} target - 데코레이터가 적용된 객체
- * @param {string} key - 데코레이터가 적용된 속성 이름
- * 
+ * 응답 DTO에서 `mapToDto`가 엔티티 값을 복사할 속성을 표시합니다.
+ *
  * @example
  * ```typescript
- * class SomeDto {
- *   @Field
- *   id: string;
- * 
- *   @Field
- *   name: string;
+ * class PostResponseDto {
+ *   @ResponseField
+ *   title: string;
  * }
  * ```
  */
-export function Field(target: any, key: string) {
-  const fields = Reflect.getMetadata('fields', target) || [];
+export function ResponseField(target: object, key: string) {
+  const fields: string[] = Reflect.getMetadata(RESPONSE_FIELDS_KEY, target) || [];
 
   fields.push(key);
 
-  Reflect.defineMetadata('fields', fields, target);
+  Reflect.defineMetadata(RESPONSE_FIELDS_KEY, fields, target);
 }

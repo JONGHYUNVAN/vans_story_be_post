@@ -1,6 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
-import { FindPostsQueryDto, MAX_POSTS_PER_PAGE } from './find-posts-query.dto';
+import { FindPostsQueryDto } from './find-posts-query.dto';
+import { MAX_POSTS_PER_PAGE } from '../posts.constants';
 
 // 쿼리 문자열은 모두 문자열로 들어온다
 const parse = (query: Record<string, string>) => {

@@ -1,7 +1,6 @@
 /**
  * PostsService 단위 테스트
  *
- * @module test/Service/service.spec
  * @description
  * 게시글 서비스의 모든 기능에 대한 단위 테스트를 수행합니다.
  * 각 메서드별로 정상 케이스와 예외 케이스를 테스트하며,
@@ -28,9 +27,9 @@ import { Types } from 'mongoose';
 import { PostsService } from './posts.service';
 import { Post } from './schemas/post.schema';
 import { Category } from 'src/categories/schemas/category.schema';
-import { InternalApiClient } from 'src/user-service/user-service.client';
-import { SearchIndexClient } from 'src/search-service/search-service.client';
-import { CreateDto, UpdateDto } from './dto';
+import { UserServiceClient } from 'src/user-service/user-service.client';
+import { SearchServiceClient } from 'src/search-service/search-service.client';
+import { CreatePostDto, UpdatePostDto } from './dto';
 import { Role } from 'src/auth/role.enum';
 import { MockGenerator } from 'test/helpers/dto-fixtures';
 import {
@@ -79,11 +78,11 @@ describe('PostsService', () => {
           useValue: mockCategoryModel,
         },
         {
-          provide: InternalApiClient,
+          provide: UserServiceClient,
           useValue: mockApiClient,
         },
         {
-          provide: SearchIndexClient,
+          provide: SearchServiceClient,
           useValue: mockSearchIndex,
         },
       ],
@@ -100,9 +99,9 @@ describe('PostsService', () => {
    * 생성 후 populate 된 문서를 다시 읽어 카테고리 value / label 과 작성자 닉네임을 채우고,
    * 검색 인덱스 등록을 fire-and-forget 으로 요청합니다.
    *
-   * @param {CreateDto} createDto - 게시글 생성에 필요한 데이터
+   * @param {CreatePostDto} createDto - 게시글 생성에 필요한 데이터
    * @param {string} authorEmail - 게시글 작성자의 이메일
-   * @returns {Promise<ResponseDto>} 생성된 게시글 정보
+   * @returns {Promise<PostResponseDto>} 생성된 게시글 정보
    *
    * @example
    * ```typescript
@@ -132,7 +131,7 @@ describe('PostsService', () => {
   describe('create', () => {
     it('should create a new post', async () => {
       // Given
-      const createDto = MockGenerator.createMock(CreateDto);
+      const createDto = MockGenerator.createMock(CreatePostDto);
 
       // When
       const result = await service.create(createDto, AUTHOR_EMAIL);
@@ -151,7 +150,7 @@ describe('PostsService', () => {
       expect(query.lean).toHaveBeenCalled();
 
       // 작성자 닉네임 + 메인/서브 카테고리 value·label 이 모두 채워진 응답
-      expect(mockApiClient.getUserNickname).toHaveBeenCalledWith(AUTHOR_EMAIL);
+      expect(mockApiClient.getNicknameByEmail).toHaveBeenCalledWith(AUTHOR_EMAIL);
       expect(result).toEqual(expectedEnrichedResponse());
 
       // 검색 인덱스 등록 (fire-and-forget)
@@ -170,7 +169,7 @@ describe('PostsService', () => {
     it('should throw BadRequestException when author email is invalid', async () => {
       // Given
       const invalidEmail = 'invalid-email';
-      const createDto = MockGenerator.createMock(CreateDto);
+      const createDto = MockGenerator.createMock(CreatePostDto);
 
       // When & Then
       await expect(service.create(createDto, invalidEmail)).rejects.toThrow(BadRequestException);
@@ -186,7 +185,7 @@ describe('PostsService', () => {
       ['서브 자리에 메인 카테고리', { subCategoryId: MAIN_CATEGORY_ID.toHexString() }],
     ])('%s로 만들면 저장하지 않고 400', async (_, overrides) => {
       // Given
-      const createDto = MockGenerator.createMock(CreateDto, overrides);
+      const createDto = MockGenerator.createMock(CreatePostDto, overrides);
 
       // When & Then
       await expect(service.create(createDto, AUTHOR_EMAIL)).rejects.toThrow(BadRequestException);
@@ -205,7 +204,7 @@ describe('PostsService', () => {
             : String(id) === MAIN_CATEGORY_ID.toHexString() ? mainCategoryDoc : null,
         ),
       );
-      const createDto = MockGenerator.createMock(CreateDto, { subCategoryId: OTHER_SUB_ID.toHexString() });
+      const createDto = MockGenerator.createMock(CreatePostDto, { subCategoryId: OTHER_SUB_ID.toHexString() });
 
       // When & Then
       await expect(service.create(createDto, AUTHOR_EMAIL)).rejects.toThrow(
@@ -226,7 +225,7 @@ describe('PostsService', () => {
    * @param {string} [subCategoryValue] - 필터링할 서브 카테고리 value
    * @param {number} [page=1] - 페이지 번호
    * @param {number} [limit=10] - 페이지당 게시글 수
-   * @returns {Promise<Paginated<ResponseDto>>} 페이지네이션이 적용된 게시글 목록
+   * @returns {Promise<Paginated<PostResponseDto>>} 페이지네이션이 적용된 게시글 목록
    *
    * @example
    * ```typescript
@@ -320,7 +319,7 @@ describe('PostsService', () => {
    *
    * @param {string} id - 조회할 게시글의 ID
    * @param {boolean} [viewed=false] - 조회수 증가 여부
-   * @returns {Promise<ResponseDto>} 조회된 게시글 정보
+   * @returns {Promise<PostResponseDto>} 조회된 게시글 정보
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
    *
    * @example
@@ -351,7 +350,7 @@ describe('PostsService', () => {
       );
 
       // 응답은 조회수를 증가시키기 전에 읽은 문서 기준이다 (viewCount: 0)
-      expect(mockApiClient.getUserNickname).toHaveBeenCalledWith(AUTHOR_EMAIL);
+      expect(mockApiClient.getNicknameByEmail).toHaveBeenCalledWith(AUTHOR_EMAIL);
       expect(result).toEqual(expectedMainCategoryOnlyResponse());
     });
 
@@ -374,7 +373,7 @@ describe('PostsService', () => {
    *
    * @param {string} id - 조회할 게시글의 ID
    * @param {string} userEmail - 요청자의 이메일
-   * @returns {Promise<ResponseDto>} 수정 권한이 확인된 게시글 정보
+   * @returns {Promise<PostResponseDto>} 수정 권한이 확인된 게시글 정보
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
    * @throws {ForbiddenException} 작성자가 아닌 사용자가 접근할 경우
    *
@@ -434,10 +433,10 @@ describe('PostsService', () => {
    * 수정 후에는 검색 인덱스 갱신을 fire-and-forget 으로 요청합니다.
    *
    * @param {string} id - 수정할 게시글의 ID
-   * @param {UpdateDto} updateDto - 수정할 게시글 데이터
+   * @param {UpdatePostDto} updateDto - 수정할 게시글 데이터
    * @param {string} userEmail - 요청자의 이메일
    * @param {Role[]} userRoles - 요청자의 역할
-   * @returns {Promise<ResponseDto>} 수정된 게시글 정보
+   * @returns {Promise<PostResponseDto>} 수정된 게시글 정보
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
    * @throws {ForbiddenException} 수정 권한이 없는 경우
    *
@@ -468,7 +467,7 @@ describe('PostsService', () => {
     it('작성자 본인은 수정할 수 있다', async () => {
       // Given
       const userEmail = AUTHOR_EMAIL;
-      const updateDto = MockGenerator.createMock(UpdateDto);
+      const updateDto = MockGenerator.createMock(UpdatePostDto);
 
       mockPostModel.findById.mockReturnValue(mockQuery(createPostDocument({ authorEmail: userEmail })));
 
@@ -498,7 +497,7 @@ describe('PostsService', () => {
 
     it('관리자는 다른 사람의 글도 수정할 수 있다', async () => {
       // Given
-      const updateDto = MockGenerator.createMock(UpdateDto);
+      const updateDto = MockGenerator.createMock(UpdatePostDto);
 
       mockPostModel.findById.mockReturnValue(mockQuery(createPostDocument({ authorEmail: AUTHOR_EMAIL })));
 
@@ -513,7 +512,7 @@ describe('PostsService', () => {
 
     it('작성자도 관리자도 아니면 403', async () => {
       // Given
-      const updateDto = MockGenerator.createMock(UpdateDto);
+      const updateDto = MockGenerator.createMock(UpdatePostDto);
 
       mockPostModel.findById.mockReturnValue(mockQuery(createPostDocument({ authorEmail: AUTHOR_EMAIL })));
 
@@ -531,7 +530,7 @@ describe('PostsService', () => {
       ['역할 목록 자체가 없으면', AUTHOR_EMAIL, undefined],
     ])('%s 게시글을 조회하지 않고 403 (fail-closed)', async (_, userEmail, userRoles) => {
       // Given
-      const updateDto = MockGenerator.createMock(UpdateDto);
+      const updateDto = MockGenerator.createMock(UpdatePostDto);
 
       // When & Then
       await expect(
@@ -543,7 +542,7 @@ describe('PostsService', () => {
 
     it('게시글이 없으면 404', async () => {
       // Given
-      const updateDto = MockGenerator.createMock(UpdateDto);
+      const updateDto = MockGenerator.createMock(UpdatePostDto);
 
       mockPostModel.findById.mockReturnValue(mockQuery(null));
 
@@ -648,7 +647,7 @@ describe('PostsService', () => {
 
       // Then
       expect(mockPostModel.findByIdAndDelete).toHaveBeenCalledWith(POST_ID_HEX);
-      expect(mockSearchIndex.deletePostIndex).toHaveBeenCalledWith(POST_ID_HEX);
+      expect(mockSearchIndex.removePostFromIndex).toHaveBeenCalledWith(POST_ID_HEX);
     });
 
     it('should throw NotFoundException when post not found', async () => {
@@ -657,7 +656,7 @@ describe('PostsService', () => {
 
       // When & Then
       await expect(service.remove(POST_ID_HEX)).rejects.toThrow(NotFoundException);
-      expect(mockSearchIndex.deletePostIndex).not.toHaveBeenCalled();
+      expect(mockSearchIndex.removePostFromIndex).not.toHaveBeenCalled();
     });
   });
 
@@ -669,7 +668,7 @@ describe('PostsService', () => {
    * 이 경로는 메인·서브 카테고리의 value 와 label 을 모두 채웁니다.
    *
    * @param {string} authorEmail - 작성자의 이메일
-   * @returns {Promise<ResponseDto[]>} 작성자의 게시글 목록
+   * @returns {Promise<PostResponseDto[]>} 작성자의 게시글 목록
    *
    * @example
    * ```typescript
@@ -707,7 +706,7 @@ describe('PostsService', () => {
 
       // Then
       expect(mockPostModel.find).toHaveBeenCalledWith({ authorEmail });
-      expect(mockApiClient.getUserNickname).not.toHaveBeenCalled();
+      expect(mockApiClient.getNicknameByEmail).not.toHaveBeenCalled();
       expect(result).toEqual([]);
     });
   });
@@ -720,7 +719,7 @@ describe('PostsService', () => {
    * 제목과 내용에서 대소문자 구분 없이 키워드를 검색합니다.
    *
    * @param {string} keyword - 검색할 키워드
-   * @returns {Promise<ResponseDto[]>} 검색된 게시글 목록
+   * @returns {Promise<PostResponseDto[]>} 검색된 게시글 목록
    *
    * @example
    * ```typescript

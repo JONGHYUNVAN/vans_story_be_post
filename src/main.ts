@@ -2,8 +2,6 @@
  * 애플리케이션 진입점
  * 
  * NestJS 애플리케이션을 부트스트랩하고 필요한 미들웨어 및 설정을 구성합니다.
- * 
- * @module main
  */
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';

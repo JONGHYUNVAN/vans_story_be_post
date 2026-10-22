@@ -3,8 +3,6 @@
  * 
  * 기존 카테고리를 업데이트할 때 사용되는 데이터 전송 객체입니다.
  * 모든 필드가 선택적이며, 제공된 필드만 업데이트됩니다.
- * 
- * @module dto/update-category.dto
  */
 
 import { PartialType } from '@nestjs/swagger';

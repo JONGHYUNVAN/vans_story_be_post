@@ -3,8 +3,6 @@
  * 
  * 새로운 게시글을 생성할 때 클라이언트에서 서버로 전송되는 데이터 구조를 정의합니다.
  * 제목, 내용, 메인 카테고리 등 게시글 생성에 필요한 필수 정보를 포함합니다.
- * 
- * @module dto/create-post.dto
  */
 
 import { ApiProperty } from '@nestjs/swagger';

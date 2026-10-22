@@ -3,8 +3,6 @@
  * 
  * 새로운 카테고리를 생성할 때 사용되는 데이터 전송 객체입니다.
  * 클라이언트로부터 받은 데이터의 유효성을 검증합니다.
- * 
- * @module dto/create-category.dto
  */
 
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';

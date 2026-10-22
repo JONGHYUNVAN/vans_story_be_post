@@ -7,7 +7,7 @@ export class MockInternalApiClient {
     ['admin@example.com', '관리자'],
   ]);
 
-  async getUserNickname(email: string): Promise<string | null> {
+  async getNicknameByEmail(email: string): Promise<string | null> {
     return this.mockNicknames.get(email) || null;
   }
 } 

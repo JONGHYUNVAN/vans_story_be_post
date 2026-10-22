@@ -3,8 +3,6 @@
  * 
  * 카테고리 관련 비즈니스 로직을 처리합니다.
  * MongoDB와의 데이터 상호작용을 담당하며, CRUD 연산을 제공합니다.
- * 
- * @module service/category.service
  */
 
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
@@ -12,18 +10,19 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Category, CategoryDocument } from './schemas/category.schema';
 import { CreateCategoryDto, UpdateCategoryDto, CategoryResponseDto } from './dto';
+import { CategoryGroup } from './category-group.enum';
 
 /**
  * 카테고리 서비스 클래스
  * 
  * 카테고리 데이터의 생성, 조회, 수정, 삭제 기능을 제공합니다.
  * 
- * @class CategoryService
+ * @class CategoriesService
  */
 @Injectable()
-export class CategoryService {
+export class CategoriesService {
   /**
-   * CategoryService 생성자
+   * CategoriesService 생성자
    * 
    * @param {Model<CategoryDocument>} categoryModel - 카테고리 모델 인스턴스
    */
@@ -40,16 +39,16 @@ export class CategoryService {
    */
   async create(createCategoryDto: CreateCategoryDto): Promise<CategoryResponseDto> {
     // 중복 value 체크
-    const existingCategory = await this.categoryModel.findOne({ 
+    const duplicateCategory = await this.categoryModel.findOne({ 
       value: createCategoryDto.value 
     });
 
-    if (existingCategory) {
+    if (duplicateCategory) {
       throw new ConflictException(`카테고리 '${createCategoryDto.value}'가 이미 존재합니다.`);
     }
 
-    const createdCategory = new this.categoryModel(createCategoryDto);
-    const savedCategory = await createdCategory.save();
+    const category = new this.categoryModel(createCategoryDto);
+    const savedCategory = await category.save();
     
     return this.toResponseDto(savedCategory);
   }
@@ -74,19 +73,19 @@ export class CategoryService {
    * 그룹별로 카테고리를 조회합니다.
    * 
    * @param {boolean} [activeOnly=false] - 활성화된 카테고리만 조회할지 여부
-   * @returns {Promise<Record<string, CategoryResponseDto[]>>} 그룹별 카테고리 목록
+   * @returns {Promise<Partial<Record<CategoryGroup, CategoryResponseDto[]>>>} 그룹별 카테고리 목록
    */
-  async findByGroup(activeOnly: boolean = false): Promise<Record<string, CategoryResponseDto[]>> {
+  async findAllGrouped(activeOnly: boolean = false): Promise<Partial<Record<CategoryGroup, CategoryResponseDto[]>>> {
     const categories = await this.findAll(activeOnly);
     
     return categories.reduce((grouped, category) => {
-      const group = category.group || 'Etc';
+      const group = category.group || CategoryGroup.Etc;
       if (!grouped[group]) {
         grouped[group] = [];
       }
       grouped[group].push(category);
       return grouped;
-    }, {} as Record<string, CategoryResponseDto[]>);
+    }, {} as Partial<Record<CategoryGroup, CategoryResponseDto[]>>);
   }
 
   /**
@@ -135,12 +134,12 @@ export class CategoryService {
   async update(id: string, updateCategoryDto: UpdateCategoryDto): Promise<CategoryResponseDto> {
     // value 변경 시 중복 체크
     if (updateCategoryDto.value) {
-      const existingCategory = await this.categoryModel.findOne({ 
+      const duplicateCategory = await this.categoryModel.findOne({ 
         value: updateCategoryDto.value,
         _id: { $ne: id }
       });
 
-      if (existingCategory) {
+      if (duplicateCategory) {
         throw new ConflictException(`카테고리 '${updateCategoryDto.value}'가 이미 존재합니다.`);
       }
     }
@@ -164,9 +163,9 @@ export class CategoryService {
    * @throws {NotFoundException} 카테고리를 찾을 수 없는 경우
    */
   async remove(id: string): Promise<void> {
-    const result = await this.categoryModel.findByIdAndDelete(id).exec();
+    const deletedCategory = await this.categoryModel.findByIdAndDelete(id).exec();
     
-    if (!result) {
+    if (!deletedCategory) {
       throw new NotFoundException(`ID '${id}'인 카테고리를 찾을 수 없습니다.`);
     }
   }

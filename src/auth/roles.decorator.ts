@@ -2,8 +2,6 @@
  * 역할 기반 접근 제어 데코레이터
  * 
  * 컨트롤러나 핸들러에 필요한 역할을 지정하기 위한 데코레이터를 제공합니다.
- * 
- * @module utils/Authorization/Guard/roles.decorator
  */
 
 import { SetMetadata } from '@nestjs/common';

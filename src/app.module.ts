@@ -2,8 +2,6 @@
  * 애플리케이션 루트 모듈
  * 
  * 애플리케이션의 모든 모듈을 조합하고 환경 설정을 초기화하는 루트 모듈입니다.
- * 
- * @module app.module
  */
 
 import { Module } from '@nestjs/common';
@@ -11,7 +9,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
 import { PostsModule } from 'src/posts/posts.module';
-import { CategoryModule } from 'src/categories/categories.module';
+import { CategoriesModule } from 'src/categories/categories.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { validateEnv } from 'src/config/env.validation';
 
@@ -26,13 +24,13 @@ import { validateEnv } from 'src/config/env.validation';
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     MongooseModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        uri: config.getOrThrow<string>('MONGODB_URI'),
+      useFactory: (configService: ConfigService) => ({
+        uri: configService.getOrThrow<string>('MONGODB_URI'),
       }),
     }),
     HttpModule,
     PostsModule,
-    CategoryModule,
+    CategoriesModule,
     AuthModule,
   ],
   controllers: [],

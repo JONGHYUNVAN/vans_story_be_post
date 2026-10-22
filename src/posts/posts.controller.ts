@@ -3,8 +3,6 @@
  * 
  * 게시글의 생성, 조회, 수정, 삭제 등의 HTTP 요청을 처리합니다.
  * 이 컨트롤러는 '/api/v1/posts' 경로로 들어오는 모든 요청을 관리합니다.
- * 
- * @module Controller/controller
  */
 
 import {
@@ -27,7 +25,7 @@ import { RolesGuard } from 'src/auth/roles.guard';
 import { Role } from 'src/auth/role.enum';
 import { ParseObjectIdPipe } from 'src/common/pipes/parse-object-id.pipe';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
-import { CreateDto, UpdateDto, ResponseDto, FindPostsQueryDto } from './dto';
+import { CreatePostDto, UpdatePostDto, PostResponseDto, FindPostsQueryDto } from './dto';
 import { Paginated } from 'src/common/interfaces/paginated.interface';
 
 /**
@@ -36,7 +34,7 @@ import { Paginated } from 'src/common/interfaces/paginated.interface';
  * REST API 엔드포인트를 제공하며 클라이언트 요청을 처리합니다.
  * 사용자 인증과 권한 검사를 통해 보안을 유지합니다.
  */
-@ApiTags('api/v1/posts')
+@ApiTags('posts')
 @Controller('api/v1/posts')
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
@@ -47,9 +45,9 @@ export class PostsController {
    * 관리자 권한을 가진 인증된 사용자만 게시글을 생성할 수 있습니다.
    * 요청 본문에서 게시글 데이터를 받아 MongoDB에 저장합니다.
    * 
-   * @param {CreateDto} createDto - 게시글 생성에 필요한 데이터 (제목, 내용 등)
+   * @param {CreatePostDto} createPostDto - 게시글 생성에 필요한 데이터 (제목, 내용 등)
    * @param {Request} request - 인증된 사용자 정보를 포함한 요청 객체
-   * @returns {Promise<ResponseDto>} 생성된 게시글 정보
+   * @returns {Promise<PostResponseDto>} 생성된 게시글 정보
    * 
    * @throws {UnauthorizedException} 인증되지 않은 사용자가 접근할 경우
    * @throws {ForbiddenException} 관리자 권한이 없는 사용자가 접근할 경우
@@ -125,15 +123,15 @@ export class PostsController {
    * ```
    */
   @ApiOperation({ summary: '게시글 생성' })
-  @ApiResponse({ status: 201, description: '게시글 생성 성공', type: ResponseDto })
+  @ApiResponse({ status: 201, description: '게시글 생성 성공', type: PostResponseDto })
   @ApiResponse({ status: 401, description: '인증되지 않은 사용자' })
   @ApiResponse({ status: 403, description: '관리자가 아닌 사용자' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin)
   @ApiBearerAuth()
   @Post()
-  create(@Body() createDto: CreateDto, @Request() request: any): Promise<ResponseDto> {
-    return this.postsService.create(createDto, request.user.sub);
+  create(@Body() createPostDto: CreatePostDto, @Request() request: any): Promise<PostResponseDto> {
+    return this.postsService.create(createPostDto, request.user.email);
   }
 
   /**
@@ -142,8 +140,8 @@ export class PostsController {
    * 테마, 카테고리, 페이지네이션 등의 쿼리 파라미터를 지원합니다.
    * 인증 없이 접근 가능한 공개 엔드포인트입니다.
    * 
-   * @param query - 카테고리 필터와 페이지(`page` 1 이상, `limit` 1~50, 기본 1·10)
-   * @returns {Promise<Paginated<ResponseDto>>} 페이지네이션이 적용된 게시글 목록
+   * @param queryDto - 카테고리 필터와 페이지(`page` 1 이상, `limit` 1~50, 기본 1·10)
+   * @returns {Promise<Paginated<PostResponseDto>>} 페이지네이션이 적용된 게시글 목록
    * 
    * @example
    * **Request URL:**
@@ -188,10 +186,10 @@ export class PostsController {
    */
   @Get()
   @ApiOperation({ summary: '게시글 목록 조회' })
-  @ApiResponse({ status: 200, description: '게시글 목록 조회 성공', type: ResponseDto, isArray: true })
+  @ApiResponse({ status: 200, description: '게시글 목록 조회 성공', type: PostResponseDto, isArray: true })
   @ApiResponse({ status: 400, description: 'page·limit 형식 오류 또는 범위 초과(limit 최대 50)' })
-  async findAll(@Query() query: FindPostsQueryDto): Promise<Paginated<ResponseDto>> {
-    return this.postsService.findAll(query.mainCategory, query.subCategory, query.page, query.limit);
+  async findAll(@Query() queryDto: FindPostsQueryDto): Promise<Paginated<PostResponseDto>> {
+    return this.postsService.findAll(queryDto.mainCategory, queryDto.subCategory, queryDto.page, queryDto.limit);
   }
  
   /**
@@ -201,8 +199,8 @@ export class PostsController {
    * 게시글 ID를 경로 파라미터로 받아 해당 게시글을 조회합니다.
    * 
    * @param {string} id - 조회할 게시글의 MongoDB ObjectId
-   * @param {string} [viewed] - 조회수 증가 여부 (true일 경우 조회수 1 증가)
-   * @returns {Promise<ResponseDto>} 조회된 게시글 정보
+   * @param {string} [viewedHeader] - `x-viewed` 헤더. `'true'`면 이미 본 게시글이라 조회수를 올리지 않는다
+   * @returns {Promise<PostResponseDto>} 조회된 게시글 정보
    * 
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
    * 
@@ -264,7 +262,7 @@ export class PostsController {
    */
   @Get(':id')
   @ApiOperation({ summary: '게시글 상세 조회' })
-  @ApiResponse({ status: 200, description: '게시글 상세 조회 성공', type: ResponseDto })
+  @ApiResponse({ status: 200, description: '게시글 상세 조회 성공', type: PostResponseDto })
   @ApiResponse({ status: 400, description: 'id가 ObjectId 형식이 아님' })
   @ApiParam({ 
     name: 'id', 
@@ -273,9 +271,9 @@ export class PostsController {
   })
   findOne(
     @Param('id', ParseObjectIdPipe) id: string,
-    @Headers('x-viewed') viewed?: string
-  ): Promise<ResponseDto> {
-    return this.postsService.findOne(id, viewed === 'true');
+    @Headers('x-viewed') viewedHeader?: string
+  ): Promise<PostResponseDto> {
+    return this.postsService.findOne(id, viewedHeader === 'true');
   }
 
   /**
@@ -286,7 +284,7 @@ export class PostsController {
    * 
    * @param {string} id - 조회할 게시글의 MongoDB ObjectId
    * @param {Request} request - 인증된 사용자 정보를 포함한 요청 객체
-   * @returns {Promise<ResponseDto>} 수정 권한이 확인된 게시글 정보
+   * @returns {Promise<PostResponseDto>} 수정 권한이 확인된 게시글 정보
    * 
    * @throws {UnauthorizedException} 인증되지 않은 사용자가 접근할 경우
    * @throws {ForbiddenException} 작성자가 아닌 사용자가 접근할 경우
@@ -340,7 +338,7 @@ export class PostsController {
    */
   @Get(':id/edit')
   @ApiOperation({ summary: '게시글 수정용 조회' })
-  @ApiResponse({ status: 200, description: '게시글 수정용 조회 성공', type: ResponseDto })
+  @ApiResponse({ status: 200, description: '게시글 수정용 조회 성공', type: PostResponseDto })
   @ApiResponse({ status: 401, description: '인증되지 않은 사용자' })
   @ApiResponse({ status: 403, description: '작성자가 아닌 사용자' })
   @ApiResponse({ status: 404, description: '게시글을 찾을 수 없음' })
@@ -355,8 +353,8 @@ export class PostsController {
   findForEdit(
     @Param('id', ParseObjectIdPipe) id: string,
     @Request() request: any
-  ): Promise<ResponseDto> {
-    return this.postsService.findForEdit(id, request.user.sub);
+  ): Promise<PostResponseDto> {
+    return this.postsService.findForEdit(id, request.user.email);
   }
 
   /**
@@ -366,9 +364,9 @@ export class PostsController {
    * 게시글 ID와 수정할 데이터를 받아 MongoDB에서 해당 게시글을 업데이트합니다.
    * 
    * @param {string} id - 수정할 게시글의 MongoDB ObjectId
-   * @param {UpdateDto} updateDto - 수정할 게시글 데이터
+   * @param {UpdatePostDto} updatePostDto - 수정할 게시글 데이터
    * @param {Request} request - 인증된 사용자 정보를 포함한 요청 객체
-   * @returns {Promise<ResponseDto>} 수정된 게시글 정보
+   * @returns {Promise<PostResponseDto>} 수정된 게시글 정보
    * 
    * @throws {UnauthorizedException} 인증되지 않은 사용자가 접근할 경우
    * @throws {ForbiddenException} 작성자나 관리자가 아닌 사용자가 접근할 경우
@@ -421,7 +419,7 @@ export class PostsController {
    * ```
    */
   @ApiOperation({ summary: '게시글 수정' })
-  @ApiResponse({ status: 200, description: '게시글 수정 성공', type: ResponseDto })
+  @ApiResponse({ status: 200, description: '게시글 수정 성공', type: PostResponseDto })
   @ApiResponse({ status: 401, description: '인증되지 않은 사용자' })
   @ApiResponse({ status: 403, description: '수정 권한이 없는 사용자' })
   @ApiResponse({ status: 404, description: '게시글을 찾을 수 없음' })
@@ -432,10 +430,10 @@ export class PostsController {
   @Patch(':id')
   update(
     @Param('id', ParseObjectIdPipe) id: string, 
-    @Body() updateDto: UpdateDto,
+    @Body() updatePostDto: UpdatePostDto,
     @Request() request: any
-  ): Promise<ResponseDto> {
-    return this.postsService.update(id, updateDto, request.user.sub, request.user.roles);
+  ): Promise<PostResponseDto> {
+    return this.postsService.update(id, updatePostDto, request.user.email, request.user.roles);
   }
 
   /**

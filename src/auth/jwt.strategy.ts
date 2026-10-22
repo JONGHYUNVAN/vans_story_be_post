@@ -34,11 +34,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * - secretOrKey: 환경 변수에서 JWT 비밀 키를 가져와 base64로 디코딩
    * - algorithms: Spring이 서명하는 HS512만 허용
    */
-  constructor(config: ConfigService) {
+  constructor(configService: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: Buffer.from(config.getOrThrow<string>('JWT_SECRET'), 'base64'),
+      secretOrKey: Buffer.from(configService.getOrThrow<string>('JWT_SECRET'), 'base64'),
       algorithms: ['HS512'],
     });
   }
@@ -56,7 +56,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (typeof payload.sub !== 'string' || payload.sub === '') {
       return null;
     }
-    return { sub: payload.sub, roles: JwtStrategy.toRoles(payload.auth) };
+    return { email: payload.sub, roles: JwtStrategy.toRoles(payload.auth) };
   }
 
   private static toRoles(auth: unknown): Role[] {

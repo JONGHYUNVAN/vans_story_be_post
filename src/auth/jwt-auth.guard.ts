@@ -57,8 +57,8 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
    */
   handleRequest(err: any, user: any, info: any): any {
     if (info instanceof Error) {
-      const errorType = info.name;
-      switch (errorType) {
+      const errorName = info.name;
+      switch (errorName) {
         case 'JsonWebTokenError':
           throw new UnauthorizedException({
             message: '유효하지 않은 토큰입니다.',

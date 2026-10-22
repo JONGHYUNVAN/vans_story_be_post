@@ -16,7 +16,7 @@ describe('JwtStrategy.validate', () => {
     [' ROLE_ADMIN , ROLE_ADMIN ', [Role.Admin]],
   ])('Spring 권한 문자열 %p를 %p로 정규화한다', (auth, roles) => {
     expect(strategy.validate({ sub: 'a@b.c', auth })).toEqual({
-      sub: 'a@b.c',
+      email: 'a@b.c',
       roles,
     });
   });
@@ -28,7 +28,7 @@ describe('JwtStrategy.validate', () => {
     ['문자열이 아님', ['ROLE_ADMIN']],
   ])('%s이면 역할이 비어 있다', (_, auth) => {
     expect(strategy.validate({ sub: 'a@b.c', auth })).toEqual({
-      sub: 'a@b.c',
+      email: 'a@b.c',
       roles: [],
     });
   });

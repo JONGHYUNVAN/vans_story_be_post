@@ -1,9 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-
-/** 목록 한 페이지의 최대 게시글 수. 게시글마다 사용자 서비스를 호출하므로 크게 열지 않는다 */
-export const MAX_POSTS_PER_PAGE = 50;
+import { DEFAULT_POSTS_PER_PAGE, MAX_POSTS_PER_PAGE } from '../posts.constants';
 
 /**
  * 게시글 목록 조회 쿼리
@@ -38,12 +36,12 @@ export class FindPostsQueryDto {
     description: '페이지당 게시글 수',
     minimum: 1,
     maximum: MAX_POSTS_PER_PAGE,
-    default: 10,
+    default: DEFAULT_POSTS_PER_PAGE,
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(MAX_POSTS_PER_PAGE)
-  limit?: number = 10;
+  limit?: number = DEFAULT_POSTS_PER_PAGE;
 }

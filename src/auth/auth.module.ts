@@ -2,8 +2,6 @@
  * 인증 모듈
  * 
  * JWT 기반 인증을 위한 모듈 설정 및 관련 컴포넌트를 제공합니다.
- * 
- * @module utils/Authorization/Module/module
  */
 
 import { Module } from '@nestjs/common';
@@ -21,9 +19,9 @@ import { ConfigService } from '@nestjs/config';
 @Module({
   imports: [PassportModule, JwtModule.registerAsync({
     inject: [ConfigService],
-    useFactory: (config: ConfigService) => ({
+    useFactory: (configService: ConfigService) => ({
       signOptions: { expiresIn: '60s', algorithm: 'HS512' },
-      secret: Buffer.from(config.getOrThrow<string>('JWT_SECRET'), 'base64')
+      secret: Buffer.from(configService.getOrThrow<string>('JWT_SECRET'), 'base64')
     })
   })],
   providers: [JwtStrategy],

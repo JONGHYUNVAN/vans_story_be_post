@@ -20,13 +20,13 @@ export class TestAuthGuard extends AuthGuard('jwt') {
     let user: User;
     switch (authHeader) {
       case 'Bearer test_token':
-        user = { sub: 'test@example.com', roles: [Role.Admin] };
+        user = { email: 'test@example.com', roles: [Role.Admin] };
         break;
       case 'Bearer author_token':
-        user = { sub: 'author@example.com', roles: [Role.User] };
+        user = { email: 'author@example.com', roles: [Role.User] };
         break;
       case 'Bearer other_user_token':
-        user = { sub: 'other@example.com', roles: [Role.User] };
+        user = { email: 'other@example.com', roles: [Role.User] };
         break;
       default:
         throw new UnauthorizedException('Invalid token');

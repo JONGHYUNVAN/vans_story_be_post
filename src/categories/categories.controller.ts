@@ -3,8 +3,6 @@
  * 
  * 카테고리 관련 HTTP 요청을 처리합니다.
  * RESTful API 엔드포인트를 제공하며, Swagger 문서화를 포함합니다.
- * 
- * @module controller/category.controller
  */
 
 import {
@@ -27,7 +25,7 @@ import {
   ApiQuery,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { CategoryService } from './categories.service';
+import { CategoriesService } from './categories.service';
 import { CreateCategoryDto, UpdateCategoryDto, CategoryResponseDto } from './dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
@@ -41,17 +39,17 @@ import { ParseObjectIdPipe } from 'src/common/pipes/parse-object-id.pipe';
  * 카테고리 관련 모든 HTTP 엔드포인트를 정의합니다.
  * JWT 인증이 필요한 엔드포인트와 공개 엔드포인트를 구분합니다.
  * 
- * @class CategoryController
+ * @class CategoriesController
  */
-@ApiTags('api/v1/categories')
+@ApiTags('categories')
 @Controller('api/v1/categories')
-export class CategoryController {
+export class CategoriesController {
   /**
-   * CategoryController 생성자
+   * CategoriesController 생성자
    * 
-   * @param {CategoryService} categoryService - 카테고리 서비스 인스턴스
+   * @param {CategoriesService} categoriesService - 카테고리 서비스 인스턴스
    */
-  constructor(private readonly categoryService: CategoryService) {}
+  constructor(private readonly categoriesService: CategoriesService) {}
 
   /**
    * 새로운 카테고리를 생성합니다.
@@ -82,7 +80,7 @@ export class CategoryController {
     description: '인증이 필요합니다.',
   })
   async create(@Body() createCategoryDto: CreateCategoryDto): Promise<CategoryResponseDto> {
-    return this.categoryService.create(createCategoryDto);
+    return this.categoriesService.create(createCategoryDto);
   }
 
   /**
@@ -109,7 +107,7 @@ export class CategoryController {
     type: [CategoryResponseDto],
   })
   async findAll(@Query('activeOnly') activeOnly?: boolean): Promise<CategoryResponseDto[]> {
-    return this.categoryService.findAll(activeOnly);
+    return this.categoriesService.findAll(activeOnly);
   }
 
   /**
@@ -134,10 +132,10 @@ export class CategoryController {
     status: HttpStatus.OK,
     description: '그룹별 카테고리 목록이 성공적으로 조회되었습니다.',
   })
-  async findByGroup(
+  async findAllGrouped(
     @Query('activeOnly') activeOnly?: boolean,
   ): Promise<Record<string, CategoryResponseDto[]>> {
-    return this.categoryService.findByGroup(activeOnly);
+    return this.categoriesService.findAllGrouped(activeOnly);
   }
 
   /**
@@ -167,7 +165,7 @@ export class CategoryController {
     description: '카테고리를 찾을 수 없습니다.',
   })
   async findOne(@Param('id', ParseObjectIdPipe) id: string): Promise<CategoryResponseDto> {
-    return this.categoryService.findOne(id);
+    return this.categoriesService.findOne(id);
   }
 
   /**
@@ -196,7 +194,7 @@ export class CategoryController {
     description: '카테고리를 찾을 수 없습니다.',
   })
   async findByValue(@Param('value') value: string): Promise<CategoryResponseDto> {
-    return this.categoryService.findByValue(value);
+    return this.categoriesService.findByValue(value);
   }
 
   /**
@@ -242,7 +240,7 @@ export class CategoryController {
     @Param('id', ParseObjectIdPipe) id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
   ): Promise<CategoryResponseDto> {
-    return this.categoryService.update(id, updateCategoryDto);
+    return this.categoriesService.update(id, updateCategoryDto);
   }
 
   /**
@@ -279,7 +277,7 @@ export class CategoryController {
     description: '인증이 필요합니다.',
   })
   async remove(@Param('id', ParseObjectIdPipe) id: string): Promise<void> {
-    return this.categoryService.remove(id);
+    return this.categoriesService.remove(id);
   }
 
   /**
@@ -317,7 +315,7 @@ export class CategoryController {
     description: '인증이 필요합니다.',
   })
   async deactivate(@Param('id', ParseObjectIdPipe) id: string): Promise<CategoryResponseDto> {
-    return this.categoryService.deactivate(id);
+    return this.categoriesService.deactivate(id);
   }
 
   /**
@@ -355,6 +353,6 @@ export class CategoryController {
     description: '인증이 필요합니다.',
   })
   async activate(@Param('id', ParseObjectIdPipe) id: string): Promise<CategoryResponseDto> {
-    return this.categoryService.activate(id);
+    return this.categoriesService.activate(id);
   }
 }

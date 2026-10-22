@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
-const OBJECT_ID = /^[0-9a-f]{24}$/i;
+const OBJECT_ID_PATTERN = /^[0-9a-f]{24}$/i;
 
 /**
  * 경로 파라미터가 MongoDB ObjectId(24자리 16진수)인지 검사한다.
@@ -18,7 +18,7 @@ const OBJECT_ID = /^[0-9a-f]{24}$/i;
 @Injectable()
 export class ParseObjectIdPipe implements PipeTransform<string, string> {
   transform(value: string): string {
-    if (typeof value !== 'string' || !OBJECT_ID.test(value)) {
+    if (typeof value !== 'string' || !OBJECT_ID_PATTERN.test(value)) {
       throw new BadRequestException('id는 24자리 16진수 ObjectId여야 합니다.');
     }
     return value;

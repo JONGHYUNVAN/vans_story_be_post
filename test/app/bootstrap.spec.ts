@@ -14,7 +14,7 @@ import './dummy-env';
 import { AppModule } from 'src/app.module';
 import { createSwaggerConfig } from 'src/swagger/swagger.setup';
 import { withFakeMongoose } from '../helpers/fake-mongoose';
-import { CategoryService } from 'src/categories/categories.service';
+import { CategoriesService } from 'src/categories/categories.service';
 
 /** `test/app/env.ts`의 `JWT_SECRET`으로 Spring과 같은 형식(HS512, `sub`·`auth`)의 토큰을 만든다. */
 const token = (auth: string, algorithm: 'HS512' | 'HS256' = 'HS512') =>
@@ -26,7 +26,7 @@ const token = (auth: string, algorithm: 'HS512' | 'HS256' = 'HS512') =>
 describe('AppModule bootstrap (no DB)', () => {
   let app: any;
   let document: any;
-  let categoryService: CategoryService;
+  let categoriesService: CategoriesService;
 
   beforeAll(async () => {
     const fakeModel = {
@@ -41,7 +41,7 @@ describe('AppModule bootstrap (no DB)', () => {
       fakeModel,
     ).compile();
 
-    categoryService = moduleRef.get(CategoryService);
+    categoriesService = moduleRef.get(CategoriesService);
     app = moduleRef.createNestApplication();
     // 문서 설정은 main.ts와 같은 것을 쓰고, 인증 미들웨어(setupSwagger)는 걸지 않는다
     document = SwaggerModule.createDocument(app, createSwaggerConfig());
@@ -97,7 +97,7 @@ describe('AppModule bootstrap (no DB)', () => {
     let remove: jest.SpyInstance;
 
     beforeEach(() => {
-      remove = jest.spyOn(categoryService, 'remove').mockResolvedValue(undefined);
+      remove = jest.spyOn(categoriesService, 'remove').mockResolvedValue(undefined);
     });
 
     afterEach(() => {

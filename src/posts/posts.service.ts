@@ -1,14 +1,15 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { CreateDto, UpdateDto, ResponseDto } from './dto';
+import { FilterQuery, Model } from 'mongoose';
+import { CreatePostDto, UpdatePostDto, PostResponseDto } from './dto';
 import { Post, PostDocument } from './schemas/post.schema';
 import { mapToDto } from 'src/common/serialization/map-to-dto';
 import { Paginated } from 'src/common/interfaces/paginated.interface';
-import { InternalApiClient } from 'src/user-service/user-service.client';
+import { UserServiceClient } from 'src/user-service/user-service.client';
 import { Category } from 'src/categories/schemas/category.schema';
-import { SearchIndexClient, SearchIndexPayload } from 'src/search-service/search-service.client';
+import { SearchServiceClient, SearchIndexPayload } from 'src/search-service/search-service.client';
 import { Role } from 'src/auth/role.enum';
+import { DEFAULT_POSTS_PER_PAGE } from './posts.constants';
 
 /**
  * MongoDB를 사용하는 게시글 관련 비즈니스 로직을 처리하는 서비스 클래스
@@ -20,101 +21,99 @@ export class PostsService {
   constructor(
     @InjectModel(Post.name) private postModel: Model<PostDocument>,
     @InjectModel(Category.name) private categoryModel: Model<Category>,
-    private readonly apiClient: InternalApiClient,
-    private readonly searchIndex: SearchIndexClient,
+    private readonly userServiceClient: UserServiceClient,
+    private readonly searchServiceClient: SearchServiceClient,
   ) {}
 
   /**
-   * Post 데이터에 카테고리 정보를 추가하는 헬퍼 함수
+   * populate된 게시글을 응답 DTO로 바꿉니다. 작성자 닉네임을 사용자 서비스에서 조회하고
+   * 메인·서브 카테고리 value·label을 채웁니다.
    */
-  private async enrichPostWithCategoryInfo(post: any): Promise<ResponseDto> {
-    const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
-    const responseDto = mapToDto(post, ResponseDto);
-    responseDto.author = authorNickname ?? 'Unknown';
+  private async toResponseDto(post: any): Promise<PostResponseDto> {
+    const authorNickname = await this.userServiceClient.getNicknameByEmail(post.authorEmail);
+    const postResponse = mapToDto(post, PostResponseDto);
+    postResponse.author = authorNickname ?? 'Unknown';
     
     // mainCategory 정보 추가
-    responseDto.mainCategory = post.mainCategoryId?.value || '';
-    responseDto.mainCategoryLabel = post.mainCategoryId?.label || '';
+    postResponse.mainCategory = post.mainCategoryId?.value || '';
+    postResponse.mainCategoryLabel = post.mainCategoryId?.label || '';
     
     // subCategory 정보 추가 (populate된 경우)
     if (post.subCategoryId) {
-      responseDto.subCategory = post.subCategoryId?.value || '';
-      responseDto.subCategoryLabel = post.subCategoryId?.label || '';
+      postResponse.subCategory = post.subCategoryId?.value || '';
+      postResponse.subCategoryLabel = post.subCategoryId?.label || '';
     }
     
-    return responseDto;
+    return postResponse;
   }
 
   /**
    * 새로운 게시글을 생성합니다.
    * 
-   * @param {CreateDto} createDto - 게시글 생성에 필요한 데이터 (제목, 내용 등)
+   * @param {CreatePostDto} createPostDto - 게시글 생성에 필요한 데이터 (제목, 내용 등)
    * @param {string} authorEmail - 게시글 작성자의 이메일
-   * @returns {Promise<ResponseDto>} 생성된 게시글 정보 (MongoDB Document)
+   * @returns {Promise<PostResponseDto>} 생성된 게시글 정보 (MongoDB Document)
    *
    * @throws {BadRequestException} 작성자 이메일이 없거나, 카테고리 조합이 존재하지 않는 경우
    * @throws {Error} MongoDB 작업 중 발생한 오류
    * 
    * @example
    * ```typescript
-   * const createDto = { title: '제목', content: '내용', theme: 'nestjs' };
-   * const authorEmail = 'user@example.com';
-   * const newPost = await postsService.create(createDto, authorEmail);
+   * const post = await postsService.create(createPostDto, 'user@example.com');
    * ```
    */
-  async create(createDto: CreateDto, authorEmail: string): Promise<ResponseDto> {
+  async create(createPostDto: CreatePostDto, authorEmail: string): Promise<PostResponseDto> {
     if (!authorEmail || !authorEmail.includes('@')) {
       throw new BadRequestException('Invalid author email');
     }
 
-    if (!createDto.title || !createDto.content) {
+    if (!createPostDto.title || !createPostDto.content) {
       throw new BadRequestException('Title and content are required');
     }
 
-    await this.assertCategoryPair(createDto.mainCategoryId, createDto.subCategoryId);
+    await this.assertCategoryPair(createPostDto.mainCategoryId, createPostDto.subCategoryId);
 
-    const created = await this.postModel.create({
-      ...createDto,
+    const createdPost = await this.postModel.create({
+      ...createPostDto,
       authorEmail
     });
     
     // populate로 카테고리 정보 가져오기
-    const populated = await this.postModel
-      .findById(created._id)
+    const populatedPost = await this.postModel
+      .findById(createdPost._id)
       .populate('mainCategoryId', 'value label')
       .populate('subCategoryId', 'value label')
       .lean()
       .exec();
     
-    if (!populated) {
+    if (!populatedPost) {
       throw new BadRequestException('Failed to create post');
     }
 
-    const result = await this.enrichPostWithCategoryInfo(populated);
+    const postResponse = await this.toResponseDto(populatedPost);
 
     // fire-and-forget: 검색 인덱스 등록 (응답을 차단하지 않음)
-    const authorNicknameForIndex = result.author ?? 'Unknown';
-    const indexPayload: SearchIndexPayload = {
-      post_id: String((populated as any)._id),
-      title: populated.title,
-      description: populated.description,
-      content: populated.content,
-      topic: populated.topic,
-      tags: populated.tags ?? [],
-      mainCategory: (populated.mainCategoryId as any)?.value || '',
-      subCategory: (populated.subCategoryId as any)?.value || '',
-      language: populated.language,
-      author: authorNicknameForIndex,
-      createdAt: (populated as any).createdAt instanceof Date
-        ? (populated as any).createdAt.toISOString()
-        : String((populated as any).createdAt ?? ''),
-      updatedAt: (populated as any).updatedAt instanceof Date
-        ? (populated as any).updatedAt.toISOString()
-        : String((populated as any).updatedAt ?? ''),
+    const searchIndexPayload: SearchIndexPayload = {
+      post_id: String((populatedPost as any)._id),
+      title: populatedPost.title,
+      description: populatedPost.description,
+      content: populatedPost.content,
+      topic: populatedPost.topic,
+      tags: populatedPost.tags ?? [],
+      mainCategory: (populatedPost.mainCategoryId as any)?.value || '',
+      subCategory: (populatedPost.subCategoryId as any)?.value || '',
+      language: populatedPost.language,
+      author: postResponse.author,
+      createdAt: (populatedPost as any).createdAt instanceof Date
+        ? (populatedPost as any).createdAt.toISOString()
+        : String((populatedPost as any).createdAt ?? ''),
+      updatedAt: (populatedPost as any).updatedAt instanceof Date
+        ? (populatedPost as any).updatedAt.toISOString()
+        : String((populatedPost as any).updatedAt ?? ''),
     };
-    this.searchIndex.indexPost(indexPayload).catch(err => console.error('[SearchIndex] Failed to index post:', err));
+    this.searchServiceClient.indexPost(searchIndexPayload).catch((error) => console.error('[SearchIndex] Failed to index post:', error));
 
-    return result;
+    return postResponse;
   }
 
   /**
@@ -126,14 +125,14 @@ export class PostsService {
    * @throws {BadRequestException} 카테고리가 없거나 부모 관계가 맞지 않는 경우
    */
   private async assertCategoryPair(mainCategoryId: string, subCategoryId: string): Promise<void> {
-    const [main, sub] = await Promise.all([
+    const [mainCategory, subCategory] = await Promise.all([
       this.categoryModel.findById(mainCategoryId).lean().exec(),
       this.categoryModel.findById(subCategoryId).lean().exec(),
     ]);
-    if (!main || main.parentId) {
+    if (!mainCategory || mainCategory.parentId) {
       throw new BadRequestException('mainCategoryId가 존재하는 메인 카테고리가 아닙니다.');
     }
-    if (!sub || String(sub.parentId) !== String(main._id)) {
+    if (!subCategory || String(subCategory.parentId) !== String(mainCategory._id)) {
       throw new BadRequestException('subCategoryId가 해당 메인 카테고리의 서브 카테고리가 아닙니다.');
     }
   }
@@ -141,24 +140,13 @@ export class PostsService {
   /**
    * 페이지네이션이 적용된 게시글 목록을 조회합니다.
    * 
-   * @param {string} [theme] - 필터링할 게시글 테마 (선택사항)
-   * @param {string} [category] - 필터링할 게시글 카테고리 (선택사항)
-   * @param {number} [page=1] - 페이지 번호 (기본값: 1)
-   * @param {number} [limit=10] - 페이지당 게시글 수 (기본값: 10)
-   * @returns {Promise<Paginated<ResponseDto>>} 페이지네이션이 적용된 게시글 목록
-   * 
-   * @example
-   * ```typescript
-   * const query = { 
-   *   page: 1, 
-   *   limit: 10,
-   *   sortBy: [['createdAt', 'DESC']],
-   *   search: '검색어'
-   * };
-   * const posts = await postsService.findAll(query);
-   * ```
+   * @param {string} [mainCategoryValue] - 필터링할 메인 카테고리 value
+   * @param {string} [subCategoryValue] - 필터링할 서브 카테고리 value
+   * @param {number} [page=1] - 페이지 번호
+   * @param {number} [limit=DEFAULT_POSTS_PER_PAGE] - 페이지당 게시글 수
+   * @returns {Promise<Paginated<PostResponseDto>>} 페이지네이션이 적용된 게시글 목록
    */
-  async findAll(mainCategoryValue?: string, subCategoryValue?: string, page: number = 1, limit: number = 10): Promise<Paginated<ResponseDto>> {
+  async findAll(mainCategoryValue?: string, subCategoryValue?: string, page: number = 1, limit: number = DEFAULT_POSTS_PER_PAGE): Promise<Paginated<PostResponseDto>> {
     if (page < 1) {
       throw new BadRequestException('Page number must be greater than 0');
     }
@@ -166,16 +154,16 @@ export class PostsService {
       throw new BadRequestException('Limit must be greater than 0');
     }
 
-    const query: any = {};
+    const filter: FilterQuery<Post> = {};
     
     // mainCategoryValue가 주어지면 해당 value를 가진 Category(메인)의 ObjectId를 찾아서 필터링
     if (mainCategoryValue && mainCategoryValue.trim() !== '') {
-      const category = await this.categoryModel.findOne({ 
+      const mainCategory = await this.categoryModel.findOne({ 
         value: mainCategoryValue.trim(), 
         parentId: null 
       });
-      if (category) {
-        query.mainCategoryId = category._id;
+      if (mainCategory) {
+        filter.mainCategoryId = mainCategory._id;
       } else {
         return { data: [], meta: { totalItems: 0, currentPage: page, totalPages: 0, itemsPerPage: limit } };
       }
@@ -183,14 +171,14 @@ export class PostsService {
     
     // subCategoryValue가 주어지면 해당 value를 가진 Category(서브)의 _id를 찾아서 필터링
     if (subCategoryValue && subCategoryValue.trim() !== '') {
-      if (query.mainCategoryId) {
+      if (filter.mainCategoryId) {
         // mainCategory가 지정된 경우
-        const subCat = await this.categoryModel.findOne({ 
+        const subCategory = await this.categoryModel.findOne({ 
           value: subCategoryValue.trim(), 
-          parentId: query.mainCategoryId 
+          parentId: filter.mainCategoryId 
         });
-        if (subCat) {
-          query.subCategoryId = subCat._id;
+        if (subCategory) {
+          filter.subCategoryId = subCategory._id;
         } else {
           return { data: [], meta: { totalItems: 0, currentPage: page, totalPages: 0, itemsPerPage: limit } };
         }
@@ -201,7 +189,7 @@ export class PostsService {
           parentId: { $ne: null } 
         });
         if (subCategories.length > 0) {
-          query.subCategoryId = { $in: subCategories.map(cat => cat._id) };
+          filter.subCategoryId = { $in: subCategories.map((subCategory) => subCategory._id) };
         } else {
           return { data: [], meta: { totalItems: 0, currentPage: page, totalPages: 0, itemsPerPage: limit } };
         }
@@ -209,8 +197,8 @@ export class PostsService {
     }
     
     const skip = (page - 1) * limit;
-    const [posts, total] = await Promise.all([
-      this.postModel.find(query)
+    const [posts, totalItems] = await Promise.all([
+      this.postModel.find(filter)
         .select('-content')
         .populate('mainCategoryId', 'value label')
         .populate('subCategoryId', 'value label')
@@ -219,26 +207,26 @@ export class PostsService {
         .limit(limit)
         .lean()
         .exec(),
-      this.postModel.countDocuments(query)
+      this.postModel.countDocuments(filter)
     ]);
 
     // 각 게시글의 authorEmail을 author(닉네임)로 변환
-    const postsWithAuthor = await Promise.all(
+    const postResponses = await Promise.all(
       posts.map(async (post: any) => {
-        const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
-        const responseDto = mapToDto(post, ResponseDto);
-        responseDto.author = authorNickname ?? 'Unknown';
-        responseDto.mainCategory = post.mainCategoryId?.value || '';
-        return responseDto;
+        const authorNickname = await this.userServiceClient.getNicknameByEmail(post.authorEmail);
+        const postResponse = mapToDto(post, PostResponseDto);
+        postResponse.author = authorNickname ?? 'Unknown';
+        postResponse.mainCategory = post.mainCategoryId?.value || '';
+        return postResponse;
       })
     );
 
     return {
-      data: postsWithAuthor,
+      data: postResponses,
       meta: {
-        totalItems: total,
+        totalItems,
         currentPage: page,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.ceil(totalItems / limit),
         itemsPerPage: limit
       }
     };
@@ -248,7 +236,8 @@ export class PostsService {
    * 특정 ID의 게시글을 조회합니다.
    * 
    * @param {string} id - 조회할 게시글의 ID
-   * @returns {Promise<ResponseDto>} 조회된 게시글 정보
+   * @param {boolean} [hasViewed=false] - 요청자가 이미 본 게시글인지. `false`면 조회수를 1 올린다
+   * @returns {Promise<PostResponseDto>} 조회된 게시글 정보
    * 
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
    * 
@@ -257,7 +246,7 @@ export class PostsService {
    * const post = await postsService.findOne('1');
    * ```
    */
-  async findOne(id: string, viewed: boolean = false): Promise<ResponseDto> {
+  async findOne(id: string, hasViewed: boolean = false): Promise<PostResponseDto> {
     const post = await this.postModel
       .findById(id)
       .populate('mainCategoryId', 'value label')
@@ -269,16 +258,16 @@ export class PostsService {
       throw new NotFoundException(`Post with ID ${id} not found`);
     }
 
-    // 조회수 증가 로직
-    if (!viewed) {
+    // 이미 본 게시글(x-viewed: true)이면 조회수를 올리지 않는다
+    if (!hasViewed) {
       await this.incrementViewCount(id);
     }
 
-    const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
-    const responseDto = mapToDto(post, ResponseDto);
-    responseDto.author = authorNickname ?? 'Unknown';
-    responseDto.mainCategory = (post.mainCategoryId as any)?.value || '';
-    return responseDto;
+    const authorNickname = await this.userServiceClient.getNicknameByEmail(post.authorEmail);
+    const postResponse = mapToDto(post, PostResponseDto);
+    postResponse.author = authorNickname ?? 'Unknown';
+    postResponse.mainCategory = (post.mainCategoryId as any)?.value || '';
+    return postResponse;
   }
 
   /**
@@ -295,13 +284,13 @@ export class PostsService {
    * ```
    */
   async incrementViewCount(id: string): Promise<void> {
-    const result = await this.postModel.findByIdAndUpdate(
+    const updatedPost = await this.postModel.findByIdAndUpdate(
       id,
       { $inc: { viewCount: 1 } },
       { new: true }
     ).exec();
 
-    if (!result) {
+    if (!updatedPost) {
       throw new NotFoundException(`Post with ID ${id} not found`);
     }
   }
@@ -314,7 +303,7 @@ export class PostsService {
    * 
    * @param {string} id - 조회할 게시글의 ID
    * @param {string} userEmail - 요청자의 이메일 (JWT 토큰에서 추출)
-   * @returns {Promise<ResponseDto>} 수정 권한이 확인된 게시글 정보
+   * @returns {Promise<PostResponseDto>} 수정 권한이 확인된 게시글 정보
    * 
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
    * @throws {ForbiddenException} 작성자가 아닌 사용자가 접근할 경우
@@ -324,7 +313,7 @@ export class PostsService {
    * const post = await postsService.findForEdit('64f7b1c2d3e4f5a6b7c8d9e0', 'user@example.com');
    * ```
    */
-  async findForEdit(id: string, userEmail: string): Promise<ResponseDto> {
+  async findForEdit(id: string, userEmail: string): Promise<PostResponseDto> {
     const post = await this.postModel
       .findById(id)
       .populate('mainCategoryId', 'value label')
@@ -341,11 +330,11 @@ export class PostsService {
       throw new ForbiddenException('Only the author can edit this post');
     }
 
-    const authorNickname = await this.apiClient.getUserNickname(post.authorEmail);
-    const responseDto = mapToDto(post, ResponseDto);
-    responseDto.author = authorNickname ?? 'Unknown';
-    responseDto.mainCategory = (post.mainCategoryId as any)?.value || '';
-    return responseDto;
+    const authorNickname = await this.userServiceClient.getNicknameByEmail(post.authorEmail);
+    const postResponse = mapToDto(post, PostResponseDto);
+    postResponse.author = authorNickname ?? 'Unknown';
+    postResponse.mainCategory = (post.mainCategoryId as any)?.value || '';
+    return postResponse;
   }
 
   /**
@@ -354,16 +343,16 @@ export class PostsService {
    * 관리자이거나 게시글 작성자만 수정할 수 있습니다.
    * 
    * @param {string} id - 수정할 게시글의 ID
-   * @param {UpdateDto} updateDto - 수정할 게시글 데이터
+   * @param {UpdatePostDto} updatePostDto - 수정할 게시글 데이터
    * @param {string} userEmail - 요청자의 이메일 (JWT 토큰에서 추출)
    * @param {Role[]} userRoles - 요청자의 역할 (JWT 토큰에서 정규화)
-   * @returns {Promise<ResponseDto>} 수정된 게시글 정보
+   * @returns {Promise<PostResponseDto>} 수정된 게시글 정보
    *
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
    * @throws {ForbiddenException} 요청자 정보나 역할이 없거나, 관리자도 작성자도 아닌 경우
    * @throws {BadRequestException} 바꾼 카테고리 조합이 존재하지 않는 경우
    */
-  async update(id: string, updateDto: UpdateDto, userEmail: string, userRoles: Role[]): Promise<ResponseDto> {
+  async update(id: string, updatePostDto: UpdatePostDto, userEmail: string, userRoles: Role[]): Promise<PostResponseDto> {
     // 권한 정보가 없으면 게시글을 보기 전에 거부한다(fail-closed)
     if (!userEmail || !userRoles?.length) {
       throw new ForbiddenException('Only the author or admin can edit this post');
@@ -380,51 +369,51 @@ export class PostsService {
     }
 
     // 카테고리를 바꾸면 바뀐 뒤의 조합이 맞는지 확인
-    if (updateDto.mainCategoryId || updateDto.subCategoryId) {
+    if (updatePostDto.mainCategoryId || updatePostDto.subCategoryId) {
       await this.assertCategoryPair(
-        updateDto.mainCategoryId ?? String(existingPost.mainCategoryId),
-        updateDto.subCategoryId ?? String(existingPost.subCategoryId),
+        updatePostDto.mainCategoryId ?? String(existingPost.mainCategoryId),
+        updatePostDto.subCategoryId ?? String(existingPost.subCategoryId),
       );
     }
 
-    const updated = await this.postModel
-      .findByIdAndUpdate(id, updateDto, { new: true, runValidators: true })
+    const updatedPost = await this.postModel
+      .findByIdAndUpdate(id, updatePostDto, { new: true, runValidators: true })
       .populate('mainCategoryId', 'value label')
       .populate('subCategoryId', 'value label')
       .lean()
       .exec();
     
-    if (!updated) {
+    if (!updatedPost) {
       throw new NotFoundException(`Post with ID ${id} not found`);
     }
 
-    const authorNickname = await this.apiClient.getUserNickname(updated.authorEmail);
-    const responseDto = mapToDto(updated, ResponseDto);
-    responseDto.author = authorNickname ?? 'Unknown';
-    responseDto.mainCategory = (updated.mainCategoryId as any)?.value || '';
+    const authorNickname = await this.userServiceClient.getNicknameByEmail(updatedPost.authorEmail);
+    const postResponse = mapToDto(updatedPost, PostResponseDto);
+    postResponse.author = authorNickname ?? 'Unknown';
+    postResponse.mainCategory = (updatedPost.mainCategoryId as any)?.value || '';
 
     // fire-and-forget: 검색 인덱스 갱신 (응답을 차단하지 않음)
-    const updateIndexPayload: SearchIndexPayload = {
-      post_id: String((updated as any)._id),
-      title: updated.title,
-      description: updated.description,
-      content: updated.content,
-      topic: updated.topic,
-      tags: updated.tags ?? [],
-      mainCategory: (updated.mainCategoryId as any)?.value || '',
-      subCategory: (updated.subCategoryId as any)?.value || '',
-      language: updated.language,
+    const searchIndexPayload: SearchIndexPayload = {
+      post_id: String((updatedPost as any)._id),
+      title: updatedPost.title,
+      description: updatedPost.description,
+      content: updatedPost.content,
+      topic: updatedPost.topic,
+      tags: updatedPost.tags ?? [],
+      mainCategory: (updatedPost.mainCategoryId as any)?.value || '',
+      subCategory: (updatedPost.subCategoryId as any)?.value || '',
+      language: updatedPost.language,
       author: authorNickname ?? 'Unknown',
-      createdAt: (updated as any).createdAt instanceof Date
-        ? (updated as any).createdAt.toISOString()
-        : String((updated as any).createdAt ?? ''),
-      updatedAt: (updated as any).updatedAt instanceof Date
-        ? (updated as any).updatedAt.toISOString()
-        : String((updated as any).updatedAt ?? ''),
+      createdAt: (updatedPost as any).createdAt instanceof Date
+        ? (updatedPost as any).createdAt.toISOString()
+        : String((updatedPost as any).createdAt ?? ''),
+      updatedAt: (updatedPost as any).updatedAt instanceof Date
+        ? (updatedPost as any).updatedAt.toISOString()
+        : String((updatedPost as any).updatedAt ?? ''),
     };
-    this.searchIndex.indexPost(updateIndexPayload).catch(err => console.error('[SearchIndex] Failed to index post on update:', err));
+    this.searchServiceClient.indexPost(searchIndexPayload).catch((error) => console.error('[SearchIndex] Failed to index post on update:', error));
 
-    return responseDto;
+    return postResponse;
   }
 
   /**
@@ -441,27 +430,27 @@ export class PostsService {
    * ```
    */
   async remove(id: string): Promise<void> {
-    const result = await this.postModel.findByIdAndDelete(id).exec();
-    if (!result) {
+    const deletedPost = await this.postModel.findByIdAndDelete(id).exec();
+    if (!deletedPost) {
       throw new NotFoundException(`Post with ID ${id} not found`);
     }
 
     // fire-and-forget: 검색 인덱스 삭제 (응답을 차단하지 않음)
-    this.searchIndex.deletePostIndex(id).catch(err => console.error('[SearchIndex] Failed to delete post index:', err));
+    this.searchServiceClient.removePostFromIndex(id).catch((error) => console.error('[SearchIndex] Failed to delete post index:', error));
   }
 
   /**
    * 특정 작성자의 게시글 목록을 조회합니다.
    * 
    * @param {string} authorEmail - 작성자의 이메일
-   * @returns {Promise<ResponseDto[]>} 작성자의 게시글 목록
+   * @returns {Promise<PostResponseDto[]>} 작성자의 게시글 목록
    * 
    * @example
    * ```typescript
    * const authorPosts = await postsService.findByAuthor('author@example.com');
    * ```
    */
-  async findByAuthor(authorEmail: string): Promise<ResponseDto[]> {
+  async findByAuthor(authorEmail: string): Promise<PostResponseDto[]> {
     const posts = await this.postModel
       .find({ authorEmail })
       .populate('mainCategoryId', 'value label')
@@ -471,7 +460,7 @@ export class PostsService {
     
     // 각 게시글에 카테고리 정보와 author 추가
     const postsWithAuthor = await Promise.all(
-      posts.map(async (post: any) => this.enrichPostWithCategoryInfo(post))
+      posts.map(async (post: any) => this.toResponseDto(post))
     );
     
     return postsWithAuthor;
@@ -481,14 +470,14 @@ export class PostsService {
    * 키워드로 게시글을 검색합니다.
    * 
    * @param {string} keyword - 검색 키워드
-   * @returns {Promise<ResponseDto[]>} 검색된 게시글 목록
+   * @returns {Promise<PostResponseDto[]>} 검색된 게시글 목록
    * 
    * @example
    * ```typescript
    * const searchResults = await postsService.searchPosts('검색어');
    * ```
    */
-  async searchPosts(keyword: string): Promise<ResponseDto[]> {
+  async searchPosts(keyword: string): Promise<PostResponseDto[]> {
     const posts = await this.postModel.find({
       $or: [
         { title: { $regex: keyword, $options: 'i' } },
@@ -502,7 +491,7 @@ export class PostsService {
 
     // 각 게시글에 카테고리 정보와 author 추가
     const postsWithAuthor = await Promise.all(
-      posts.map(async (post: any) => this.enrichPostWithCategoryInfo(post))
+      posts.map(async (post: any) => this.toResponseDto(post))
     );
 
     return postsWithAuthor;
@@ -513,9 +502,9 @@ export class PostsService {
    * 
    * @param {string} mainCategoryValue - 검색할 메인 카테고리 value (옵션)
    * @param {string} subCategoryValue - 검색할 서브 카테고리 value (옵션)
-   * @returns {Promise<Paginated<ResponseDto>>} - 검색 결과 게시글 목록
+   * @returns {Promise<Paginated<PostResponseDto>>} - 검색 결과 게시글 목록
    */
-  async findByThemeAndCategory(mainCategoryValue?: string, subCategoryValue?: string, page: number = 1, limit: number = 10): Promise<Paginated<ResponseDto>> {
+  async findByThemeAndCategory(mainCategoryValue?: string, subCategoryValue?: string, page: number = 1, limit: number = 10): Promise<Paginated<PostResponseDto>> {
     if (page < 1) {
       throw new BadRequestException('Page number must be greater than 0');
     }
@@ -582,7 +571,7 @@ export class PostsService {
 
     // 각 게시글에 카테고리 정보와 author 추가
     const postsWithAuthor = await Promise.all(
-      posts.map(async (post: any) => this.enrichPostWithCategoryInfo(post))
+      posts.map(async (post: any) => this.toResponseDto(post))
     );
 
     return {
