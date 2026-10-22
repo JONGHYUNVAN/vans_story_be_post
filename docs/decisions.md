@@ -11,7 +11,7 @@
 
 1. **import 경로는 `src/...` 절대경로** — tsconfig `paths`와 jest `moduleNameMapper`가 이미 지원하고, Nest CLI가 빌드 시 경로를 재작성한다. 대소문자가 섞인 폴더에서 `../../../` 체인보다 읽기 쉽다. 기존 상대경로는 손대는 파일에서만 바꾼다. 대안: Nest 스캐폴딩 기본인 상대경로.
 2. **줄바꿈은 LF** — `.editorconfig`와 `.prettierrc`(`endOfLine: lf`)로 선언. `.gitattributes`에 `*.ts text eol=lf` 추가와 `git add --renormalize .`는 전체 파일이 바뀌는 커밋이라 별도 커밋으로 미룬다. 대안: `endOfLine: auto`(문제를 덮는다).
-3. **환경 변수는 당분간 `process.env` 직접 읽기** — 단, 모듈 최상단이 아닌 생성자·팩토리·함수 안에서 읽고 필수값 누락 시 기동 실패. `@nestjs/config` + 스키마 검증은 문서 작업 범위를 넘어 별도 작업(`TODO.md` 3절).
+3. **환경 변수는 당분간 `process.env` 직접 읽기** — 단, 모듈 최상단이 아닌 생성자·팩토리·함수 안에서 읽고 필수값 누락 시 기동 실패. `@nestjs/config` + 스키마 검증은 문서 작업 범위를 넘어 별도 작업(`TODO.md` 3절). → 같은 날 아래 "`@nestjs/config` 도입"으로 대체.
 4. **명명은 새 파일만 Nest 표준** (`<feature>.<layer>.ts`, 소문자 폴더). 기존 post 모듈·utils의 PascalCase 폴더는 `forceConsistentCasingInFileNames: true` 복구와 함께 별도 작업으로 전환. Windows에서 대소문자만 바꾸는 리네임은 `git mv` 두 단계가 필요하다.
 
 ### CommonJS 출력 유지
@@ -42,3 +42,22 @@
 
 - 무엇: `.gitignore`의 `/docs`를 `/docs/typedoc`으로 좁히고 typedoc 출력을 `docs/typedoc/`으로 옮겼다. `docs/*.md`와 `docs/swagger/`는 추적한다.
 - 왜: `docs/architecture.md`, `docs/decisions.md`를 커밋해야 하는데 `/docs` 전체가 무시되고 있었다. `docs/swagger/clean.html`을 untrack할지는 외부(GitHub Pages 등) 사용 여부 확인 뒤 결정(`TODO.md` 1-2절).
+
+### 미사용 의존성 제거, TypeORM도 미리 두지 않음
+
+- 무엇: `typeorm`, `@nestjs/typeorm`, `sqlite3`, `swagger-ui-express`, `@types/swagger-ui-express`, `express-basic-auth`, `@nestia/sdk`(+ tsconfig `plugins`), `@types/mongodb`, `source-map-support` 제거와 `db.sqlite` 삭제. `class-validator`·`class-transformer`·`dotenv`는 dependencies로, `@types/express-session`은 devDependencies로 옮겼다(설치 버전 유지. 정정: 당시 "16.6은 `config()`가 안내 로그를 찍는다"고 적었으나 로그는 16.6.0과 17.x 이상만 찍고 16.6.1은 `quiet` 기본값이 true다). `ts-node`·`tsconfig-paths`는 VS Code 디버그 설정이 쓰므로 남겼다.
+- 왜: knip·depcheck 결과와 `npm ls`·설정 파일 수동 확인이 일치했다. 쓰지 않는 패키지는 Dependabot 경고와 네이티브 빌드(`sqlite3` node-gyp)만 늘린다. MariaDB 도입 계획이 있지만 TypeORM이 필요하면 그때 최신 버전으로 `@nestjs/typeorm typeorm mysql2`를 추가하면 되고, `sqlite3`는 MariaDB와 무관하다.
+- 대안: TypeORM을 MariaDB 도입까지 유지 — 설치 한 줄로 복구되는 것을 미리 둘 이유가 없다. ORM 선택(TypeORM/Prisma/MikroORM 등)도 도입 시점에 정한다.
+
+### `@nestjs/config` 도입
+
+- 무엇: `@nestjs/config` 12.0.1 추가. `AppModule`에 `ConfigModule.forRoot({ isGlobal: true })`, `MongooseModule.forRoot(process.env…)` → `forRootAsync` + `ConfigService.getOrThrow('MONGODB_URI')`, `JwtModule.register` → `registerAsync` + `getOrThrow('JWT_SECRET')`. `main.ts`는 `app.get(ConfigService)`로 읽는다. `dotenv.config()` 호출(`main.ts`, `app.module.ts`) 제거. 스키마 검증과 나머지 `process.env` 읽기 전환은 후속(`TODO.md` 3절).
+- 왜: Nest 표준 방식. 데코레이터 인자에서 `process.env`를 읽으면 `.env` 로드 순서에 기대게 된다 — 실제로 `AuthModule`의 `JwtModule.register`는 `app.module.ts`의 `dotenv.config()`보다 먼저 평가돼 `main.ts`의 호출에만 의존하고 있었다. 팩토리로 옮기면 순서와 무관하고, 필수값 누락이 `Configuration key "…" does not exist`로 기동 시 드러난다. `forRoot`는 schema 없이 쓰면 `.env`를 동기로 읽어 `process.env`에 덮어쓰지 않고 채우므로(기존 `dotenv.config()`와 같음) 아직 `process.env`를 직접 읽는 코드도 그대로 동작한다. 내부적으로 `dotenv.parse`만 써서 안내 로그도 없다.
+- 대안: `import 'dotenv/config'`를 `main.ts` 첫 줄에 두고 나머지 `config()` 삭제 — 가장 작은 수정이지만 데코레이터 평가 순서 의존이 남고, 테스트처럼 `main.ts`를 거치지 않는 경로는 따로 챙겨야 한다.
+- 함께 고침: 이 작업을 검증하다가 `bootstrap.spec.ts`의 `overrideModule(MongooseModule)`이 무효이고 테스트가 운영 Atlas에 연결해 왔음을 발견. `withFakeMongoose`로 교체(CLAUDE.md 함정 8).
+
+### 환경 변수 검증은 `validate` 함수 직접 작성, `process.env` 직접 읽기 제거
+
+- 무엇: `ConfigModule.forRoot({ validate: validateEnv })`(`src/config/env.validation.ts`). 필수 `MONGODB_URI`(mongodb://, mongodb+srv://), `JWT_SECRET`(base64), `USER_SERVICE_URL`(http(s)), `INTERNAL_API_KEY`. 선택(비면 검사 안 함) `NODE_ENV`(development|production|test), `PORT`(1–65535 정수), `CORS_ORIGINS`(http(s) 목록, 항목 공백 제거), `SEARCH_SERVICE_URL`(http(s)). 문제를 모두 모아 한 번에 던지고, 메시지에는 변수 이름과 이유만 넣는다. 함께 `JwtStrategy`·`InternalApiClient`·`SwaggerAuthMiddleware`를 `ConfigService`로, 검색 클라이언트 함수(`indexPost/deletePostIndex`)를 `SearchIndexClient` 서비스로 바꾸고 직접 의존성 `dotenv`를 제거했다.
+- 왜: 스키마 라이브러리(zod 등)로도 이 서비스의 규칙(예: Spring과 공유하는 base64 키, Atlas URI 형식)을 전부 표현하지 못하고 결국 커스텀 검사를 섞게 된다 — 변수 8개라 함수 하나가 더 읽기 쉽고 의존성도 늘지 않는다. 값을 메시지에서 빼는 것은 기동 실패 로그가 그대로 로그 수집기에 남기 때문. 검색 클라이언트는 일반 함수라 `ConfigService`를 주입할 수 없어 서비스로 바꿨다(Nest 표준, 테스트는 `jest.mock` 모듈 모킹 대신 프로바이더 교체).
+- 대안: `validationSchema`(Standard Schema, zod) — 위 이유로 채택하지 않음. `JWT_SECRET` 길이 검사(HS512 권장 64바이트 이상) — Spring 쪽 실제 키 길이를 확인하지 못해 넣지 않았다. 너무 짧은 키를 걸러야 하면 Spring 키를 확인한 뒤 추가한다. `NODE_ENV`를 자유 문자열로 두기 — `prod` 같은 오타가 조용히 secure 쿠키를 끄므로 enum으로 막는다.

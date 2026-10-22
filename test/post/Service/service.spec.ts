@@ -28,7 +28,7 @@ import { PostsService } from '../../../src/modules/post/Service/service';
 import { Post } from '../../../src/modules/post/schemas/post.schema';
 import { Category } from '../../../src/modules/category/schemas/category.schema';
 import { InternalApiClient } from '../../../src/utils/Api/api';
-import { indexPost, deletePostIndex } from '../../../src/utils/Api/search-index.client';
+import { SearchIndexClient } from '../../../src/utils/Api/search-index.client';
 import { CreateDto, UpdateDto } from '../../../src/modules/post/DTO';
 import { MockGenerator } from '../../helpers/mock-generator';
 import {
@@ -41,17 +41,12 @@ import {
   createMockApiClient,
   createMockCategoryModel,
   createMockPostModel,
+  createMockSearchIndexClient,
   createPostDocument,
   expectedEnrichedResponse,
   expectedMainCategoryOnlyResponse,
   mockQuery,
 } from '../../helpers/test-utils';
-
-// 검색 인덱스 클라이언트는 fire-and-forget 으로 외부 서비스에 fetch 하므로 모듈째 모킹한다
-jest.mock('../../../src/utils/Api/search-index.client', () => ({
-  indexPost: jest.fn().mockResolvedValue(undefined),
-  deletePostIndex: jest.fn().mockResolvedValue(undefined),
-}));
 
 describe('PostsService', () => {
   const POST_ID_HEX = POST_ID.toHexString();
@@ -61,14 +56,13 @@ describe('PostsService', () => {
   let mockPostModel: ReturnType<typeof createMockPostModel>;
   let mockCategoryModel: ReturnType<typeof createMockCategoryModel>;
   let mockApiClient: ReturnType<typeof createMockApiClient>;
+  let mockSearchIndex: ReturnType<typeof createMockSearchIndexClient>;
 
   beforeEach(async () => {
-    // 모듈 모킹(indexPost / deletePostIndex)의 호출 기록 초기화
-    jest.clearAllMocks();
-
     mockPostModel = createMockPostModel();
     mockCategoryModel = createMockCategoryModel();
     mockApiClient = createMockApiClient();
+    mockSearchIndex = createMockSearchIndexClient();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -84,6 +78,10 @@ describe('PostsService', () => {
         {
           provide: InternalApiClient,
           useValue: mockApiClient,
+        },
+        {
+          provide: SearchIndexClient,
+          useValue: mockSearchIndex,
         },
       ],
     }).compile();
@@ -154,8 +152,8 @@ describe('PostsService', () => {
       expect(result).toEqual(expectedEnrichedResponse());
 
       // 검색 인덱스 등록 (fire-and-forget)
-      expect(indexPost).toHaveBeenCalledTimes(1);
-      expect(indexPost).toHaveBeenCalledWith(expect.objectContaining({
+      expect(mockSearchIndex.indexPost).toHaveBeenCalledTimes(1);
+      expect(mockSearchIndex.indexPost).toHaveBeenCalledWith(expect.objectContaining({
         post_id: POST_ID_HEX,
         title: '테스트 게시글 제목',
         mainCategory: 'light',
@@ -175,7 +173,7 @@ describe('PostsService', () => {
       await expect(service.create(createDto, invalidEmail)).rejects.toThrow(BadRequestException);
       await expect(service.create(createDto, invalidEmail)).rejects.toThrow('Invalid author email');
       expect(mockPostModel.create).not.toHaveBeenCalled();
-      expect(indexPost).not.toHaveBeenCalled();
+      expect(mockSearchIndex.indexPost).not.toHaveBeenCalled();
     });
   });
 
@@ -464,8 +462,8 @@ describe('PostsService', () => {
       expect(result).toEqual(expectedMainCategoryOnlyResponse());
 
       // 검색 인덱스 갱신 (fire-and-forget)
-      expect(indexPost).toHaveBeenCalledTimes(1);
-      expect(indexPost).toHaveBeenCalledWith(expect.objectContaining({
+      expect(mockSearchIndex.indexPost).toHaveBeenCalledTimes(1);
+      expect(mockSearchIndex.indexPost).toHaveBeenCalledWith(expect.objectContaining({
         post_id: POST_ID_HEX,
         mainCategory: 'light',
         subCategory: 'introduction',
@@ -504,7 +502,7 @@ describe('PostsService', () => {
       await expect(service.update(POST_ID_HEX, updateDto, userEmail, userRole)).rejects.toThrow(ForbiddenException);
       await expect(service.update(POST_ID_HEX, updateDto, userEmail, userRole)).rejects.toThrow('Only the author or admin can edit this post');
       expect(mockPostModel.findByIdAndUpdate).not.toHaveBeenCalled();
-      expect(indexPost).not.toHaveBeenCalled();
+      expect(mockSearchIndex.indexPost).not.toHaveBeenCalled();
     });
 
     it('should update a post without user info (backward compatibility)', async () => {
@@ -621,7 +619,7 @@ describe('PostsService', () => {
 
       // Then
       expect(mockPostModel.findByIdAndDelete).toHaveBeenCalledWith(POST_ID_HEX);
-      expect(deletePostIndex).toHaveBeenCalledWith(POST_ID_HEX);
+      expect(mockSearchIndex.deletePostIndex).toHaveBeenCalledWith(POST_ID_HEX);
     });
 
     it('should throw NotFoundException for invalid id', async () => {
@@ -636,7 +634,7 @@ describe('PostsService', () => {
 
       // When & Then
       await expect(service.remove(POST_ID_HEX)).rejects.toThrow(NotFoundException);
-      expect(deletePostIndex).not.toHaveBeenCalled();
+      expect(mockSearchIndex.deletePostIndex).not.toHaveBeenCalled();
     });
   });
 

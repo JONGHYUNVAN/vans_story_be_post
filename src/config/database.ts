@@ -9,9 +9,6 @@
 
 import { MongooseModuleOptions } from '@nestjs/mongoose';
 import * as mongoose from 'mongoose';
-import * as dotenv from 'dotenv';
-
-dotenv.config();
 
 /**
  * MongoDB 연결 이벤트 리스너 설정

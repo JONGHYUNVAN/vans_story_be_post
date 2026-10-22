@@ -13,7 +13,7 @@ description: 이 NestJS 서비스에 새 REST 엔드포인트(라우트·API)를
 2. **Service**
    - `Types.ObjectId.isValid(id)` 실패 → `NotFoundException`. 권한은 `userEmail`/`userRole` 인자로 판단해 `ForbiddenException`.
    - 조회 체인은 `.populate('mainCategoryId', 'value label').populate('subCategoryId', 'value label').lean().exec()`. 응답은 `mapToDto(doc, ResponseDto)` 후 파생 필드 채우기.
-   - 게시글이 바뀌면 `indexPost` / `deletePostIndex`를 fire-and-forget으로 호출하고 `.catch`로 로그만 남긴다.
+   - 게시글이 바뀌면 `this.searchIndex.indexPost` / `deletePostIndex`(`SearchIndexClient`)를 fire-and-forget으로 호출하고 `.catch`로 로그만 남긴다.
 3. **Controller**
    - 데코레이터 순서(기존 관례): `@ApiOperation` → `@ApiResponse`(성공·401·403·404) → `@ApiParam/@ApiQuery` → `@UseGuards(JwtAuthGuard)` → `@ApiBearerAuth('Authorization')` → HTTP 메서드 데코레이터. 공개 라우트는 가드 없음.
    - 정적 경로(`grouped`, `value/:value`, `:id/edit`)는 `:id`보다 **앞에** 선언한다.

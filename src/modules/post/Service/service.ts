@@ -7,7 +7,7 @@ import { mapToDto } from '../../../utils/Mapper/mapper';
 import { Paginated } from '../../../utils/types/pagination';
 import { InternalApiClient } from '../../../utils/Api/api';
 import { Category } from '../../category/schemas/category.schema';
-import { indexPost, deletePostIndex, SearchIndexPayload } from '../../../utils/Api/search-index.client';
+import { SearchIndexClient, SearchIndexPayload } from '../../../utils/Api/search-index.client';
 
 /**
  * MongoDB를 사용하는 게시글 관련 비즈니스 로직을 처리하는 서비스 클래스
@@ -20,6 +20,7 @@ export class PostsService {
     @InjectModel(Post.name) private postModel: Model<PostDocument>,
     @InjectModel(Category.name) private categoryModel: Model<Category>,
     private readonly apiClient: InternalApiClient,
+    private readonly searchIndex: SearchIndexClient,
   ) {}
 
   /**
@@ -107,7 +108,7 @@ export class PostsService {
         ? (populated as any).updatedAt.toISOString()
         : String((populated as any).updatedAt ?? ''),
     };
-    indexPost(indexPayload).catch(err => console.error('[SearchIndex] Failed to index post:', err));
+    this.searchIndex.indexPost(indexPayload).catch(err => console.error('[SearchIndex] Failed to index post:', err));
 
     return result;
   }
@@ -404,7 +405,7 @@ export class PostsService {
         ? (updated as any).updatedAt.toISOString()
         : String((updated as any).updatedAt ?? ''),
     };
-    indexPost(updateIndexPayload).catch(err => console.error('[SearchIndex] Failed to index post on update:', err));
+    this.searchIndex.indexPost(updateIndexPayload).catch(err => console.error('[SearchIndex] Failed to index post on update:', err));
 
     return responseDto;
   }
@@ -433,7 +434,7 @@ export class PostsService {
     }
 
     // fire-and-forget: 검색 인덱스 삭제 (응답을 차단하지 않음)
-    deletePostIndex(id).catch(err => console.error('[SearchIndex] Failed to delete post index:', err));
+    this.searchIndex.deletePostIndex(id).catch(err => console.error('[SearchIndex] Failed to delete post index:', err));
   }
 
   /**

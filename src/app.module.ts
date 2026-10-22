@@ -7,23 +7,29 @@
  */
 
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
-import * as dotenv from 'dotenv';
 import { PostsModule } from './modules/post/Module/module';
 import { CategoryModule } from './modules/category/module/category.module';
 import { AuthModule } from './utils/Authorization/Module/module';
-dotenv.config();
+import { validateEnv } from './config/env.validation';
 
 /**
  * 애플리케이션 루트 모듈 클래스
- * 
+ *
  * MongoDB 연결, HTTP 통신, 게시글 및 인증 모듈 등을 통합합니다.
- * dotenv를 통해 환경 변수를 로드하여 애플리케이션 설정을 관리합니다.
+ * `ConfigModule`이 `.env`를 읽어 `validateEnv`로 검증한 뒤 전역 `ConfigService`로 제공합니다.
  */
 @Module({
   imports: [
-    MongooseModule.forRoot(process.env.MONGODB_URI!),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
+    MongooseModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        uri: config.getOrThrow<string>('MONGODB_URI'),
+      }),
+    }),
     HttpModule,
     PostsModule,
     CategoryModule,

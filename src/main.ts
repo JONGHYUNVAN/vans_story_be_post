@@ -5,9 +5,8 @@
  * 
  * @module main
  */
-import * as dotenv from 'dotenv';
-dotenv.config();
 import { NestFactory } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as express from 'express';
@@ -27,6 +26,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'debug', 'verbose', 'log', 'verbose'],
   });
+  const configService = app.get(ConfigService);
 
   // 전역 밸리데이션 파이프 설정
   app.useGlobalPipes(new ValidationPipe({
@@ -44,16 +44,16 @@ async function bootstrap() {
 
   // CORS 설정
   app.enableCors({
-    origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],
+    origin: configService.get<string>('CORS_ORIGINS')?.split(',') || ['http://localhost:3000'],
     credentials: true,
   });
 
   // 세션 설정
   app.use(session({
-    secret: process.env.JWT_SECRET || 'fallback-secret',
+    secret: configService.get<string>('JWT_SECRET') || 'fallback-secret',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: process.env.NODE_ENV === 'production' }
+    cookie: { secure: configService.get<string>('NODE_ENV') === 'production' }
   }));
 
   // JSON 파싱 미들웨어
@@ -61,7 +61,7 @@ async function bootstrap() {
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
   // Swagger 인증 미들웨어 적용
-  app.use(new SwaggerAuthMiddleware().use);
+  app.use(new SwaggerAuthMiddleware(configService).use);
   
   // Swagger 문서 설정
   const config = new DocumentBuilder()
@@ -77,7 +77,7 @@ async function bootstrap() {
   SwaggerModule.setup('api/posts/swagger', app, document);
 
   // 서버 시작 (PORT 미설정 시 3001)
-  const port = Number(process.env.PORT) || 3001;
+  const port = Number(configService.get<string>('PORT')) || 3001;
   await app.listen(port);
   logger.log(`Application is running on: ${await app.getUrl()}`);
 }

@@ -23,8 +23,6 @@
 
 #### 데이터베이스
 - mongoose: ^7.6.0
-- @nestjs/typeorm: ^12.0.2 (보조)
-- sqlite3: ^5.1.7 (테스트용)
 
 #### 유틸리티
 - rxjs: ^7.8.1
@@ -32,7 +30,6 @@
 
 #### 세션 관리
 - express-session: ^1.18.1
-- express-basic-auth: ^1.2.1
 
 #### API 통신
 - @nestjs/axios: ^12.0.1

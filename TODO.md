@@ -39,7 +39,7 @@ Claude Code 공식 가이드 기준으로 CLAUDE.md는 200줄 미만, "이 줄�
 - [ ] `SECURITY.md` 축소 — GitHub 커뮤니티 파일 규격대로 "취약점 신고 방법" + 실제 적용된 보호 조치 목록만(30줄 안팎). 현재 394줄 중 빈 템플릿 항목(긴급 연락처 등) 삭제, 아키텍처 설명은 `docs/architecture.md`로
 - [ ] `api.md` 삭제 — 501줄 수기 문서라 Swagger와 드리프트. `swagger-spec.json` → `docs/swagger/clean.html` 생성물로 단일화
 - [ ] `CATEGORY_MIGRATION.md` → `docs/history/category-migration.md`로 이동(기록 가치가 있으니 삭제하지 않음)
-- [ ] 생성물 정리 — `docs/swagger/README.md`, `docs/swagger/clean.html`, `swagger-spec.json`이 강제 추가돼 있다. 생성물은 untrack하고 생성 명령만 CLAUDE.md에 적는다. 0바이트 `db.sqlite` 삭제.
+- [ ] 생성물 정리 — `docs/swagger/README.md`, `docs/swagger/clean.html`, `swagger-spec.json`이 강제 추가돼 있다. 생성물은 untrack하고 생성 명령만 CLAUDE.md에 적는다. ~~0바이트 `db.sqlite` 삭제~~ (2026-10-22 완료, 의존성 정리와 함께)
   (2026-10-22: `.gitignore`를 `/docs` → `/docs/typedoc`으로 좁히고 typedoc `out`을 `docs/typedoc`으로 옮겨 `docs/*.md`를 커밋할 수 있게 했다. swagger 생성물은 아직 추적 중)
   **확인 필요**: Swagger HTML을 GitHub Pages 등 외부에서 쓰고 있으면 untrack하지 않는다.
 
@@ -66,7 +66,7 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 |---|---|---|---|---|
 | 1 | import 경로 | 상대경로와 `src/...` 절대경로가 같은 파일 안에서도 혼재 | `src/...` 절대경로로 통일. 근거: tsconfig `paths`와 jest `moduleNameMapper`가 이미 지원, Nest CLI가 빌드 시 경로를 재작성, 파일 이동 시 수정 범위가 작음, 대소문자 혼재 폴더에서 `../` 체인보다 읽기 쉬움 | 상대경로(Nest 기본 스캐폴딩 방식) |
 | 2 | 줄바꿈 | `.gitattributes`는 `* text=auto`뿐. Windows autocrlf 체크아웃이라 `npm run lint`가 prettier `Delete ␍` 오류를 수천 건 냄 | `.editorconfig` `end_of_line = lf` + `.gitattributes`에 `*.ts text eol=lf` 등 추가 + `.prettierrc`에 `"endOfLine": "lf"` 명시. 적용 후 `git add --renormalize .` | `.prettierrc`에 `"endOfLine": "auto"`(빠르지만 문제를 덮음) |
-| 3 | 환경 변수 접근 | `@nestjs/config` 없음. `dotenv.config()`가 `main.ts`, `app.module.ts`, `config/database.ts` 3곳에서 호출, `process.env` 직접 읽기 9개 파일 | 단기: 새 코드는 `process.env`를 모듈 최상단이 아닌 생성자·팩토리 안에서 읽고, 필수값 누락 시 기동 실패시킨다. 장기: `@nestjs/config` + 스키마 검증 도입(3절, 함정 2의 dotenv 호이스팅 문제도 함께 해소) | 지금 바로 `@nestjs/config` 도입(문서 작업 범위를 넘음) |
+| 3 | 환경 변수 접근 | **2026-10-22 `@nestjs/config` 도입으로 장기안 착수(3절 설정·구조).** 이하는 도입 전 상태: `@nestjs/config` 없음. `dotenv.config()`가 `main.ts`, `app.module.ts`, `config/database.ts` 3곳에서 호출, `process.env` 직접 읽기 9개 파일 | 단기: 새 코드는 `process.env`를 모듈 최상단이 아닌 생성자·팩토리 안에서 읽고, 필수값 누락 시 기동 실패시킨다. 장기: `@nestjs/config` + 스키마 검증 도입(3절, 함정 2의 dotenv 호이스팅 문제도 함께 해소) | 지금 바로 `@nestjs/config` 도입(문서 작업 범위를 넘음) |
 | 4 | 명명 전환 시점 | post 모듈: PascalCase 폴더 + 일반 명사 파일명(`Controller/controller.ts`). category 모듈: Nest 표준(`controller/category.controller.ts`). utils: 혼재 | 새 코드는 Nest 표준(소문자 폴더, `<feature>.<layer>.ts`). 기존 파일 전환은 별도 작업으로, `forceConsistentCasingInFileNames: true` 복구와 함께 진행. Windows에서 대소문자만 바꾸는 리네임은 `git mv` 두 단계 필요 | 문서 작업과 동시에 전환(리뷰 범위가 커짐) |
 
 ---
@@ -81,15 +81,22 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 - [x] `src/main.ts:82` — MongoDB URI 로그 제거 (2026-10-22)
 - [x] `src/swagger/middleware/swagger.auth.middleware.ts` — 입력·기대 비밀번호를 `console.log`로 찍던 줄 제거, `Logger`로 교체. `SWAGGER_ADMIN_PASSWORD` 미설정 시 `undefined === undefined`로 누구나 통과하던 문제도 함께 수정 (2026-10-22)
 - [x] `src/utils/Api/search-index.client.ts` — 하드코딩된 내부 키 리터럴을 `INTERNAL_API_KEY` 환경 변수로 교체 (2026-10-22). git 히스토리에는 남아 있으므로 키 교체(rotate)는 별도 판단
+- [x] `test/app/bootstrap.spec.ts`("no DB")가 실제로는 `.env`의 운영 Atlas에 연결하고 있었다 — `overrideModule(MongooseModule)`이 동적 모듈과 일치하지 않아 무효. `withFakeMongoose`(연결·모델 프로바이더 override)로 교체, 닿을 수 없는 `MONGODB_URI`로도 통과함을 확인 (2026-10-22)
 - [ ] `test/post/e2e/posts.e2e-spec.ts`가 운영 DB에 붙는다. `mongodb-memory-server` 또는 전용 테스트 DB로 분리하기 전까지 로컬 실행 금지
 - [ ] GitHub Dependabot이 기본 브랜치에서 취약점 110건을 보고(2026-10-21 push 시점: critical 2, high 60, moderate 42, low 6). [목록](https://github.com/JONGHYUNVAN/vans_story_be_post/security/dependabot)을 확인해 미사용 패키지 제거(아래 의존성 절)와 mongoose 8/9 마이그레이션으로 해소되는 건을 먼저 걷어내고, 남는 건은 `npm audit`로 개별 처리. critical 2건은 패키지와 영향 범위를 먼저 파악
 
 ### 의존성
 
-- [ ] `class-validator`, `class-transformer`, `dotenv`가 devDependencies에 있다(런타임 의존성). dependencies로 이동. 미추적 `Dockerfile`의 production 스테이지가 `npm install --omit=dev`라 그 이미지로는 `dotenv` 없이 기동 실패한다
-- [ ] `@types/express-session`, `@types/swagger-ui-express`가 dependencies에 있다. devDependencies로 이동
-- [ ] 미사용 패키지 제거(소스 import 없음 확인): `@nestjs/typeorm`, `typeorm`, `sqlite3`, `swagger-ui-express`, `express-basic-auth`
-- [ ] tsconfig `plugins`의 `@nestia/core`, `@nestia/sdk`, `typia` transform이 어디서도 쓰이지 않는다. 플러그인 설정과 `@nestia/sdk` devDependency 제거
+- [x] `class-validator`, `class-transformer`, `dotenv`가 devDependencies에 있다(런타임 의존성). dependencies로 이동. 미추적 `Dockerfile`의 production 스테이지가 `npm install --omit=dev`라 그 이미지로는 `dotenv` 없이 기동 실패한다 (2026-10-22, 설치 버전 그대로 이동)
+- [x] `@types/express-session`, `@types/swagger-ui-express`가 dependencies에 있다. devDependencies로 이동 (2026-10-22, `@types/swagger-ui-express`는 미사용이라 제거)
+- [x] 미사용 패키지 제거(소스 import 없음 확인): `@nestjs/typeorm`, `typeorm`, `sqlite3`, `swagger-ui-express`, `express-basic-auth` (2026-10-22, knip·depcheck로 재확인. `@types/mongodb`, `source-map-support`도 함께 제거)
+- [x] tsconfig `plugins`의 `@nestia/core`, `@nestia/sdk`, `typia` transform이 어디서도 쓰이지 않는다. 플러그인 설정과 `@nestia/sdk` devDependency 제거 (2026-10-22)
+- [ ] `ts-node`, `tsconfig-paths`는 `.vscode/launch.json`의 "Debug Nest Framework" 설정만 쓴다. 그 설정을 안 쓰면 설정과 함께 제거 (이 설정은 `.env`를 읽어 운영 DB에 붙는다)
+- [x] 범위 내 갱신(`npm update`) + `@nestjs/axios`의 peer `axios`를 `^1.20.0`으로 명시(그전엔 npm이 자동 설치한 1.8.3). mongoose 7.8.7→7.8.12(high `$nor` 인젝션 수정), express-session 1.19.0 등. `npm audit` 38건(critical 1, high 11) → 21건(critical 0, high 1), `--omit=dev` 0건 (2026-10-22)
+- [ ] 남은 audit 21건은 모두 dev: `@faker-js/faker` high(10으로 메이저, ESM 전용 — CLAUDE.md 함정 2와 충돌하므로 결정 필요)와 jest 체인 moderate 20건(`babel-plugin-istanbul` → `@istanbuljs/load-nyc-config` → `js-yaml@3`. audit이 제안하는 `jest@25`는 다운그레이드라 무시, 고치려면 `overrides`)
+- [x] 작은 메이저: `class-validator` 0.14.4 → 0.15.1(유일한 breaking은 `@IsIBAN` 옵션 인자 — 이 코드는 안 씀. `ValidationPipe`가 빌드된 `CreatePostDto`로 정상·거부 케이스를 그대로 처리함을 확인), `@types/supertest` 6 → 7 (2026-10-22)
+- [ ] `dotenv` 17 — 직접 의존성 제거(설정·구조 절)가 먼저면 생략
+- [ ] eslint 8(EOL) → 10 + `eslint-config-prettier` 10: `.eslintrc.js`를 flat config로 전환. CRLF 정리와 함께
 - [ ] mongoose 7은 EOL. 8/9 마이그레이션은 단위 테스트 통과를 조건으로 별도 작업
 
 ### 설정·구조
@@ -97,7 +104,11 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 - [ ] `src/config/{cors,database,swagger}.ts`는 어디서도 import하지 않는 죽은 코드. 삭제하거나 `main.ts`의 인라인 설정을 이쪽으로 옮기거나 둘 중 하나로 결정
 - [x] `src/main.ts` `app.listen(3001)` 하드코딩 → `PORT` 환경 변수, 기본 3001 (2026-10-22)
 - [ ] `package.json`의 `migrate:schema`, `migrate:categories` 스크립트가 가리키는 `scripts/migrate-*.js`가 없다. 스크립트 항목 삭제
-- [ ] `@nestjs/config` 도입 + 기동 시 환경 변수 스키마 검증(2절 결정 3 장기안)
+- [x] `@nestjs/config` 도입 — `ConfigModule.forRoot({ isGlobal: true })`, `MongooseModule.forRootAsync`, `JwtModule.registerAsync`, `main.ts`는 `ConfigService`. `dotenv.config()` 호출 제거(`main.ts`, `app.module.ts`) (2026-10-22)
+- [x] 기동 시 환경 변수 검증 — `validate` 함수 직접 작성(`src/config/env.validation.ts`, 라이브러리 없음). 필수 4개 + 선택 4개, 문제를 모아 한 번에 던지고 값은 메시지에 넣지 않음 (2026-10-22)
+- [ ] **배포 전 확인**: 클라우드타입의 `NODE_ENV`가 `development|production|test` 중 하나인지, `CORS_ORIGINS`·`USER_SERVICE_URL`·`SEARCH_SERVICE_URL`이 `http(s)://`로 시작하는지. 아니면 기동이 실패한다
+- [x] 남은 `process.env` 직접 읽기를 `ConfigService`로: `JwtStrategy`, `InternalApiClient`, `SwaggerAuthMiddleware`(`main.ts`에서 주입), 검색 클라이언트는 함수 → `SearchIndexClient` 서비스로 전환 (2026-10-22)
+- [x] 직접 의존성 `dotenv` 제거 — `src/config/database.ts`의 `dotenv.config()` 삭제, 미사용 `test/test-setup.ts` 삭제 (2026-10-22)
 - [ ] `npm start`의 `NODE_OPTIONS='--max-old-space-size=512'`는 POSIX 문법이라 Windows 셸에서 실패. `cross-env` 또는 스크립트 분리
 - [ ] 명명 통일 전환(2절 결정 4) + `forceConsistentCasingInFileNames: true` 복구
 

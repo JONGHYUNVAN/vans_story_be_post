@@ -12,6 +12,7 @@ import { JwtStrategy } from '../Strategy/strategy';
 import { RolesGuard } from '../Guard/role';
 import { Reflector } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 /**
  * 인증 기능 모듈
@@ -20,9 +21,12 @@ import { JwtModule } from '@nestjs/jwt';
  * Passport와 JWT 모듈을 통합하고 관련 전략 및 가드를 설정합니다.
  */
 @Module({
-  imports: [PassportModule, JwtModule.register({
-    signOptions: { expiresIn: '60s', algorithm: 'HS512' },
-    secret: Buffer.from(process.env.JWT_SECRET!, 'base64')
+  imports: [PassportModule, JwtModule.registerAsync({
+    inject: [ConfigService],
+    useFactory: (config: ConfigService) => ({
+      signOptions: { expiresIn: '60s', algorithm: 'HS512' },
+      secret: Buffer.from(config.getOrThrow<string>('JWT_SECRET'), 'base64')
+    })
   })],
   providers: [JwtStrategy, RolesGuard, Reflector],
   exports: [PassportModule, JwtModule],

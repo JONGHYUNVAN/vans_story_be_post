@@ -10,8 +10,10 @@ paths:
   - `createMockPostModel(doc?)`, `createMockCategoryModel(categories?)` — 조회 메서드는 호출마다 새 `mockQuery` 체인을 돌려준다. Category 모의는 `{ value, parentId: null | ObjectId | { $ne: null } }` 필터를 실제로 평가한다.
   - `mockQuery(result)` — `populate/select/sort/skip/limit/lean`은 `this`, `exec()`와 `await` 둘 다 `result`. Service가 쓰는 체인 메서드가 늘면 여기에도 추가한다.
   - 기대 응답: `expectedMainCategoryOnlyResponse`(findAll/findOne/findForEdit/update 경로), `expectedEnrichedResponse`(create/findByAuthor/searchPosts/findByThemeAndCategory 경로). 날짜는 `toLocaleString()` 문자열.
-  - 검색 클라이언트는 모듈째 모킹: `jest.mock('<상대경로>/search-index.client', () => ({ indexPost: jest.fn().mockResolvedValue(undefined), deletePostIndex: ... }))` 후 `beforeEach`에서 `jest.clearAllMocks()`.
+  - 검색 클라이언트는 프로바이더로 바꾼다: `{ provide: SearchIndexClient, useValue: createMockSearchIndexClient() }`. `beforeEach`마다 새로 만들므로 `jest.clearAllMocks()`는 필요 없다. 검증은 `expect(mockSearchIndex.indexPost)...`.
+- 환경 변수 검증(`test/config/env.validation.spec.ts`): `validateEnv`에 규칙을 추가하면 정상·거부 케이스를 추가한다. 오류 메시지에 값이 들어가지 않는지 확인하는 케이스는 유지한다.
 - DTO 모의 데이터는 `MockGenerator.createMock(CreateDto, overrides)` — class-validator를 통과하는 값만 만들고, 실패하면 throw한다.
-- 모듈 기동 테스트(`test/app/bootstrap.spec.ts`): `import './env'`가 `AppModule` import보다 앞에 와야 한다 (더미 env, CJS는 import 순서 유지). `Test.createTestingModule({ imports: [AppModule] }).overrideModule(MongooseModule).useModule(FakeMongooseModule)` — `@Global()` 모듈이 `getModelToken(X.name)` 프로바이더를 제공한다. 새 스키마를 추가하면 토큰도 추가한다.
+- 모듈 기동 테스트(`test/app/bootstrap.spec.ts`): `import './env'`가 `AppModule` import보다 앞에 와야 한다 (더미 env, CJS는 import 순서 유지). `withFakeMongoose(Test.createTestingModule({ imports: [AppModule] }), fakeModel)` (`test/helpers/fake-mongoose.ts`) — 연결 프로바이더(`getConnectionToken()`)와 `getModelToken(X.name)`을 `overrideProvider`로 바꿔 연결 팩토리가 실행되지 않게 한다. 새 스키마를 추가하면 헬퍼에 토큰도 추가한다. `overrideModule(MongooseModule)`은 동적 모듈과 일치하지 않아 실제 DB에 연결되므로 쓰지 않는다. `test/app/env.ts`는 `MONGODB_URI`도 더미로 채운다(옵션 팩토리의 `getOrThrow` 때문).
+- 환경 변수 로딩 테스트(`test/app/config.spec.ts`): 임시 디렉터리로 `chdir`하고 `jest.isolateModules`로 `AppModule`을 다시 로드해 `ConfigModule.forRoot()`가 그 디렉터리의 `.env`를 읽게 한다. 헬퍼도 같은 isolate 안에서 `require`해야 토큰 identity가 맞는다.
 - e2e 헬퍼: `MockAuthModule`, `TestAuthGuard`(`Bearer test_token`=admin, `author_token`, `other_user_token`), `MockInternalApiClient`.
 - 새 Service 메서드마다 정상 1건 + 예외(`NotFound` / `Forbidden` / `BadRequest`) 각각 테스트한다.
