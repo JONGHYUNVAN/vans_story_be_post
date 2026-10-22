@@ -16,17 +16,20 @@ import { RESPONSE_FIELDS_KEY } from './response-field.decorator';
  * const postResponse = mapToDto(post, PostResponseDto);
  * ```
  */
-export function mapToDto<TEntity, TDto>(entity: TEntity, dtoClass: new () => TDto): TDto {
+export function mapToDto<TEntity, TDto>(
+  entity: TEntity,
+  dtoClass: new () => TDto,
+): TDto {
   const dto = new dtoClass();
-  const fields: string[] = Reflect.getMetadata(RESPONSE_FIELDS_KEY, dtoClass.prototype) || [];
+  const fields: string[] =
+    Reflect.getMetadata(RESPONSE_FIELDS_KEY, dtoClass.prototype) || [];
 
   fields.forEach((field) => {
     if (Object.prototype.hasOwnProperty.call(entity, field)) {
       const fieldValue = (entity as any)[field];
       if (fieldValue instanceof Date) {
         (dto as any)[field] = fieldValue.toLocaleString();
-      }
-      else {
+      } else {
         (dto as any)[field] = fieldValue;
       }
     }

@@ -1,46 +1,39 @@
-import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { Role } from 'src/auth/role.enum';
 
-type User = AuthenticatedUser;
+/** 고정 토큰 문자열 → `request.user` (e2e에서 `JwtAuthGuard` 대신 쓴다) */
+const USERS_BY_AUTHORIZATION: Record<string, AuthenticatedUser> = {
+  'Bearer admin_token': { email: 'admin@example.com', roles: [Role.Admin] },
+  'Bearer author_token': { email: 'author@example.com', roles: [Role.User] },
+  'Bearer other_user_token': { email: 'other@example.com', roles: [Role.User] },
+};
 
+/**
+ * e2e용 `JwtAuthGuard` 대체
+ *
+ * JWT를 검증하지 않고 `Authorization` 헤더 값으로 사용자를 정한다. 헤더가 없거나 모르는 값이면 401.
+ */
 @Injectable()
-export class TestAuthGuard extends AuthGuard('jwt') {
-  canActivate(context: ExecutionContext) {
+export class FakeJwtAuthGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
-    const authHeader = request.headers.authorization;
-    
-    // 인증 헤더가 없으면 인증 실패
-    if (!authHeader) {
+    const authorization: string | undefined = request.headers.authorization;
+    if (!authorization) {
       throw new UnauthorizedException('Authorization header is required');
     }
-    
-    // 토큰별로 다른 사용자 정보 설정
-    let user: User;
-    switch (authHeader) {
-      case 'Bearer test_token':
-        user = { email: 'test@example.com', roles: [Role.Admin] };
-        break;
-      case 'Bearer author_token':
-        user = { email: 'author@example.com', roles: [Role.User] };
-        break;
-      case 'Bearer other_user_token':
-        user = { email: 'other@example.com', roles: [Role.User] };
-        break;
-      default:
-        throw new UnauthorizedException('Invalid token');
+
+    const user = USERS_BY_AUTHORIZATION[authorization];
+    if (!user) {
+      throw new UnauthorizedException('Invalid token');
     }
-    
+
     request.user = user;
     return true;
   }
-
-  handleRequest<TUser = User>(err: any, user: any, info: any, context: ExecutionContext): TUser {
-    const request = context.switchToHttp().getRequest();
-    if (err || !request.user) {
-      throw new UnauthorizedException('Authentication failed');
-    }
-    return request.user as TUser;
-  }
-} 
+}

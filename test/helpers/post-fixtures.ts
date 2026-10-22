@@ -3,12 +3,10 @@
  *
  * - 서비스가 실제로 호출하는 쿼리 체인
  *   (`find/findById/findByIdAndUpdate/... → populate → select → sort → skip → limit → lean → exec`)을
- *   흉내 내는 thenable 쿼리 모의 객체(`mockQuery`)
- * - populate 결과가 포함된 lean 게시글 문서 픽스처(`createPostDocument`)
- * - 서비스 경로별 기대 응답(`expectedEnrichedResponse`, `expectedMainCategoryOnlyResponse`)
- * - Post / Category 모델과 UserServiceClient 모의 객체
- *
- * @module test/helpers/test-utils
+ *   흉내 내는 thenable 쿼리 모의 객체(`createMockQuery`)
+ * - populate 결과가 포함된 lean 게시글 문서 픽스처(`createPostLeanDoc`)
+ * - 서비스 경로별 기대 응답(`expectedFullResponse`, `expectedMainCategoryOnlyResponse`)
+ * - Post / Category 모델과 UserServiceClient·SearchServiceClient 모의 객체
  */
 import { Types } from 'mongoose';
 import { PostResponseDto } from 'src/posts/dto';
@@ -18,14 +16,14 @@ import { PostResponseDto } from 'src/posts/dto';
 export const POST_ID = new Types.ObjectId('507f1f77bcf86cd799439011');
 export const MAIN_CATEGORY_ID = new Types.ObjectId('507f1f77bcf86cd799439021');
 export const SUB_CATEGORY_ID = new Types.ObjectId('507f1f77bcf86cd799439022');
-export const AUTHOR_EMAIL = 'test@example.com';
+export const AUTHOR_EMAIL = 'author@example.com';
 export const AUTHOR_NICKNAME = '테스트 작성자';
 export const FIXED_DATE = new Date('2025-11-01T00:00:00.000Z');
 
 // ---------------------------------------------------------------- 카테고리 픽스처
 
 /** categories 컬렉션 문서 (단위 테스트에 필요한 필드만) */
-export interface CategoryFixture {
+export interface CategoryLeanDoc {
   _id: Types.ObjectId;
   parentId: Types.ObjectId | null;
   group?: string;
@@ -37,7 +35,7 @@ export interface CategoryFixture {
 }
 
 /** 메인 카테고리 (parentId === null) */
-export const mainCategoryDoc: CategoryFixture = {
+export const MAIN_CATEGORY_DOC: CategoryLeanDoc = {
   _id: MAIN_CATEGORY_ID,
   parentId: null,
   group: 'Frontend',
@@ -49,7 +47,7 @@ export const mainCategoryDoc: CategoryFixture = {
 };
 
 /** 서브 카테고리 (parentId === 메인 카테고리 _id) */
-export const subCategoryDoc: CategoryFixture = {
+export const SUB_CATEGORY_DOC: CategoryLeanDoc = {
   _id: SUB_CATEGORY_ID,
   parentId: MAIN_CATEGORY_ID,
   value: 'introduction',
@@ -66,16 +64,16 @@ export interface PopulatedCategoryRef {
   label: string;
 }
 
-export const populatedMainCategory: PopulatedCategoryRef = {
-  _id: mainCategoryDoc._id,
-  value: mainCategoryDoc.value,
-  label: mainCategoryDoc.label,
+export const POPULATED_MAIN_CATEGORY: PopulatedCategoryRef = {
+  _id: MAIN_CATEGORY_DOC._id,
+  value: MAIN_CATEGORY_DOC.value,
+  label: MAIN_CATEGORY_DOC.label,
 };
 
-export const populatedSubCategory: PopulatedCategoryRef = {
-  _id: subCategoryDoc._id,
-  value: subCategoryDoc.value,
-  label: subCategoryDoc.label,
+export const POPULATED_SUB_CATEGORY: PopulatedCategoryRef = {
+  _id: SUB_CATEGORY_DOC._id,
+  value: SUB_CATEGORY_DOC.value,
+  label: SUB_CATEGORY_DOC.label,
 };
 
 // ---------------------------------------------------------------- 게시글 픽스처
@@ -112,7 +110,7 @@ export interface PostLeanDoc {
 }
 
 /** populate + lean 결과 형태의 게시글 문서를 만든다. 필요한 필드만 `overrides`로 덮어쓴다. */
-export const createPostDocument = (overrides: Partial<PostLeanDoc> = {}): PostLeanDoc => ({
+export const createPostLeanDoc = (overrides: Partial<PostLeanDoc> = {}): PostLeanDoc => ({
   _id: POST_ID,
   title: '테스트 게시글 제목',
   content: POST_CONTENT,
@@ -122,8 +120,8 @@ export const createPostDocument = (overrides: Partial<PostLeanDoc> = {}): PostLe
   language: 'ko',
   thumbnail: 'thumbnail.jpg',
   authorEmail: AUTHOR_EMAIL,
-  mainCategoryId: populatedMainCategory,
-  subCategoryId: populatedSubCategory,
+  mainCategoryId: POPULATED_MAIN_CATEGORY,
+  subCategoryId: POPULATED_SUB_CATEGORY,
   viewCount: 0,
   likeCount: 0,
   createdAt: FIXED_DATE,
@@ -135,12 +133,12 @@ export const createPostDocument = (overrides: Partial<PostLeanDoc> = {}): PostLe
 // ---------------------------------------------------------------- 기대 응답
 
 /**
- * 서비스가 돌려주는 ResponseDto의 실제 런타임 형태.
+ * 서비스가 돌려주는 PostResponseDto의 실제 런타임 형태.
  *
  * `mapToDto`가 lean 문서의 populate 결과를 그대로 복사하므로, 응답의 `mainCategoryId` / `subCategoryId`는
  * DTO 타입(`Types.ObjectId`)과 달리 `{ _id, value, label }` 서브문서다.
  */
-export type PostResponse = Omit<PostResponseDto, 'mainCategoryId' | 'subCategoryId'> & {
+export type PopulatedPostResponse = Omit<PostResponseDto, 'mainCategoryId' | 'subCategoryId'> & {
   mainCategoryId: PopulatedCategoryRef;
   subCategoryId: PopulatedCategoryRef;
 };
@@ -151,8 +149,8 @@ export type PostResponse = Omit<PostResponseDto, 'mainCategoryId' | 'subCategory
  * 날짜는 `mapToDto`가 `Date.toLocaleString()`으로 바꾼 문자열이다.
  */
 export const expectedMainCategoryOnlyResponse = (
-  doc: PostLeanDoc = createPostDocument(),
-): Omit<PostResponse, 'mainCategoryLabel' | 'subCategory' | 'subCategoryLabel'> => ({
+  doc: PostLeanDoc = createPostLeanDoc(),
+): Omit<PopulatedPostResponse, 'mainCategoryLabel' | 'subCategory' | 'subCategoryLabel'> => ({
   _id: doc._id,
   title: doc.title,
   content: doc.content,
@@ -176,7 +174,7 @@ export const expectedMainCategoryOnlyResponse = (
  * `toResponseDto` 경로(create / findByAuthor / searchPosts / findByThemeAndCategory)의 기대 응답.
  * 메인·서브 카테고리의 value와 label이 모두 채워진다.
  */
-export const expectedEnrichedResponse = (doc: PostLeanDoc = createPostDocument()): PostResponse => ({
+export const expectedFullResponse = (doc: PostLeanDoc = createPostLeanDoc()): PopulatedPostResponse => ({
   ...expectedMainCategoryOnlyResponse(doc),
   mainCategoryLabel: doc.mainCategoryId.label,
   subCategory: doc.subCategoryId.value,
@@ -191,7 +189,7 @@ export const expectedEnrichedResponse = (doc: PostLeanDoc = createPostDocument()
  * `populate / select / sort / skip / limit / lean`은 자기 자신을 돌려주고,
  * `exec()` 또는 `await`(thenable)로 `result`를 얻는다.
  */
-export const mockQuery = <T>(result: T) => {
+export const createMockQuery = <T>(result: T) => {
   const query = {
     populate: jest.fn(),
     select: jest.fn(),
@@ -212,21 +210,19 @@ export const mockQuery = <T>(result: T) => {
   return query;
 };
 
-export type MockQuery<T = any> = ReturnType<typeof mockQuery<T>>;
-
 // ---------------------------------------------------------------- 모델 / 클라이언트 모의 객체
 
 /**
  * Post 모델 모의 객체. 모든 조회 메서드는 호출마다 새 쿼리 체인을 돌려주고,
  * 기본적으로 `doc`(populate + lean 형태)을 결과로 낸다.
  */
-export const createMockPostModel = (doc: PostLeanDoc = createPostDocument()) => ({
+export const createMockPostModel = (doc: PostLeanDoc = createPostLeanDoc()) => ({
   create: jest.fn().mockImplementation(async (input: Record<string, unknown>) => ({ _id: doc._id, ...input })),
-  find: jest.fn().mockImplementation(() => mockQuery([doc])),
-  findById: jest.fn().mockImplementation(() => mockQuery(doc)),
-  findByIdAndUpdate: jest.fn().mockImplementation(() => mockQuery(doc)),
-  findByIdAndDelete: jest.fn().mockImplementation(() => mockQuery(doc)),
-  countDocuments: jest.fn().mockImplementation(() => mockQuery(1)),
+  find: jest.fn().mockImplementation(() => createMockQuery([doc])),
+  findById: jest.fn().mockImplementation(() => createMockQuery(doc)),
+  findByIdAndUpdate: jest.fn().mockImplementation(() => createMockQuery(doc)),
+  findByIdAndDelete: jest.fn().mockImplementation(() => createMockQuery(doc)),
+  countDocuments: jest.fn().mockImplementation(() => createMockQuery(1)),
 });
 
 /** 서비스가 Category 모델에 넘기는 필터 형태 */
@@ -235,7 +231,7 @@ interface CategoryFilter {
   parentId?: Types.ObjectId | null | { $ne: null };
 }
 
-const matchesCategory = (doc: CategoryFixture, filter: CategoryFilter): boolean => {
+const matchesCategory = (doc: CategoryLeanDoc, filter: CategoryFilter): boolean => {
   if (filter.value !== undefined && doc.value !== filter.value) {
     return false;
   }
@@ -255,24 +251,24 @@ const matchesCategory = (doc: CategoryFixture, filter: CategoryFilter): boolean 
  * Category 모델 모의 객체. `findOne` / `find`는 서비스가 넘기는
  * `{ value, parentId: null | ObjectId | { $ne: null } }` 필터를 실제로 평가한다.
  */
-export const createMockCategoryModel = (categories: CategoryFixture[] = [mainCategoryDoc, subCategoryDoc]) => ({
+export const createMockCategoryModel = (categories: CategoryLeanDoc[] = [MAIN_CATEGORY_DOC, SUB_CATEGORY_DOC]) => ({
   findOne: jest.fn().mockImplementation((filter: CategoryFilter = {}) =>
-    mockQuery(categories.find((category) => matchesCategory(category, filter)) ?? null),
+    createMockQuery(categories.find((category) => matchesCategory(category, filter)) ?? null),
   ),
   find: jest.fn().mockImplementation((filter: CategoryFilter = {}) =>
-    mockQuery(categories.filter((category) => matchesCategory(category, filter))),
+    createMockQuery(categories.filter((category) => matchesCategory(category, filter))),
   ),
   findById: jest.fn().mockImplementation((id: Types.ObjectId | string) =>
-    mockQuery(categories.find((category) => category._id.equals(id)) ?? null),
+    createMockQuery(categories.find((category) => category._id.equals(id)) ?? null),
   ),
 });
 
-export const createMockApiClient = () => ({
+export const createMockUserServiceClient = () => ({
   getNicknameByEmail: jest.fn().mockResolvedValue(AUTHOR_NICKNAME),
 });
 
-/** 검색 인덱스 클라이언트는 fire-and-forget 으로 외부 서비스에 fetch 하므로 호출 기록만 남기는 모의 객체로 바꾼다 */
-export const createMockSearchIndexClient = () => ({
+/** 검색 서비스 클라이언트는 fire-and-forget 으로 외부 서비스에 fetch 하므로 호출 기록만 남기는 모의 객체로 바꾼다 */
+export const createMockSearchServiceClient = () => ({
   indexPost: jest.fn().mockResolvedValue(undefined),
   removePostFromIndex: jest.fn().mockResolvedValue(undefined),
 });

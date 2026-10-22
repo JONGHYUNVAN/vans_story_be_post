@@ -4,20 +4,20 @@ import { FindPostsQueryDto } from './find-posts-query.dto';
 import { MAX_POSTS_PER_PAGE } from '../posts.constants';
 
 // 쿼리 문자열은 모두 문자열로 들어온다
-const parse = (query: Record<string, string>) => {
+const validateQuery = (query: Record<string, string>) => {
   const dto = plainToInstance(FindPostsQueryDto, query);
   return { dto, failed: validateSync(dto).map((error) => error.property) };
 };
 
 describe('FindPostsQueryDto', () => {
   it('아무것도 없으면 page 1, limit 10', () => {
-    const { dto, failed } = parse({});
+    const { dto, failed } = validateQuery({});
     expect(failed).toEqual([]);
     expect(dto).toMatchObject({ page: 1, limit: 10 });
   });
 
   it('숫자 문자열을 숫자로 바꾼다', () => {
-    const { dto, failed } = parse({
+    const { dto, failed } = validateQuery({
       page: '3',
       limit: String(MAX_POSTS_PER_PAGE),
       mainCategory: 'light',
@@ -39,6 +39,6 @@ describe('FindPostsQueryDto', () => {
     ['소수 page', { page: '1.5' }, 'page'],
     ['음수 page', { page: '-1' }, 'page'],
   ])('%s는 거부한다', (_, query, field) => {
-    expect(parse(query).failed).toEqual([field]);
+    expect(validateQuery(query).failed).toEqual([field]);
   });
 });

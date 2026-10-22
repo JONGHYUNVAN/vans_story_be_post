@@ -15,7 +15,8 @@ export const RESPONSE_FIELDS_KEY = 'fields';
  * ```
  */
 export function ResponseField(target: object, key: string) {
-  const fields: string[] = Reflect.getMetadata(RESPONSE_FIELDS_KEY, target) || [];
+  const fields: string[] =
+    Reflect.getMetadata(RESPONSE_FIELDS_KEY, target) || [];
 
   fields.push(key);
 

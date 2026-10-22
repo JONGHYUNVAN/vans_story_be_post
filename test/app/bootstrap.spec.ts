@@ -17,13 +17,13 @@ import { withFakeMongoose } from '../helpers/fake-mongoose';
 import { CategoriesService } from 'src/categories/categories.service';
 
 /** `test/app/env.ts`의 `JWT_SECRET`으로 Spring과 같은 형식(HS512, `sub`·`auth`)의 토큰을 만든다. */
-const token = (auth: string, algorithm: 'HS512' | 'HS256' = 'HS512') =>
+const signSpringToken = (auth: string, algorithm: 'HS512' | 'HS256' = 'HS512') =>
   new JwtService().sign(
     { sub: 'a@b.c', auth },
     { secret: Buffer.from(process.env.JWT_SECRET!, 'base64'), algorithm, expiresIn: '5m' },
   );
 
-describe('AppModule bootstrap (no DB)', () => {
+describe('AppModule 기동 (DB 없이)', () => {
   let app: any;
   let document: any;
   let categoriesService: CategoriesService;
@@ -53,11 +53,11 @@ describe('AppModule bootstrap (no DB)', () => {
     await app?.close();
   });
 
-  it('boots AppModule with all providers resolved', () => {
+  it('모든 프로바이더를 해석해 기동한다', () => {
     expect(app).toBeDefined();
   });
 
-  it('generates a Swagger document covering posts and categories', () => {
+  it('Swagger 문서에 posts와 categories 경로가 들어간다', () => {
     const paths = Object.keys(document.paths);
     expect(paths.some((p) => p.startsWith('/api/v1/posts'))).toBe(true);
     expect(paths.some((p) => p.startsWith('/api/v1/categories'))).toBe(true);
@@ -77,7 +77,7 @@ describe('AppModule bootstrap (no DB)', () => {
     expect([...new Set(used)].filter((s) => !schemes.includes(s))).toEqual([]);
   });
 
-  it('rejects an unauthenticated POST /api/v1/posts with 401 via JwtAuthGuard', async () => {
+  it('인증 없이 게시글을 만들면 JwtAuthGuard가 401', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/posts')
       .send({ title: 'x' });
@@ -85,7 +85,7 @@ describe('AppModule bootstrap (no DB)', () => {
     expect(res.body.error).toBe('NO_AUTH_HEADER');
   });
 
-  it('serves swagger JSON', async () => {
+  it('Swagger JSON을 돌려준다', async () => {
     const res = await request(app.getHttpServer()).get(
       '/api/posts/swagger-json',
     );
@@ -94,14 +94,14 @@ describe('AppModule bootstrap (no DB)', () => {
 
   describe('관리자 전용 라우트 (JwtAuthGuard + RolesGuard)', () => {
     const CATEGORY_URL = '/api/v1/categories/507f1f77bcf86cd799439011';
-    let remove: jest.SpyInstance;
+    let removeSpy: jest.SpyInstance;
 
     beforeEach(() => {
-      remove = jest.spyOn(categoriesService, 'remove').mockResolvedValue(undefined);
+      removeSpy = jest.spyOn(categoriesService, 'remove').mockResolvedValue(undefined);
     });
 
     afterEach(() => {
-      remove.mockRestore();
+      removeSpy.mockRestore();
     });
 
     it.each(['ROLE_ADMIN', 'ADMIN', 'ROLE_USER,ROLE_ADMIN'])(
@@ -109,24 +109,24 @@ describe('AppModule bootstrap (no DB)', () => {
       async (auth) => {
         const res = await request(app.getHttpServer())
           .delete(CATEGORY_URL)
-          .set('Authorization', `Bearer ${token(auth)}`);
+          .set('Authorization', `Bearer ${signSpringToken(auth)}`);
         expect(res.status).toBe(200);
-        expect(remove).toHaveBeenCalledWith('507f1f77bcf86cd799439011');
+        expect(removeSpy).toHaveBeenCalledWith('507f1f77bcf86cd799439011');
       },
     );
 
     it('일반 사용자 토큰은 카테고리 삭제가 403', async () => {
       const res = await request(app.getHttpServer())
         .delete(CATEGORY_URL)
-        .set('Authorization', `Bearer ${token('ROLE_USER')}`);
+        .set('Authorization', `Bearer ${signSpringToken('ROLE_USER')}`);
       expect(res.status).toBe(403);
-      expect(remove).not.toHaveBeenCalled();
+      expect(removeSpy).not.toHaveBeenCalled();
     });
 
     it('일반 사용자 토큰은 게시글 생성이 403', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/posts')
-        .set('Authorization', `Bearer ${token('ROLE_USER')}`)
+        .set('Authorization', `Bearer ${signSpringToken('ROLE_USER')}`)
         .send({ title: 'x' });
       expect(res.status).toBe(403);
     });
@@ -134,21 +134,21 @@ describe('AppModule bootstrap (no DB)', () => {
     it('HS512가 아닌 토큰은 관리자 권한이 있어도 401', async () => {
       const res = await request(app.getHttpServer())
         .delete(CATEGORY_URL)
-        .set('Authorization', `Bearer ${token('ROLE_ADMIN', 'HS256')}`);
+        .set('Authorization', `Bearer ${signSpringToken('ROLE_ADMIN', 'HS256')}`);
       expect(res.status).toBe(401);
-      expect(remove).not.toHaveBeenCalled();
+      expect(removeSpy).not.toHaveBeenCalled();
     });
   });
 
   describe('경로 id 형식 검사 (ParseObjectIdPipe)', () => {
     it.each([
-      ['게시글 조회', '/api/v1/posts/invalid-id'],
-      ['카테고리 조회', '/api/v1/categories/invalid-id'],
-      ['12자 문자열', '/api/v1/categories/aaaaaaaaaaaa'],
-    ])('%s: ObjectId가 아니면 DB 조회 없이 400', async (_, url) => {
-      const res = await request(app.getHttpServer()).get(url);
+      ['게시글 조회', '/api/v1/posts/', 'invalid-id'],
+      ['카테고리 조회', '/api/v1/categories/', 'invalid-id'],
+      ['카테고리 조회(12자 문자열)', '/api/v1/categories/', 'aaaaaaaaaaaa'],
+    ])('%s: id가 ObjectId가 아니면 400이고 응답에 입력값이 없다', async (_, path, id) => {
+      const res = await request(app.getHttpServer()).get(path + id);
       expect(res.status).toBe(400);
-      expect(JSON.stringify(res.body)).not.toContain('invalid-id');
+      expect(JSON.stringify(res.body)).not.toContain(id);
     });
   });
 });

@@ -12,12 +12,12 @@ import { Category } from 'src/categories/schemas/category.schema';
  */
 export const withFakeMongoose = (
   builder: TestingModuleBuilder,
-  model: object = {},
+  fakeModel: object = {},
 ): TestingModuleBuilder =>
   builder
     .overrideProvider(getConnectionToken())
     .useValue({ close: async () => undefined })
     .overrideProvider(getModelToken(Post.name))
-    .useValue(model)
+    .useValue(fakeModel)
     .overrideProvider(getModelToken(Category.name))
-    .useValue(model);
+    .useValue(fakeModel);
