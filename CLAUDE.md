@@ -47,7 +47,7 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
 
 ## 코딩 규칙
 
-- **환경 변수**: `.env`는 `AppModule`의 `ConfigModule.forRoot({ isGlobal: true })`가 읽는다. `process.env`를 직접 읽지 않는다 — `ConfigService`를 주입받아 읽고, 필수값은 `getOrThrow()`. 모듈 설정은 `forRootAsync`/`registerAsync` + `inject: [ConfigService]` (함정 5). DI 밖에서 만드는 객체(`SwaggerAuthMiddleware`)는 `main.ts`에서 `ConfigService`를 넘긴다. 새 변수는 `.env.example`에 이름을 추가한다.
+- **환경 변수**: `.env`는 `AppModule`의 `ConfigModule.forRoot({ isGlobal: true, validate: validateEnv })`가 읽고 기동 시 검증한다(`src/config/env.validation.ts`). `process.env`를 직접 읽지 않는다 — `ConfigService`를 주입받아 읽고, 필수값은 `getOrThrow()`. 모듈 설정은 `forRootAsync`/`registerAsync` + `inject: [ConfigService]` (함정 5). DI 밖에서 만드는 객체(`SwaggerAuthMiddleware`)는 `main.ts`에서 `ConfigService`를 넘긴다. 새 변수는 `validateEnv`의 `REQUIRED`/`OPTIONAL`과 `.env.example`에 같이 추가한다. 검증 오류 메시지에 값을 넣지 않는다.
 - **로깅**: `@nestjs/common`의 `Logger` (`new Logger(ClassName.name)`). `console.*` 금지. URI·토큰·비밀번호·API 키는 어떤 레벨에도 찍지 않는다.
 - **`any`**: 새로 쓰지 않는다. `noImplicitAny: false`라 컴파일러가 잡지 않는다. populate 결과는 `test/helpers/test-utils.ts`의 `PopulatedCategoryRef`처럼 타입을 선언한다.
 - **JSDoc**: 공개 클래스·메서드에 한국어 JSDoc (typedoc 생성 대상). 요청/응답 예시는 Swagger 데코레이터에 두고 JSDoc에 중복하지 않는다.

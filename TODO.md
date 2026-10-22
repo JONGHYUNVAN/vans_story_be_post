@@ -105,7 +105,8 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 - [x] `src/main.ts` `app.listen(3001)` 하드코딩 → `PORT` 환경 변수, 기본 3001 (2026-10-22)
 - [ ] `package.json`의 `migrate:schema`, `migrate:categories` 스크립트가 가리키는 `scripts/migrate-*.js`가 없다. 스크립트 항목 삭제
 - [x] `@nestjs/config` 도입 — `ConfigModule.forRoot({ isGlobal: true })`, `MongooseModule.forRootAsync`, `JwtModule.registerAsync`, `main.ts`는 `ConfigService`. `dotenv.config()` 호출 제거(`main.ts`, `app.module.ts`) (2026-10-22)
-- [ ] 기동 시 환경 변수 스키마 검증 — `ConfigModule.forRoot({ validationSchema })`(Standard Schema: zod 등) 또는 `validate` 함수
+- [x] 기동 시 환경 변수 검증 — `validate` 함수 직접 작성(`src/config/env.validation.ts`, 라이브러리 없음). 필수 4개 + 선택 4개, 문제를 모아 한 번에 던지고 값은 메시지에 넣지 않음 (2026-10-22)
+- [ ] **배포 전 확인**: 클라우드타입의 `NODE_ENV`가 `development|production|test` 중 하나인지, `CORS_ORIGINS`·`USER_SERVICE_URL`·`SEARCH_SERVICE_URL`이 `http(s)://`로 시작하는지. 아니면 기동이 실패한다
 - [x] 남은 `process.env` 직접 읽기를 `ConfigService`로: `JwtStrategy`, `InternalApiClient`, `SwaggerAuthMiddleware`(`main.ts`에서 주입), 검색 클라이언트는 함수 → `SearchIndexClient` 서비스로 전환 (2026-10-22)
 - [x] 직접 의존성 `dotenv` 제거 — `src/config/database.ts`의 `dotenv.config()` 삭제, 미사용 `test/test-setup.ts` 삭제 (2026-10-22)
 - [ ] `npm start`의 `NODE_OPTIONS='--max-old-space-size=512'`는 POSIX 문법이라 Windows 셸에서 실패. `cross-env` 또는 스크립트 분리

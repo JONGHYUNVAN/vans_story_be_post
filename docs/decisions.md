@@ -55,3 +55,9 @@
 - 왜: Nest 표준 방식. 데코레이터 인자에서 `process.env`를 읽으면 `.env` 로드 순서에 기대게 된다 — 실제로 `AuthModule`의 `JwtModule.register`는 `app.module.ts`의 `dotenv.config()`보다 먼저 평가돼 `main.ts`의 호출에만 의존하고 있었다. 팩토리로 옮기면 순서와 무관하고, 필수값 누락이 `Configuration key "…" does not exist`로 기동 시 드러난다. `forRoot`는 schema 없이 쓰면 `.env`를 동기로 읽어 `process.env`에 덮어쓰지 않고 채우므로(기존 `dotenv.config()`와 같음) 아직 `process.env`를 직접 읽는 코드도 그대로 동작한다. 내부적으로 `dotenv.parse`만 써서 안내 로그도 없다.
 - 대안: `import 'dotenv/config'`를 `main.ts` 첫 줄에 두고 나머지 `config()` 삭제 — 가장 작은 수정이지만 데코레이터 평가 순서 의존이 남고, 테스트처럼 `main.ts`를 거치지 않는 경로는 따로 챙겨야 한다.
 - 함께 고침: 이 작업을 검증하다가 `bootstrap.spec.ts`의 `overrideModule(MongooseModule)`이 무효이고 테스트가 운영 Atlas에 연결해 왔음을 발견. `withFakeMongoose`로 교체(CLAUDE.md 함정 8).
+
+### 환경 변수 검증은 `validate` 함수 직접 작성, `process.env` 직접 읽기 제거
+
+- 무엇: `ConfigModule.forRoot({ validate: validateEnv })`(`src/config/env.validation.ts`). 필수 `MONGODB_URI`(mongodb://, mongodb+srv://), `JWT_SECRET`(base64), `USER_SERVICE_URL`(http(s)), `INTERNAL_API_KEY`. 선택(비면 검사 안 함) `NODE_ENV`(development|production|test), `PORT`(1–65535 정수), `CORS_ORIGINS`(http(s) 목록, 항목 공백 제거), `SEARCH_SERVICE_URL`(http(s)). 문제를 모두 모아 한 번에 던지고, 메시지에는 변수 이름과 이유만 넣는다. 함께 `JwtStrategy`·`InternalApiClient`·`SwaggerAuthMiddleware`를 `ConfigService`로, 검색 클라이언트 함수(`indexPost/deletePostIndex`)를 `SearchIndexClient` 서비스로 바꾸고 직접 의존성 `dotenv`를 제거했다.
+- 왜: 스키마 라이브러리(zod 등)로도 이 서비스의 규칙(예: Spring과 공유하는 base64 키, Atlas URI 형식)을 전부 표현하지 못하고 결국 커스텀 검사를 섞게 된다 — 변수 8개라 함수 하나가 더 읽기 쉽고 의존성도 늘지 않는다. 값을 메시지에서 빼는 것은 기동 실패 로그가 그대로 로그 수집기에 남기 때문. 검색 클라이언트는 일반 함수라 `ConfigService`를 주입할 수 없어 서비스로 바꿨다(Nest 표준, 테스트는 `jest.mock` 모듈 모킹 대신 프로바이더 교체).
+- 대안: `validationSchema`(Standard Schema, zod) — 위 이유로 채택하지 않음. `JWT_SECRET` 길이 검사(HS512 권장 64바이트 이상) — Spring 쪽 실제 키 길이를 확인하지 못해 넣지 않았다. 너무 짧은 키를 걸러야 하면 Spring 키를 확인한 뒤 추가한다. `NODE_ENV`를 자유 문자열로 두기 — `prod` 같은 오타가 조용히 secure 쿠키를 끄므로 enum으로 막는다.

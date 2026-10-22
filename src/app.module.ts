@@ -13,16 +13,17 @@ import { HttpModule } from '@nestjs/axios';
 import { PostsModule } from './modules/post/Module/module';
 import { CategoryModule } from './modules/category/module/category.module';
 import { AuthModule } from './utils/Authorization/Module/module';
+import { validateEnv } from './config/env.validation';
 
 /**
  * 애플리케이션 루트 모듈 클래스
  *
  * MongoDB 연결, HTTP 통신, 게시글 및 인증 모듈 등을 통합합니다.
- * `ConfigModule`이 `.env`를 읽어 전역 `ConfigService`로 제공합니다.
+ * `ConfigModule`이 `.env`를 읽어 `validateEnv`로 검증한 뒤 전역 `ConfigService`로 제공합니다.
  */
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

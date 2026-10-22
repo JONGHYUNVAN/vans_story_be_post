@@ -31,7 +31,7 @@ export class InternalApiClient {
   /**
    * InternalApiClient 생성자
    * 
-   * `ConfigService`에서 설정을 읽습니다. 값이 없으면 `getOrThrow`가 던집니다.
+   * `ConfigService`에서 설정을 읽습니다. 값의 존재·형식은 기동 시 `validateEnv`가 검증합니다.
    *
    * @param {HttpService} httpService - HTTP 요청을 처리하기 위한 NestJS HTTP 서비스
    * @param {ConfigService} config - 환경 변수
