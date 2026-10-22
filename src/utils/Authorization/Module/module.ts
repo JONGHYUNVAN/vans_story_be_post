@@ -9,8 +9,6 @@
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from '../Strategy/strategy';
-import { RolesGuard } from '../Guard/role';
-import { Reflector } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 
@@ -28,7 +26,7 @@ import { ConfigService } from '@nestjs/config';
       secret: Buffer.from(config.getOrThrow<string>('JWT_SECRET'), 'base64')
     })
   })],
-  providers: [JwtStrategy, RolesGuard, Reflector],
+  providers: [JwtStrategy],
   exports: [PassportModule, JwtModule],
 })
 

@@ -3,9 +3,12 @@ process.env.JWT_SECRET = 'dGVzdF9zZWNyZXRfa2V5'; // base64 encoded 'test_secret_
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { getModelToken } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import request from 'supertest';
 import { AppModule } from '../../../src/app.module';
 import { CreateDto } from '../../../src/modules/post/DTO';
+import { Post } from '../../../src/modules/post/schemas/post.schema';
 import { MockAuthModule } from '../../helpers/mock.module';
 import { JwtAuthGuard } from '../../../src/utils/Authorization/Guard/auth';
 import { TestAuthGuard } from '../../helpers/test-auth.guard';
@@ -15,6 +18,7 @@ import { MockGenerator } from '../../helpers/mock-generator';
 
 describe('PostsController (e2e)', () => {
   let app: INestApplication;
+  let postModel: Model<Post>;
   const testToken = 'Bearer test_token';
 
   beforeAll(async () => {
@@ -27,6 +31,7 @@ describe('PostsController (e2e)', () => {
     .useClass(MockInternalApiClient)
     .compile();
 
+    postModel = moduleFixture.get(getModelToken(Post.name));
     app = moduleFixture.createNestApplication();
     await app.init();
   });
@@ -118,42 +123,37 @@ describe('PostsController (e2e)', () => {
 
   describe('게시글 권한 테스트', () => {
     let authorPostId: string;
-    let otherUserPostId: string;
     const authorToken = 'Bearer author_token';
-    const otherUserToken = 'Bearer other_user_token'; 
+    const otherUserToken = 'Bearer other_user_token';
 
     beforeAll(async () => {
-      // 작성자가 게시글 생성
-      const createDto1: CreateDto = MockGenerator.createMock(CreateDto);
-      const authorResponse = await request(app.getHttpServer())
-        .post('/api/v1/posts')
-        .set('Authorization', authorToken)
-        .send(createDto1)
-        .expect(201);
-      authorPostId = authorResponse.body._id;
-
-      // 다른 사용자가 게시글 생성
-      const createDto2: CreateDto = MockGenerator.createMock(CreateDto);
-      const otherResponse = await request(app.getHttpServer())
-        .post('/api/v1/posts')
-        .set('Authorization', otherUserToken)
-        .send(createDto2)
-        .expect(201);
-      otherUserPostId = otherResponse.body._id;
+      // 게시글 생성은 관리자 전용이라, 일반 사용자(author)의 글은 모델로 직접 만든다
+      const created = await postModel.create({
+        ...MockGenerator.createMock(CreateDto),
+        authorEmail: 'author@example.com',
+      });
+      authorPostId = created._id.toString();
     });
 
     afterAll(async () => {
-      // 테스트 후 생성된 게시글들 정리
       if (authorPostId) {
-        await request(app.getHttpServer())
-          .delete(`/api/v1/posts/${authorPostId}`)
-          .set('Authorization', authorToken);
+        await postModel.deleteOne({ _id: authorPostId });
       }
-      if (otherUserPostId) {
-        await request(app.getHttpServer())
-          .delete(`/api/v1/posts/${otherUserPostId}`)
-          .set('Authorization', otherUserToken);
-      }
+    });
+
+    it('일반 사용자의 게시글 생성 - 403 에러', async () => {
+      await request(app.getHttpServer())
+        .post('/api/v1/posts')
+        .set('Authorization', authorToken)
+        .send(MockGenerator.createMock(CreateDto))
+        .expect(403);
+    });
+
+    it('일반 사용자의 게시글 삭제 - 403 에러 (작성자 본인이어도)', async () => {
+      await request(app.getHttpServer())
+        .delete(`/api/v1/posts/${authorPostId}`)
+        .set('Authorization', authorToken)
+        .expect(403);
     });
 
     it('작성자 본인이 자신의 게시글 수정용 조회 - 성공', async () => {

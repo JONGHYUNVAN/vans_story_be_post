@@ -89,12 +89,13 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 
 ### 보안
 
-- [ ] **`RolesGuard`가 어디에도 등록되어 있지 않다.** `@Roles('admin')`이 붙은 게시글 생성·삭제도 인증만 통과하면 누구나 호출할 수 있다. 게다가 Spring이 발급하는 `auth` 클레임은 `ROLE_ADMIN` 형식이라 `RolesGuard`를 그냥 켜면 관리자도 막힌다. 해결 순서: (1) Spring `JwtProvider`의 `auth` 클레임 형식 확인(쉼표 구분 문자열인지) → (2) `JwtStrategy.validate`에서 `ROLE_ADMIN` → `admin`으로 정규화 또는 `@Roles('ROLE_ADMIN')` → (3) `@UseGuards(JwtAuthGuard, RolesGuard)` 또는 `APP_GUARD` 등록 → (4) `PostsService.update`의 `userRole !== 'admin'` 비교도 같이 맞춤. **최우선**
-  - (전수조사 #2) 카테고리 생성·수정·삭제·활성화·비활성화 5개 엔드포인트는 `@Roles`조차 없다(Swagger 설명은 "관리자 권한 필요"). 로그인한 아무 사용자나 카테고리를 바꿀 수 있다 — 같이 처리
-  - (전수조사 #3) `PostsService.update`는 `userEmail && userRole && …`이라 role이 없으면 권한 검사를 통과한다(fail-open). 파라미터를 필수로, role 없으면 거부. 이 동작을 고정한 `service.spec.ts`의 "backward compatibility" 테스트를 거부 케이스로 교체
+- [x] **`RolesGuard`가 어디에도 등록되어 있지 않다.** `@Roles('admin')`이 붙은 게시글 생성·삭제도 인증만 통과하면 누구나 호출할 수 있다. 게다가 Spring이 발급하는 `auth` 클레임은 `ROLE_ADMIN` 형식이라 `RolesGuard`를 그냥 켜면 관리자도 막힌다. 해결 순서: (1) Spring `JwtProvider`의 `auth` 클레임 형식 확인(쉼표 구분 문자열인지) → (2) `JwtStrategy.validate`에서 `ROLE_ADMIN` → `admin`으로 정규화 또는 `@Roles('ROLE_ADMIN')` → (3) `@UseGuards(JwtAuthGuard, RolesGuard)` 또는 `APP_GUARD` 등록 → (4) `PostsService.update`의 `userRole !== 'admin'` 비교도 같이 맞춤. **최우선** (2026-10-22 `fix/authorization`: `auth`는 `ROLE_ADMIN`/`ADMIN` 쉼표 구분으로 확인 → `JwtStrategy`가 `Role`로 정규화, `@UseGuards(JwtAuthGuard, RolesGuard)`. 프런트에서 일반 사용자에게 생성·삭제 버튼이 보이는지는 미확인)
+  - [x] (전수조사 #2) 카테고리 생성·수정·삭제·활성화·비활성화 5개 엔드포인트는 `@Roles`조차 없다(Swagger 설명은 "관리자 권한 필요"). 로그인한 아무 사용자나 카테고리를 바꿀 수 있다 — 같이 처리
+  - [x] (전수조사 #3) `PostsService.update`는 `userEmail && userRole && …`이라 role이 없으면 권한 검사를 통과한다(fail-open). 파라미터를 필수로, role 없으면 거부. 이 동작을 고정한 `service.spec.ts`의 "backward compatibility" 테스트를 거부 케이스로 교체
 - [ ] (전수조사 #4) 목록 `limit` 상한이 없다. `?limit=100000`이면 게시글 10만 건 + 사용자 서비스 호출 10만 번. `?page=abc`는 `NaN`으로 통과. 페이지네이션 Query DTO(`@IsInt @Min(1) @Max(50)`)
 - [ ] (전수조사 #10) 세션: secret이 `JWT_SECRET` 재사용(도달 불가한 `'fallback-secret'` 포함), `secure` 쿠키인데 `trust proxy` 미설정(프록시 뒤에서 Swagger 로그인 유지 실패 가능), 운영 MemoryStore, Swagger 비밀번호 `===` 비교 → `SESSION_SECRET`(2절 결정 14), `app.set('trust proxy', 1)`, `crypto.timingSafeEqual`
 - [ ] (전수조사 #11) `InternalApiClient.getUserNickname`이 이메일을 URL 경로에 그대로 넣는다 → `encodeURIComponent`
+- [ ] refresh 토큰이 access 토큰으로 통과한다 — Spring `JwtProvider.generateToken`이 두 토큰을 같은 클레임(`sub`, `auth`, `exp`)으로 만든다. Spring에 `typ`(access/refresh) 클레임 추가·배포 → 이 서비스가 `typ !== 'access'` 거부. 순서를 지키지 않으면 모든 요청이 401. **레포를 넘는 작업**
 - [ ] JWT 서명을 HS512 공유 비밀키에서 RS256/ES256 + JWKS로. 대칭키는 검증하는 쪽이 토큰을 만들 수도 있어, 이 서비스에서 `JWT_SECRET`이 새면 모든 서비스에서 통하는 관리자 토큰을 만들 수 있다. Kotlin 사용자 서버가 개인키로 서명하고 `/.well-known/jwks.json` 공개 → 이 서비스는 `jwks-rsa`의 `secretOrKeyProvider`로 공개키 검증만(비밀값 제거). **레포를 넘는 작업**(사용자 서버 먼저). 만료 전 폐기(로그아웃·차단)가 필요하면 짧은 만료 + 리프레시 또는 민감 엔드포인트만 introspection(RFC 7662)을 따로 결정. 배경: `docs/architecture.md` "인증·권한"
 - [x] `src/main.ts:82` — MongoDB URI 로그 제거 (2026-10-22)
 - [x] `src/swagger/middleware/swagger.auth.middleware.ts` — 입력·기대 비밀번호를 `console.log`로 찍던 줄 제거, `Logger`로 교체. `SWAGGER_ADMIN_PASSWORD` 미설정 시 `undefined === undefined`로 누구나 통과하던 문제도 함께 수정 (2026-10-22)
@@ -151,7 +152,7 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
   - [ ] #5 필수 문자열(`description`, `topic`, `language`, 카테고리 `value`/`label`/`path`)이 `@IsString()`뿐 → 빈 문자열이 mongoose `required`에서 실패해 500. `@IsNotEmpty()`
   - [ ] #6 형식이 틀린 `:id` — 카테고리는 `CastError` 500, 게시글은 404. `@nestjs/mongoose`의 `ParseObjectIdPipe`로 400(e2e의 404 기대값도 변경)
   - [ ] #19 카테고리 `group`은 Swagger에만 enum, 검증 없음 → `CategoryGroup` enum + `@IsEnum`
-- [ ] **B. 권한** — 위 보안 절 RolesGuard 항목(Spring `auth` 클레임 형식 확인이 선행). `Role` enum(#19)과 `AuthModule`의 `RolesGuard`·`Reflector` 정리(#14)를 같이
+- [x] **B. 권한** (2026-10-22 `fix/authorization`) — 위 보안 절 RolesGuard 항목(Spring `auth` 클레임 형식 확인이 선행). `Role` enum(#19)과 `AuthModule`의 `RolesGuard`·`Reflector` 정리(#14)를 같이
 - [ ] **C. Swagger·문서 정확성** (`docs/swagger-contract`)
   - [ ] #7 게시글의 `@ApiBearerAuth('Authorization')`가 문서에 없는 스킴 이름(등록된 건 `bearer`) → Swagger UI가 토큰을 안 붙임. DELETE는 204로 문서화했지만 `@HttpCode` 없어 200. 목록 응답을 `ResponseDto[]`로 선언(실제 `{ data, meta }`). `thumbnail`이 필수로 표시
   - [ ] #8 `swagger-spec.json` 생성 스크립트(1-2절 생성물 정리와 같이)

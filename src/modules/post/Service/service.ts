@@ -8,6 +8,7 @@ import { Paginated } from '../../../utils/types/pagination';
 import { InternalApiClient } from '../../../utils/Api/api';
 import { Category } from '../../category/schemas/category.schema';
 import { SearchIndexClient, SearchIndexPayload } from '../../../utils/Api/search-index.client';
+import { Role } from 'src/utils/Authorization/role.enum';
 
 /**
  * MongoDB를 사용하는 게시글 관련 비즈니스 로직을 처리하는 서비스 클래스
@@ -343,19 +344,18 @@ export class PostsService {
    * @param {string} id - 수정할 게시글의 ID
    * @param {UpdateDto} updateDto - 수정할 게시글 데이터
    * @param {string} userEmail - 요청자의 이메일 (JWT 토큰에서 추출)
-   * @param {string} userRole - 요청자의 역할 (JWT 토큰에서 추출)
+   * @param {Role[]} userRoles - 요청자의 역할 (JWT 토큰에서 정규화)
    * @returns {Promise<ResponseDto>} 수정된 게시글 정보
-   * 
+   *
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
-   * @throws {ForbiddenException} 수정 권한이 없는 경우
-   * 
-   * @example
-   * ```typescript
-   * const updateDto = { title: '수정된 제목' };
-   * const updatedPost = await postsService.update('1', updateDto, 'user@example.com', 'user');
-   * ```
+   * @throws {ForbiddenException} 요청자 정보나 역할이 없거나, 관리자도 작성자도 아닌 경우
    */
-  async update(id: string, updateDto: UpdateDto, userEmail?: string, userRole?: string): Promise<ResponseDto> {
+  async update(id: string, updateDto: UpdateDto, userEmail: string, userRoles: Role[]): Promise<ResponseDto> {
+    // 권한 정보가 없으면 게시글을 보기 전에 거부한다(fail-closed)
+    if (!userEmail || !userRoles?.length) {
+      throw new ForbiddenException('Only the author or admin can edit this post');
+    }
+
     if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException(`Invalid post ID: ${id}`);
     }
@@ -366,7 +366,7 @@ export class PostsService {
     }
 
     // 권한 확인: 관리자이거나 작성자 본인
-    if (userEmail && userRole && userRole !== 'admin' && existingPost.authorEmail !== userEmail) {
+    if (!userRoles.includes(Role.Admin) && existingPost.authorEmail !== userEmail) {
       throw new ForbiddenException('Only the author or admin can edit this post');
     }
 

@@ -30,6 +30,7 @@ import { Category } from '../../../src/modules/category/schemas/category.schema'
 import { InternalApiClient } from '../../../src/utils/Api/api';
 import { SearchIndexClient } from '../../../src/utils/Api/search-index.client';
 import { CreateDto, UpdateDto } from '../../../src/modules/post/DTO';
+import { Role } from 'src/utils/Authorization/role.enum';
 import { MockGenerator } from '../../helpers/mock-generator';
 import {
   AUTHOR_EMAIL,
@@ -410,7 +411,7 @@ describe('PostsService', () => {
    * @param {string} id - 수정할 게시글의 ID
    * @param {UpdateDto} updateDto - 수정할 게시글 데이터
    * @param {string} userEmail - 요청자의 이메일
-   * @param {string} userRole - 요청자의 역할
+   * @param {Role[]} userRoles - 요청자의 역할
    * @returns {Promise<ResponseDto>} 수정된 게시글 정보
    * @throws {NotFoundException} 게시글을 찾을 수 없는 경우
    * @throws {ForbiddenException} 수정 권한이 없는 경우
@@ -432,23 +433,22 @@ describe('PostsService', () => {
    * };
    *
    * // 작성자 본인
-   * const updatedPost = await service.update('507f1f77bcf86cd799439011', updateDto, 'test@example.com', 'user');
+   * const updatedPost = await service.update('507f1f77bcf86cd799439011', updateDto, 'test@example.com', [Role.User]);
    *
    * // 관리자
-   * const updatedPost = await service.update('507f1f77bcf86cd799439011', updateDto, 'admin@example.com', 'admin');
+   * const updatedPost = await service.update('507f1f77bcf86cd799439011', updateDto, 'admin@example.com', [Role.Admin]);
    * ```
    */
   describe('update', () => {
-    it('should update a post by author', async () => {
+    it('작성자 본인은 수정할 수 있다', async () => {
       // Given
       const userEmail = AUTHOR_EMAIL;
-      const userRole = 'user';
       const updateDto = MockGenerator.createMock(UpdateDto);
 
       mockPostModel.findById.mockReturnValue(mockQuery(createPostDocument({ authorEmail: userEmail })));
 
       // When
-      const result = await service.update(POST_ID_HEX, updateDto, userEmail, userRole);
+      const result = await service.update(POST_ID_HEX, updateDto, userEmail, [Role.User]);
 
       // Then
       expect(mockPostModel.findById).toHaveBeenCalledWith(POST_ID_HEX);
@@ -471,48 +471,14 @@ describe('PostsService', () => {
       }));
     });
 
-    it('should update a post by admin', async () => {
-      // Given
-      const userEmail = 'admin@example.com';
-      const userRole = 'admin';
-      const authorEmail = AUTHOR_EMAIL;
-      const updateDto = MockGenerator.createMock(UpdateDto);
-
-      mockPostModel.findById.mockReturnValue(mockQuery(createPostDocument({ authorEmail })));
-
-      // When
-      const result = await service.update(POST_ID_HEX, updateDto, userEmail, userRole);
-
-      // Then
-      expect(mockPostModel.findById).toHaveBeenCalledWith(POST_ID_HEX);
-      expect(mockPostModel.findByIdAndUpdate).toHaveBeenCalledWith(POST_ID_HEX, updateDto, { new: true });
-      expect(result).toEqual(expectedMainCategoryOnlyResponse());
-    });
-
-    it('should throw ForbiddenException when user is not author or admin', async () => {
-      // Given
-      const userEmail = 'other@example.com';
-      const userRole = 'user';
-      const authorEmail = AUTHOR_EMAIL;
-      const updateDto = MockGenerator.createMock(UpdateDto);
-
-      mockPostModel.findById.mockReturnValue(mockQuery(createPostDocument({ authorEmail })));
-
-      // When & Then
-      await expect(service.update(POST_ID_HEX, updateDto, userEmail, userRole)).rejects.toThrow(ForbiddenException);
-      await expect(service.update(POST_ID_HEX, updateDto, userEmail, userRole)).rejects.toThrow('Only the author or admin can edit this post');
-      expect(mockPostModel.findByIdAndUpdate).not.toHaveBeenCalled();
-      expect(mockSearchIndex.indexPost).not.toHaveBeenCalled();
-    });
-
-    it('should update a post without user info (backward compatibility)', async () => {
+    it('관리자는 다른 사람의 글도 수정할 수 있다', async () => {
       // Given
       const updateDto = MockGenerator.createMock(UpdateDto);
 
       mockPostModel.findById.mockReturnValue(mockQuery(createPostDocument({ authorEmail: AUTHOR_EMAIL })));
 
       // When
-      const result = await service.update(POST_ID_HEX, updateDto);
+      const result = await service.update(POST_ID_HEX, updateDto, 'admin@example.com', [Role.User, Role.Admin]);
 
       // Then
       expect(mockPostModel.findById).toHaveBeenCalledWith(POST_ID_HEX);
@@ -520,24 +486,55 @@ describe('PostsService', () => {
       expect(result).toEqual(expectedMainCategoryOnlyResponse());
     });
 
-    it('should throw NotFoundException for invalid id', async () => {
+    it('작성자도 관리자도 아니면 403', async () => {
+      // Given
+      const updateDto = MockGenerator.createMock(UpdateDto);
+
+      mockPostModel.findById.mockReturnValue(mockQuery(createPostDocument({ authorEmail: AUTHOR_EMAIL })));
+
+      // When & Then
+      const update = () => service.update(POST_ID_HEX, updateDto, 'other@example.com', [Role.User]);
+      await expect(update()).rejects.toThrow(ForbiddenException);
+      await expect(update()).rejects.toThrow('Only the author or admin can edit this post');
+      expect(mockPostModel.findByIdAndUpdate).not.toHaveBeenCalled();
+      expect(mockSearchIndex.indexPost).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['이메일이 없으면', '', [Role.Admin]],
+      ['역할이 없으면', AUTHOR_EMAIL, []],
+      ['역할 목록 자체가 없으면', AUTHOR_EMAIL, undefined],
+    ])('%s 게시글을 조회하지 않고 403 (fail-closed)', async (_, userEmail, userRoles) => {
       // Given
       const updateDto = MockGenerator.createMock(UpdateDto);
 
       // When & Then
-      await expect(service.update(INVALID_ID, updateDto)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update(POST_ID_HEX, updateDto, userEmail, userRoles as Role[]),
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockPostModel.findById).not.toHaveBeenCalled();
+      expect(mockPostModel.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('id 형식이 틀리면 404', async () => {
+      // Given
+      const updateDto = MockGenerator.createMock(UpdateDto);
+
+      // When & Then
+      await expect(service.update(INVALID_ID, updateDto, AUTHOR_EMAIL, [Role.User])).rejects.toThrow(NotFoundException);
       expect(mockPostModel.findById).not.toHaveBeenCalled();
     });
 
-    it('should throw NotFoundException when post not found', async () => {
+    it('게시글이 없으면 404', async () => {
       // Given
       const updateDto = MockGenerator.createMock(UpdateDto);
 
       mockPostModel.findById.mockReturnValue(mockQuery(null));
 
       // When & Then
-      await expect(service.update(POST_ID_HEX, updateDto)).rejects.toThrow(NotFoundException);
-      await expect(service.update(POST_ID_HEX, updateDto)).rejects.toThrow(`Post with ID ${POST_ID_HEX} not found`);
+      const update = () => service.update(POST_ID_HEX, updateDto, AUTHOR_EMAIL, [Role.User]);
+      await expect(update()).rejects.toThrow(NotFoundException);
+      await expect(update()).rejects.toThrow(`Post with ID ${POST_ID_HEX} not found`);
       expect(mockPostModel.findByIdAndUpdate).not.toHaveBeenCalled();
     });
   });

@@ -9,6 +9,8 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from './roles.decorator';
+import { Role } from '../role.enum';
+import { AuthenticatedUser } from '../authenticated-user.interface';
 
 /**
  * 역할 기반 접근 제어 가드
@@ -22,26 +24,23 @@ export class RolesGuard implements CanActivate {
 
   /**
    * 사용자의 역할 기반 접근 권한을 검증합니다.
-   * 
-   * @param {ExecutionContext} context - 실행 컨텍스트
-   * @returns {boolean} 접근 허용 여부
+   *
+   * `@Roles()`가 없으면 통과합니다. 있으면 `request.user.roles` 중 하나가 일치해야 하고,
+   * 사용자 정보가 없으면 거부합니다(`JwtAuthGuard` 뒤에 둬야 합니다). 거부는 403입니다.
+   *
+   * @param context - 실행 컨텍스트
+   * @returns 접근 허용 여부
    */
   canActivate(context: ExecutionContext): boolean {
-    // 컨트롤러 또는 핸들러에 설정된 roles 메타데이터 가져오기
-    const requiredRoles = this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
+    const requiredRoles = this.reflector.getAllAndOverride<Role[] | undefined>(ROLES_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
-
-    // 만약 별도의 역할 제한이 없다면 접근 허용
-    if (!requiredRoles) {
+    if (!requiredRoles || requiredRoles.length === 0) {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
-    const user = request.user; // JwtStrategy의 validate()에서 반환한 값
-
-    // 사용자의 role이 requiredRoles 중 하나와 일치하는지 확인
-    return requiredRoles.includes(user.role);
+    const user: AuthenticatedUser | undefined = context.switchToHttp().getRequest().user;
+    return user?.roles?.some((role) => requiredRoles.includes(role)) ?? false;
   }
 }
