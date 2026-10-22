@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
@@ -18,11 +19,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * - ignoreExpiration: 토큰 만료 검사 활성화
    * - secretOrKey: 환경 변수에서 JWT 비밀 키를 가져와 base64로 디코딩
    */
-  constructor() {
+  constructor(config: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: Buffer.from(process.env.JWT_SECRET || '', 'base64')
+      secretOrKey: Buffer.from(config.getOrThrow<string>('JWT_SECRET'), 'base64')
     });
   }
 

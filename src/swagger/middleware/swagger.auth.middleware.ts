@@ -8,6 +8,7 @@
  */
 
 import { Injectable, Logger, NestMiddleware } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Request, Response, NextFunction } from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -43,6 +44,8 @@ interface CustomRequest extends Request {
 export class SwaggerAuthMiddleware implements NestMiddleware {
   private readonly logger = new Logger(SwaggerAuthMiddleware.name);
 
+  constructor(private readonly config: ConfigService) {}
+
   /**
    * 미들웨어 처리 함수
    * 
@@ -65,7 +68,7 @@ export class SwaggerAuthMiddleware implements NestMiddleware {
     // 인증 요청 처리 (먼저 체크). 비밀번호(입력값·기대값)는 어떤 로그에도 남기지 않는다.
     if (req.path === '/api/posts/swagger/auth' && req.method === 'POST') {
       const { password } = req.body;
-      const expected = process.env.SWAGGER_ADMIN_PASSWORD;
+      const expected = this.config.get<string>('SWAGGER_ADMIN_PASSWORD');
 
       if (expected && password === expected) {
         req.session.swaggerAuthorized = true;

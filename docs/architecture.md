@@ -17,7 +17,7 @@ Vercel vans_story (Next.js BFF)
 ```
 
 - 사용자 서비스에서는 작성자 닉네임만 조회한다 (`InternalApiClient.getUserNickname`, 1초 타임아웃, 실패 시 `null` → `'Unknown'`).
-- 검색 서비스로는 게시글 생성·수정·삭제를 전송한다 (`indexPost` / `deletePostIndex`, 3초 타임아웃, 실패는 로그만). 응답을 기다리지 않으므로 검색 서비스가 죽어도 게시글 API는 동작한다.
+- 검색 서비스로는 게시글 생성·수정·삭제를 전송한다 (`SearchIndexClient.indexPost` / `deletePostIndex`, 3초 타임아웃, 실패는 로그만). 응답을 기다리지 않으므로 검색 서비스가 죽어도 게시글 API는 동작한다.
 - 두 서비스 모두 `INTERNAL_API_KEY` 하나를 검증한다.
 
 ## 요청 흐름
@@ -44,7 +44,7 @@ HTTP 요청
 | 모듈 | 위치 | 제공 | import |
 |---|---|---|---|
 | `AppModule` | `src/app.module.ts` | `MongooseModule.forRoot`, `HttpModule` | `PostsModule`, `CategoryModule`, `AuthModule` |
-| `PostsModule` | `src/modules/post/Module/module.ts` | `PostsController`, `PostsService`, `InternalApiClient`, `PostInitService` | `MongooseModule.forFeature(Post, Category)`, `HttpModule`, `AuthModule` |
+| `PostsModule` | `src/modules/post/Module/module.ts` | `PostsController`, `PostsService`, `InternalApiClient`, `SearchIndexClient`, `PostInitService` | `MongooseModule.forFeature(Post, Category)`, `HttpModule`, `AuthModule` |
 | `CategoryModule` | `src/modules/category/module/category.module.ts` | `CategoryController`, `CategoryService` | `MongooseModule.forFeature(Category)`, `AuthModule` |
 | `AuthModule` | `src/utils/Authorization/Module/module.ts` | `JwtStrategy`, `RolesGuard`, `Reflector`; exports `PassportModule`, `JwtModule` | `PassportModule`, `JwtModule.register(HS512)` |
 

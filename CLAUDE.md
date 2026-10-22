@@ -36,7 +36,7 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
 - **Model 조회 체인**: `.populate('mainCategoryId', 'value label').populate('subCategoryId', 'value label').lean().exec()`. 단위 테스트의 모의 객체가 이 체인을 그대로 흉내 내므로 체인을 바꾸면 `test/helpers/test-utils.ts`의 `mockQuery`도 바꾼다.
 - **Response DTO**: `mapToDto(entity, Dto)`는 `@Field`가 붙은 속성만 복사하고 `Date`는 `toLocaleString()` 문자열로 바꾼다. 새 응답 필드에는 `@Field`와 `@ApiProperty`를 둘 다 붙인다. `author`, `mainCategory` 같은 파생 필드는 Service가 채운다.
 - **페이지네이션**: 응답 타입은 `src/utils/types/pagination.ts`의 `Paginated<T>`. `src/utils/pagination/DTO/dto.ts`는 미사용.
-- **외부 호출**: 사용자 서비스는 `InternalApiClient`(DI, 실패 시 `null`). 검색 서비스는 `search-index.client.ts`의 `indexPost/deletePostIndex`(fire-and-forget, `.catch`로 로그만). 응답을 기다리지 않는다.
+- **외부 호출**: 사용자 서비스는 `InternalApiClient`(DI, 실패 시 `null`). 검색 서비스는 `SearchIndexClient`(`search-index.client.ts`, DI)의 `indexPost/deletePostIndex`(fire-and-forget, `.catch`로 로그만). 응답을 기다리지 않는다.
 - **권한 검사**는 Service에서 `userEmail`/`userRole`로 한다. `@Roles()`는 `RolesGuard`가 어디에도 등록되어 있지 않아 효력이 없다 (`TODO.md` 3절 보안).
 
 ## 명명과 import
@@ -47,7 +47,7 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
 
 ## 코딩 규칙
 
-- **환경 변수**: `.env`는 `AppModule`의 `ConfigModule.forRoot({ isGlobal: true })`가 읽는다. `dotenv.config()`를 새로 부르지 않는다. 새 코드는 `ConfigService`를 주입받아 읽고, 필수값은 `getOrThrow()`로 기동 시 실패시킨다. 모듈 설정은 `forRootAsync`/`registerAsync` + `inject: [ConfigService]`로 쓴다 — 데코레이터 인자에서 `process.env`를 읽지 않는다 (함정 5). 기존 `process.env` 직접 읽기(생성자·함수 안)는 동작하지만 손대는 김에 바꾼다. 새 변수는 `.env.example`에 이름을 추가한다.
+- **환경 변수**: `.env`는 `AppModule`의 `ConfigModule.forRoot({ isGlobal: true })`가 읽는다. `process.env`를 직접 읽지 않는다 — `ConfigService`를 주입받아 읽고, 필수값은 `getOrThrow()`. 모듈 설정은 `forRootAsync`/`registerAsync` + `inject: [ConfigService]` (함정 5). DI 밖에서 만드는 객체(`SwaggerAuthMiddleware`)는 `main.ts`에서 `ConfigService`를 넘긴다. 새 변수는 `.env.example`에 이름을 추가한다.
 - **로깅**: `@nestjs/common`의 `Logger` (`new Logger(ClassName.name)`). `console.*` 금지. URI·토큰·비밀번호·API 키는 어떤 레벨에도 찍지 않는다.
 - **`any`**: 새로 쓰지 않는다. `noImplicitAny: false`라 컴파일러가 잡지 않는다. populate 결과는 `test/helpers/test-utils.ts`의 `PopulatedCategoryRef`처럼 타입을 선언한다.
 - **JSDoc**: 공개 클래스·메서드에 한국어 JSDoc (typedoc 생성 대상). 요청/응답 예시는 Swagger 데코레이터에 두고 JSDoc에 중복하지 않는다.
@@ -56,7 +56,7 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
 ## 테스트
 
 - `npm test`는 DB·네트워크 없이 돈다. 새 테스트도 그래야 한다.
-- Service 단위 테스트: `test/helpers/test-utils.ts`의 `createMockPostModel / createMockCategoryModel / createMockApiClient / mockQuery`와 픽스처를 쓴다. 검색 클라이언트는 `jest.mock(...search-index.client)`.
+- Service 단위 테스트: `test/helpers/test-utils.ts`의 `createMockPostModel / createMockCategoryModel / createMockApiClient / createMockSearchIndexClient / mockQuery`와 픽스처를 쓴다. 검색 클라이언트는 `{ provide: SearchIndexClient, useValue: createMockSearchIndexClient() }`.
 - 모듈 기동 테스트: `test/app/bootstrap.spec.ts` 패턴 — `import './env'`를 `AppModule`보다 먼저, `withFakeMongoose(Test.createTestingModule(...))`(`test/helpers/fake-mongoose.ts`). `overrideModule(MongooseModule)`은 효과가 없다 — 운영 DB에 실제로 연결된다(함정 8).
 - DTO 모의 데이터: `MockGenerator.createMock(CreateDto)` (class-validator 검증 통과를 보장).
 - 상세: `.claude/rules/testing.md`.

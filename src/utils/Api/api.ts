@@ -9,6 +9,7 @@
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 /**
  * 내부 API 통신을 위한 유틸리티 클래스
@@ -30,20 +31,18 @@ export class InternalApiClient {
   /**
    * InternalApiClient 생성자
    * 
-   * 환경 변수에서 설정을 로드하고 필수 설정 유무를 검증합니다.
-   * 
+   * `ConfigService`에서 설정을 읽습니다. 값이 없으면 `getOrThrow`가 던집니다.
+   *
    * @param {HttpService} httpService - HTTP 요청을 처리하기 위한 NestJS HTTP 서비스
+   * @param {ConfigService} config - 환경 변수
    * @throws {Error} 필수 환경 변수가 정의되지 않은 경우
    */
   constructor(
     private readonly httpService: HttpService,
+    config: ConfigService,
   ) {
-    this.userServiceUrl = process.env.USER_SERVICE_URL || '';
-    this.apiKey = process.env.INTERNAL_API_KEY || '';
-
-    if (!this.apiKey || !this.userServiceUrl) {
-      throw new Error('Required environment variables are not defined');
-    }
+    this.userServiceUrl = config.getOrThrow<string>('USER_SERVICE_URL');
+    this.apiKey = config.getOrThrow<string>('INTERNAL_API_KEY');
   }
 
   /**

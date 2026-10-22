@@ -270,3 +270,9 @@ export const createMockCategoryModel = (categories: CategoryFixture[] = [mainCat
 export const createMockApiClient = () => ({
   getUserNickname: jest.fn().mockResolvedValue(AUTHOR_NICKNAME),
 });
+
+/** 검색 인덱스 클라이언트는 fire-and-forget 으로 외부 서비스에 fetch 하므로 호출 기록만 남기는 모의 객체로 바꾼다 */
+export const createMockSearchIndexClient = () => ({
+  indexPost: jest.fn().mockResolvedValue(undefined),
+  deletePostIndex: jest.fn().mockResolvedValue(undefined),
+});

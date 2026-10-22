@@ -61,7 +61,7 @@ async function bootstrap() {
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
   // Swagger 인증 미들웨어 적용
-  app.use(new SwaggerAuthMiddleware().use);
+  app.use(new SwaggerAuthMiddleware(configService).use);
   
   // Swagger 문서 설정
   const config = new DocumentBuilder()

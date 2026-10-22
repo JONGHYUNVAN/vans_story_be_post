@@ -14,6 +14,7 @@ import { PostsController } from '../Controller/controller';
 import { PostsService } from '../Service/service';
 import { Post, PostSchema } from '../schemas/post.schema';
 import { InternalApiClient } from '../../../utils/Api/api';
+import { SearchIndexClient } from '../../../utils/Api/search-index.client';
 import { PostInitService } from '../../../database/init/post.init';
 import { Category, CategorySchema } from '../../category/schemas/category.schema';
 import { AuthModule } from '../../../utils/Authorization/Module/module';
@@ -38,6 +39,7 @@ import { AuthModule } from '../../../utils/Authorization/Module/module';
   providers: [
     PostsService,
     InternalApiClient,
+    SearchIndexClient,
     PostInitService
   ],
   exports: [PostsService]
