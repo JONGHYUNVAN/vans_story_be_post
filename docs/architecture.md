@@ -46,7 +46,7 @@ HTTP 요청
 | `AppModule` | `src/app.module.ts` | `MongooseModule.forRoot`, `HttpModule` | `PostsModule`, `CategoryModule`, `AuthModule` |
 | `PostsModule` | `src/modules/post/Module/module.ts` | `PostsController`, `PostsService`, `InternalApiClient`, `SearchIndexClient`, `PostInitService` | `MongooseModule.forFeature(Post, Category)`, `HttpModule`, `AuthModule` |
 | `CategoryModule` | `src/modules/category/module/category.module.ts` | `CategoryController`, `CategoryService` | `MongooseModule.forFeature(Category)`, `AuthModule` |
-| `AuthModule` | `src/utils/Authorization/Module/module.ts` | `JwtStrategy`, `RolesGuard`, `Reflector`; exports `PassportModule`, `JwtModule` | `PassportModule`, `JwtModule.register(HS512)` |
+| `AuthModule` | `src/utils/Authorization/Module/module.ts` | `JwtStrategy`, `RolesGuard`, `Reflector`; exports `PassportModule`, `JwtModule` | `PassportModule`, `JwtModule.registerAsync(HS512)` |
 
 `PostsModule`이 `Category` 모델도 등록하는 이유: 게시글 목록 필터가 카테고리 `value`로 `_id`를 찾아야 해서다.
 
@@ -63,8 +63,18 @@ Authorization: Bearer <JWT>
 
 - 토큰은 Spring 사용자 서비스가 발급한다. `auth` 클레임은 Spring의 권한 문자열(`ROLE_ADMIN` 등)이다.
 - **권한 검사는 Service 안에서** 한다. `PostsService.update`는 `userRole !== 'admin'`이면 작성자 본인만 허용, `findForEdit`는 작성자 본인만.
-- `RolesGuard`와 `@Roles()`는 구현만 있고 어떤 라우트에도 등록되어 있지 않다. `@Roles('admin')`이 붙은 생성·삭제도 실제로는 인증만 검사한다. 활성화하려면 Spring 권한 문자열과 맞춰야 한다 (`TODO.md` 3절 보안).
+- `RolesGuard`와 `@Roles()`는 구현만 있고 어떤 라우트에도 등록되어 있지 않다. `@Roles('admin')`이 붙은 생성·삭제도 실제로는 인증만 검사한다. 카테고리 쓰기 엔드포인트는 `@Roles`도 없다. 활성화하려면 Spring 권한 문자열과 맞춰야 한다 (`TODO.md` 3절 보안).
 - Swagger UI(`/api/posts/swagger`)는 별도로 `SWAGGER_ADMIN_PASSWORD` + express-session 쿠키로 보호된다.
+
+### 왜 이 서비스가 JWT를 직접 검증하나
+
+사용자 서비스가 토큰을 발급하지만, 검증은 이 서비스가 요청마다 로컬에서 한다.
+
+- **로컬 검증이 JWT의 설계 목적이다.** 토큰에 서명과 만료가 들어 있어 키만 있으면 네트워크 호출 없이 검증된다. 요청마다 사용자 서비스에 물으면 그 서비스가 단일 장애점이 된다(지금은 닉네임 조회만 의존하고, 그마저 1초 타임아웃 후 `'Unknown'`).
+- **이 서비스는 어차피 신원이 필요하다.** `sub`(작성자 이메일)와 `auth`(역할)로 권한을 판단한다. 사용자 서비스에 물어도 받는 정보는 토큰과 같다.
+- **검증을 앞단에 맡기려면** 게이트웨이나 BFF가 검증하고 사용자 정보를 신뢰 헤더로 넘기며, 이 서비스는 그 앞단을 거치지 않으면 외부에서 접근할 수 없어야 한다. 지금은 자체 CORS 목록과 `Authorization: Bearer`를 직접 받으므로 외부 접근이 가능한 구성으로 보고, 직접 검증을 유지한다(클라우드타입 네트워크 구성은 미확인).
+- **한계: HS512 공유 비밀키.** 대칭키는 검증하는 쪽이 토큰을 만들 수도 있다. 이 서비스에서 `JWT_SECRET`이 새면 같은 키를 쓰는 모든 서비스에서 통하는 관리자 토큰을 만들 수 있다. 개선안은 RS256/ES256 + 사용자 서비스의 JWKS 공개 — 이 서비스는 공개키로 검증만 하고 비밀값을 갖지 않는다(`TODO.md` 3절 보안).
+- **만료 전 폐기는 안 된다.** 로그아웃·차단된 사용자의 토큰도 만료 전까지 유효하다. 필요해지면 짧은 만료 + 리프레시 토큰, 또는 민감한 엔드포인트만 introspection(RFC 7662).
 
 ## 데이터 모델
 

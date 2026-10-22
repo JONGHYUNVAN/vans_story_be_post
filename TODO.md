@@ -5,6 +5,7 @@
 끝낸 항목은 체크하고, 더 이상 유효하지 않은 항목은 지운다.
 
 최종 갱신: 2026-10-22 (조사 기준 커밋: `65a3855`, Node 26 / NestJS 12 / TypeScript 6.0 업그레이드 병합 직후. 1-1절·1-2절 신규 파일과 보안 최우선 항목 처리)
+추가 갱신: 2026-10-22 PR #2 병합 후 NestJS·TypeScript 표준 전수조사(기준 커밋 `5134a0b`) 반영 — 2절 결정 5~14, 3절 "표준 준수" 묶음. 근거·`file:line`·판정은 `docs/audits/2026-10-22-nest-standards.md`(번호 `#N`은 그 문서 1절 표의 행 번호)
 
 ---
 
@@ -42,6 +43,7 @@ Claude Code 공식 가이드 기준으로 CLAUDE.md는 200줄 미만, "이 줄�
 - [ ] 생성물 정리 — `docs/swagger/README.md`, `docs/swagger/clean.html`, `swagger-spec.json`이 강제 추가돼 있다. 생성물은 untrack하고 생성 명령만 CLAUDE.md에 적는다. ~~0바이트 `db.sqlite` 삭제~~ (2026-10-22 완료, 의존성 정리와 함께)
   (2026-10-22: `.gitignore`를 `/docs` → `/docs/typedoc`으로 좁히고 typedoc `out`을 `docs/typedoc`으로 옮겨 `docs/*.md`를 커밋할 수 있게 했다. swagger 생성물은 아직 추적 중)
   **확인 필요**: Swagger HTML을 GitHub Pages 등 외부에서 쓰고 있으면 untrack하지 않는다.
+  (전수조사 #8: `swagger-spec.json`을 만드는 코드가 없어 낡았다 — 카테고리 API가 없고 스키마 이름이 옛 `CreateDto/ResponseDto`. `swagger:build:clean`은 이 낡은 JSON으로 HTML을 만든다. untrack하든 유지하든 앱에서 문서를 생성하는 스크립트가 먼저)
 
 ### 1-3. 만들지 않기로 한 것
 
@@ -67,7 +69,17 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 | 1 | import 경로 | 상대경로와 `src/...` 절대경로가 같은 파일 안에서도 혼재 | `src/...` 절대경로로 통일. 근거: tsconfig `paths`와 jest `moduleNameMapper`가 이미 지원, Nest CLI가 빌드 시 경로를 재작성, 파일 이동 시 수정 범위가 작음, 대소문자 혼재 폴더에서 `../` 체인보다 읽기 쉬움 | 상대경로(Nest 기본 스캐폴딩 방식) |
 | 2 | 줄바꿈 | `.gitattributes`는 `* text=auto`뿐. Windows autocrlf 체크아웃이라 `npm run lint`가 prettier `Delete ␍` 오류를 수천 건 냄 | `.editorconfig` `end_of_line = lf` + `.gitattributes`에 `*.ts text eol=lf` 등 추가 + `.prettierrc`에 `"endOfLine": "lf"` 명시. 적용 후 `git add --renormalize .` | `.prettierrc`에 `"endOfLine": "auto"`(빠르지만 문제를 덮음) |
 | 3 | 환경 변수 접근 | **2026-10-22 `@nestjs/config` 도입으로 장기안 착수(3절 설정·구조).** 이하는 도입 전 상태: `@nestjs/config` 없음. `dotenv.config()`가 `main.ts`, `app.module.ts`, `config/database.ts` 3곳에서 호출, `process.env` 직접 읽기 9개 파일 | 단기: 새 코드는 `process.env`를 모듈 최상단이 아닌 생성자·팩토리 안에서 읽고, 필수값 누락 시 기동 실패시킨다. 장기: `@nestjs/config` + 스키마 검증 도입(3절, 함정 2의 dotenv 호이스팅 문제도 함께 해소) | 지금 바로 `@nestjs/config` 도입(문서 작업 범위를 넘음) |
-| 4 | 명명 전환 시점 | post 모듈: PascalCase 폴더 + 일반 명사 파일명(`Controller/controller.ts`). category 모듈: Nest 표준(`controller/category.controller.ts`). utils: 혼재 | 새 코드는 Nest 표준(소문자 폴더, `<feature>.<layer>.ts`). 기존 파일 전환은 별도 작업으로, `forceConsistentCasingInFileNames: true` 복구와 함께 진행. Windows에서 대소문자만 바꾸는 리네임은 `git mv` 두 단계 필요 | 문서 작업과 동시에 전환(리뷰 범위가 커짐) |
+| 4 | 명명 전환 시점 | post 모듈: PascalCase 폴더 + 일반 명사 파일명(`Controller/controller.ts`). category 모듈: Nest 표준(`controller/category.controller.ts`). utils: 혼재. (전수조사 정정: category의 레이어 폴더 `controller/`·`service/`·`module/`도 CLI 출력과 다르다. CLI는 기능 폴더에 평평하게 둔다 — 목표 구조는 결정 6) | 새 코드는 Nest 표준(소문자 폴더, `<feature>.<layer>.ts`). 기존 파일 전환은 별도 작업으로, `forceConsistentCasingInFileNames: true` 복구와 함께 진행. Windows에서 대소문자만 바꾸는 리네임은 `git mv` 두 단계 필요 | 문서 작업과 동시에 전환(리뷰 범위가 커짐) |
+| 5 | 응답 직렬화·날짜·id 필드 (#9, #29, #35) | 커스텀 `@Field` + `mapToDto`, 날짜는 서버 locale에 따르는 `toLocaleString()`, 게시글은 `_id`·카테고리는 `id`, populate 객체가 `mainCategoryId`로 나감 | class-transformer `@Expose()` + `plainToInstance(..., { excludeExtraneousValues: true })`, ISO 날짜, 카테고리 참조는 `{ id, value, label }` | `mapToDto` 유지 + 날짜만 ISO / 현행 유지 + 운영 `TZ`·`LANG` 고정. **프런트 계약 변경** — 운영 컨테이너 locale부터 확인 |
+| 6 | 폴더 구조 목표 (#31) | 위 4번 | CLI 평면 구조 `src/modules/posts/posts.controller.ts`, 복수형 폴더·클래스(`CategoriesModule`), `src/auth/`, `src/common/{clients,decorators,interfaces}`. 영향: 리네임 약 24개, import 약 58곳 | 레이어 폴더 유지(`posts/controller/posts.controller.ts`) / `modules/` 래퍼 제거(`src/posts`) |
+| 7 | 라우트 prefix·버전 (#23) | `@Controller('api/v1/posts')` 하드코딩, 태그 이름 `'api/v1/posts'` | `setGlobalPrefix('api')` + URI versioning, 외부 URL 유지, `@ApiTags('posts')` | 현행 유지. Swagger 경로 `api/posts/swagger`와 게이트웨이 규칙 확인 필요 |
+| 8 | `JwtModule` 존치 (#13) | 가드가 쓰지 않는 `JwtService`를 주입 → 모듈마다 `AuthModule` import(CLAUDE.md 함정 1). 이 서비스는 서명하지 않음 | 주입 제거 + `JwtModule` 제거. RS256/JWKS 전환(3절 보안)과 함께면 더 자연스럽다 | 주입만 제거, `JwtModule` 유지. `test/app/config.spec.ts`의 `JwtService.sign` 검사가 바뀐다 |
+| 9 | 전역 `ValidationPipe` 위치 (#20) | `main.ts`의 `useGlobalPipes` — 테스트(bootstrap·e2e)는 검증 없이 돈다 | `APP_PIPE`(AppModule) | `main.ts` 유지 + 테스트마다 `useGlobalPipes` |
+| 10 | Swagger 인증 미들웨어 형태 (#22) | `@Injectable` 클래스를 `new`로 만들어 `app.use`(함정 7) | 함수형 미들웨어 팩토리 + `app.use` | `MiddlewareConsumer` — Swagger 라우트가 init 전에 등록되므로 순서 검증 필요 |
+| 11 | 단위 테스트 위치 (#28) | `test/post/Service/service.spec.ts` | `test/` 유지, 폴더·파일명만 표준화(`test/posts/posts.service.spec.ts`) | CLI처럼 colocate(`src/**/*.spec.ts`) |
+| 12 | Nest 12 기준선 툴체인 (#34) | jest, eslint 8, `strict: false` | 지금은 전환하지 않음(eslint는 아래 flat config 항목대로, `strict`는 `any` 축소 후) | vitest·oxlint 전환 — 기준선은 ESM 전제라 CJS 유지 결정과 일부 충돌 |
+| 13 | 미사용 조회 메서드 (#16) | `findByAuthor`·`searchPosts`·`findByThemeAndCategory`가 컨트롤러에 없음 | 삭제(검색은 Django 서비스 담당) | 엔드포인트로 노출. 그 경우 `searchPosts`의 `$regex` 입력 이스케이프 필수 |
+| 14 | `SESSION_SECRET` 도입 (#10) | 세션 secret이 `JWT_SECRET` 재사용 | 새 필수 변수(`validateEnv`·`.env.example`·클라우드타입) | 현행 유지 |
 
 ---
 
@@ -78,6 +90,12 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 ### 보안
 
 - [ ] **`RolesGuard`가 어디에도 등록되어 있지 않다.** `@Roles('admin')`이 붙은 게시글 생성·삭제도 인증만 통과하면 누구나 호출할 수 있다. 게다가 Spring이 발급하는 `auth` 클레임은 `ROLE_ADMIN` 형식이라 `RolesGuard`를 그냥 켜면 관리자도 막힌다. 해결 순서: (1) Spring `JwtProvider`의 `auth` 클레임 형식 확인(쉼표 구분 문자열인지) → (2) `JwtStrategy.validate`에서 `ROLE_ADMIN` → `admin`으로 정규화 또는 `@Roles('ROLE_ADMIN')` → (3) `@UseGuards(JwtAuthGuard, RolesGuard)` 또는 `APP_GUARD` 등록 → (4) `PostsService.update`의 `userRole !== 'admin'` 비교도 같이 맞춤. **최우선**
+  - (전수조사 #2) 카테고리 생성·수정·삭제·활성화·비활성화 5개 엔드포인트는 `@Roles`조차 없다(Swagger 설명은 "관리자 권한 필요"). 로그인한 아무 사용자나 카테고리를 바꿀 수 있다 — 같이 처리
+  - (전수조사 #3) `PostsService.update`는 `userEmail && userRole && …`이라 role이 없으면 권한 검사를 통과한다(fail-open). 파라미터를 필수로, role 없으면 거부. 이 동작을 고정한 `service.spec.ts`의 "backward compatibility" 테스트를 거부 케이스로 교체
+- [ ] (전수조사 #4) 목록 `limit` 상한이 없다. `?limit=100000`이면 게시글 10만 건 + 사용자 서비스 호출 10만 번. `?page=abc`는 `NaN`으로 통과. 페이지네이션 Query DTO(`@IsInt @Min(1) @Max(50)`)
+- [ ] (전수조사 #10) 세션: secret이 `JWT_SECRET` 재사용(도달 불가한 `'fallback-secret'` 포함), `secure` 쿠키인데 `trust proxy` 미설정(프록시 뒤에서 Swagger 로그인 유지 실패 가능), 운영 MemoryStore, Swagger 비밀번호 `===` 비교 → `SESSION_SECRET`(2절 결정 14), `app.set('trust proxy', 1)`, `crypto.timingSafeEqual`
+- [ ] (전수조사 #11) `InternalApiClient.getUserNickname`이 이메일을 URL 경로에 그대로 넣는다 → `encodeURIComponent`
+- [ ] JWT 서명을 HS512 공유 비밀키에서 RS256/ES256 + JWKS로. 대칭키는 검증하는 쪽이 토큰을 만들 수도 있어, 이 서비스에서 `JWT_SECRET`이 새면 모든 서비스에서 통하는 관리자 토큰을 만들 수 있다. Kotlin 사용자 서버가 개인키로 서명하고 `/.well-known/jwks.json` 공개 → 이 서비스는 `jwks-rsa`의 `secretOrKeyProvider`로 공개키 검증만(비밀값 제거). **레포를 넘는 작업**(사용자 서버 먼저). 만료 전 폐기(로그아웃·차단)가 필요하면 짧은 만료 + 리프레시 또는 민감 엔드포인트만 introspection(RFC 7662)을 따로 결정. 배경: `docs/architecture.md` "인증·권한"
 - [x] `src/main.ts:82` — MongoDB URI 로그 제거 (2026-10-22)
 - [x] `src/swagger/middleware/swagger.auth.middleware.ts` — 입력·기대 비밀번호를 `console.log`로 찍던 줄 제거, `Logger`로 교체. `SWAGGER_ADMIN_PASSWORD` 미설정 시 `undefined === undefined`로 누구나 통과하던 문제도 함께 수정 (2026-10-22)
 - [x] `src/utils/Api/search-index.client.ts` — 하드코딩된 내부 키 리터럴을 `INTERNAL_API_KEY` 환경 변수로 교체 (2026-10-22). git 히스토리에는 남아 있으므로 키 교체(rotate)는 별도 판단
@@ -115,14 +133,43 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 ### 코드 품질
 
 - [ ] `console.*` 남은 곳 → Nest `Logger`: `src/config/database.ts`(죽은 코드, 삭제 대상), `src/database/init/post.init.ts`, `src/modules/post/Service/service.ts`의 `.catch` 3곳. swagger 미들웨어와 search-index 클라이언트는 2026-10-22 교체 완료
-- [ ] `any` 38곳 축소. `noImplicitAny: true`, eslint `no-explicit-any` 활성화 검토
+- [ ] `any` 축소 — `src` 41곳(2026-10-22 전수조사 시점, 이전 집계 38곳). `noImplicitAny: true`, eslint `no-explicit-any` 활성화 검토
 - [ ] eslint 8 + legacy `.eslintrc.js`. flat config 전환은 @typescript-eslint 8 지원 범위 확인 후
 
 ### 자동화
 
 - [ ] CI 워크플로 없음. GitHub Actions로 `npx tsc --noEmit -p tsconfig.json`, `npm run build`, `npm test`(DB 불필요 항목만) 실행
 - [ ] 배포 환경 Node 26 이상 확인(`engines.node >= 26.0.0`). 미추적 `Dockerfile`은 `node:24-alpine`. CloudType 빌드 설정의 Node 버전도 확인
-- [ ] 로컬 Node 26 설치(`nvm install 26`). 현재 nvm에는 18/22/23뿐이라 `npm test`가 한 건도 못 돈다(Nest 12 ESM → jest `require(esm)`은 Node 24.9+). 2026-10-22 변경분의 단위 테스트는 이 이유로 **미검증** — tsc만 통과
+- [x] 로컬 Node 26 설치(`nvm install 26`). 현재 nvm에는 18/22/23뿐이라 `npm test`가 한 건도 못 돈다(Nest 12 ESM → jest `require(esm)`은 Node 24.9+). 2026-10-22 변경분의 단위 테스트는 이 이유로 **미검증** — tsc만 통과 (2026-10-22 Node 26.8.1에서 `npm test` 4 스위트 47건, `npm run build` 통과 확인 — 기준 커밋 `5134a0b`)
+
+### 표준 준수 (2026-10-22 전수조사)
+
+`docs/audits/2026-10-22-nest-standards.md`의 3절 묶음을 순서대로. 위 절에 이미 있는 항목(RolesGuard, console, `config/*`, `migrate:*`, eslint, CRLF, `forceConsistentCasing`, e2e 운영 DB)은 여기서 다시 적지 않는다. 브랜치는 묶음마다 main에서 딴다.
+
+- [ ] **A. 데이터·검증 버그** (`fix/data-validation`)
+  - [ ] #1 `post.schema.ts`의 `subCategoryId`에 `ref: 'Category'`가 없어 쿼리 populate가 건너뛰어진다 → 응답의 `subCategory`/`subCategoryLabel`이 항상 빈 값, 검색 인덱스에 `subCategory: ''`. 단위 테스트는 populate된 픽스처라 이 버그를 가린다. ref 추가 + 스키마 테스트, 배포 후 검색 인덱스 재색인
+  - [ ] #5 필수 문자열(`description`, `topic`, `language`, 카테고리 `value`/`label`/`path`)이 `@IsString()`뿐 → 빈 문자열이 mongoose `required`에서 실패해 500. `@IsNotEmpty()`
+  - [ ] #6 형식이 틀린 `:id` — 카테고리는 `CastError` 500, 게시글은 404. `@nestjs/mongoose`의 `ParseObjectIdPipe`로 400(e2e의 404 기대값도 변경)
+  - [ ] #19 카테고리 `group`은 Swagger에만 enum, 검증 없음 → `CategoryGroup` enum + `@IsEnum`
+- [ ] **B. 권한** — 위 보안 절 RolesGuard 항목(Spring `auth` 클레임 형식 확인이 선행). `Role` enum(#19)과 `AuthModule`의 `RolesGuard`·`Reflector` 정리(#14)를 같이
+- [ ] **C. Swagger·문서 정확성** (`docs/swagger-contract`)
+  - [ ] #7 게시글의 `@ApiBearerAuth('Authorization')`가 문서에 없는 스킴 이름(등록된 건 `bearer`) → Swagger UI가 토큰을 안 붙임. DELETE는 204로 문서화했지만 `@HttpCode` 없어 200. 목록 응답을 `ResponseDto[]`로 선언(실제 `{ data, meta }`). `thumbnail`이 필수로 표시
+  - [ ] #8 `swagger-spec.json` 생성 스크립트(1-2절 생성물 정리와 같이)
+  - [ ] #30 JSDoc 오류: `x-viewed` 설명이 동작과 반대, `JwtStrategy.validate` 반환 설명(`{email, role}` → 실제 `{sub, role}`), 서브 카테고리 설명이 마이그레이션 전 구조(Swagger에 노출), 컨트롤러 JSDoc의 요청/응답 JSON 예시(옛 `theme`/`category` 필드) 삭제, `@module` 값 정리
+- [ ] **D. 설정·파이프라인·로깅** (`refactor/pipeline`)
+  - [ ] #10·#11은 위 보안 절. #20 `APP_PIPE`(2절 결정 9), #21 `app.useBodyParser('json', { limit: '10mb' })`, #22 Swagger 미들웨어 형태(결정 10)와 `express-session` `SessionData` 선언 병합
+  - [ ] #12 외부 클라이언트 오류 은닉: `InternalApiClient`는 실패를 로그 없이 `null`, `SearchIndexClient`는 `res.ok`를 확인하지 않음
+  - [ ] #26 `SearchIndexClient`: 필수 `INTERNAL_API_KEY`를 호출마다 `get() ?? ''`로 읽음 → 생성자 `getOrThrow`, Logger 이름 `SearchIndexClient.name`
+  - [ ] #14 `AppModule`의 `HttpModule`, 쓰이지 않는 export(`PostsService`, `CategoryService`, `PassportModule`) 제거
+  - [ ] #27 `main.ts` 정리: logger 배열(`'verbose'` 중복, 전체가 기본값과 같음), `@nestjs/common` import 두 줄, `void bootstrap()`
+- [ ] **E. 죽은 코드·중복** (`refactor/cleanup`)
+  - [ ] #16 `src/utils/pagination/DTO/dto.ts`, `PostInitService`(`src/database/init/post.init.ts`, 빈 시드), 미사용 조회 메서드 3개와 테스트(2절 결정 13), `MockAuthModule`의 쓰이지 않는 `APP_GUARD` import·`JwtAuthGuard` provider, `package.json`의 `swagger:serve`·`swagger:open`
+  - [ ] #17 `PostsService` 중복: populate 체인 8회, `SearchIndexPayload` 조립 2회, 경로마다 다른 응답 필드(`findAll/findOne/findForEdit/update`는 `mainCategory`만 채움). A의 #1과 같이 보면 좋다
+  - [ ] #18 `UpdatePostDto` → `PartialType(CreatePostDto)`(`@nestjs/swagger`), `.claude/rules/dto.md` 예외 문장 삭제
+  - [ ] #15 `PostsModule`이 `Category` 모델을 다시 `forFeature` → `CategoryModule`이 `MongooseModule` export
+  - [ ] #13 `JwtAuthGuard`의 미사용 `JwtService` 주입 제거(2절 결정 8)
+- [ ] **F. 명명·구조 전환** — 위 설정·구조 절 "명명 통일 전환" 항목의 실행 계획. 목표는 2절 결정 6, 리네임 목록은 감사 문서 2절. 커밋 순서: `.gitattributes`+renormalize → `git mv`만(`DTO→dto`는 두 단계) → import → 클래스명 → 문서·`.claude/rules` `paths`. #24 `@CurrentUser()` 데코레이터, #25 `HydratedDocument`(`.claude/rules/schemas.md`도), #28 테스트 이름·위치(결정 11)와 카테고리 테스트 추가, #33 서식, #34 `build` 스크립트 `echo` 제거·`tsconfig.build.json` `include`·jest `collectCoverageFrom`
+- [ ] **G. API 계약 변경** — 2절 결정 5·7 확정 후 프런트(`vans_story`)와 같이 배포
 
 ---
 
