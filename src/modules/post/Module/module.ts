@@ -15,8 +15,7 @@ import { PostsService } from '../Service/service';
 import { Post, PostSchema } from '../schemas/post.schema';
 import { InternalApiClient } from '../../../utils/Api/api';
 import { SearchIndexClient } from '../../../utils/Api/search-index.client';
-import { PostInitService } from '../../../database/init/post.init';
-import { Category, CategorySchema } from '../../category/schemas/category.schema';
+import { CategoryModule } from '../../category/module/category.module';
 import { AuthModule } from '../../../utils/Authorization/Module/module';
 
 /**
@@ -28,9 +27,10 @@ import { AuthModule } from '../../../utils/Authorization/Module/module';
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: Post.name, schema: PostSchema },
-      { name: Category.name, schema: CategorySchema }
+      { name: Post.name, schema: PostSchema }
     ]),
+    // Category 모델은 소유 모듈인 CategoryModule이 export한 MongooseModule로 주입받는다
+    CategoryModule,
     HttpModule,
     // Nest 12: 가드(JwtAuthGuard)의 의존성(JwtService)은 가드를 사용하는 모듈 안에서 해석되므로 AuthModule을 명시적으로 import
     AuthModule
@@ -39,8 +39,7 @@ import { AuthModule } from '../../../utils/Authorization/Module/module';
   providers: [
     PostsService,
     InternalApiClient,
-    SearchIndexClient,
-    PostInitService
+    SearchIndexClient
   ],
   exports: [PostsService]
 })

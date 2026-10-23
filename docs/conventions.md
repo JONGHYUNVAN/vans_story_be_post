@@ -17,7 +17,8 @@ src/
 ├─ main.ts                      부트스트랩
 ├─ app.module.ts                루트 모듈
 ├─ config/
-│  └─ env.validation.ts         환경 변수 검증 (ConfigModule validate)
+│  ├─ env.validation.ts         환경 변수 검증 (ConfigModule validate)
+│  └─ cors.config.ts            `createCorsOptions(ConfigService)` — 값은 `.env`, 조립은 TS (YAML 쓰지 않음)
 ├─ auth/                        인증·인가 (기능에 속하지 않음)
 │  ├─ auth.module.ts
 │  ├─ jwt.strategy.ts
@@ -47,6 +48,7 @@ src/
 │  ├─ search-index.module.ts
 │  └─ search-index.client.ts
 └─ swagger/
+   ├─ swagger.setup.ts          문서 메타데이터 + 인증 미들웨어 + `SwaggerModule.setup` (`setupSwagger`)
    ├─ swagger-auth.middleware.ts
    └─ views/swagger-auth.html   (nest-cli.json assets)
 test/
@@ -99,7 +101,7 @@ Nest 요청 생명주기(faq/request-lifecycle). 앞 단계는 뒤 단계의 결
 
 | 한다 | 하지 않는다 |
 |---|---|
-| `NestFactory.create<NestExpressApplication>`, 앱 인스턴스에만 걸 수 있는 설정(`useBodyParser`, `enableCors`, `set('trust proxy')`, 세션, Swagger 문서 생성), `listen` | 전역 파이프·가드·인터셉터·필터 등록(→ 3절 `APP_*`), `process.env` 읽기(→ `app.get(ConfigService)`), 비즈니스 로직, 비밀값 로그 |
+| `NestFactory.create<NestExpressApplication>`, 앱 인스턴스에만 걸 수 있는 설정(`useBodyParser`, `enableCors`, `set('trust proxy')`, 세션, Swagger 문서 생성), `listen`. 설정 내용은 `ConfigService`를 받는 함수로 분리해 호출만 한다(`createCorsOptions`, `setupSwagger`) | 전역 파이프·가드·인터셉터·필터 등록(→ 3절 `APP_*`), `process.env` 읽기(→ `app.get(ConfigService)`), 비즈니스 로직, 비밀값 로그 |
 
 ### 모듈 (`*.module.ts`)
 
@@ -218,7 +220,7 @@ ObjectId 형식 검사는 서비스가 아니라 컨트롤러의 `ParseObjectIdP
 - `request.user`의 형태는 `AuthenticatedUser`(`{ sub: string; roles: Role[] }`) 하나다. 컨트롤러는 `@CurrentUser()`로 받고, 서비스에는 필요한 값만 넘긴다
 - 역할로 막는 것은 `@Roles()` + `RolesGuard`, 데이터로 막는 것(작성자 본인)은 서비스. 둘 다 필요한 라우트는 둘 다 쓴다
 - 쓰기 엔드포인트는 기본이 "막힘"이다: 권한 정보가 없거나 모르는 값이면 거부(fail-closed)
-- Swagger: `@ApiBearerAuth()`(이름 없이 — `main.ts`의 `addBearerAuth()` 기본 이름 `bearer`와 맞춘다)
+- Swagger: `@ApiBearerAuth()`(이름 없이 — `src/swagger/swagger.setup.ts`의 `addBearerAuth()` 기본 이름 `bearer`와 맞춘다. `test/app/bootstrap.spec.ts`가 등록되지 않은 스킴 이름을 잡는다)
 
 ## 6. 테스트
 
@@ -245,7 +247,6 @@ ObjectId 형식 검사는 서비스가 아니라 컨트롤러의 `ParseObjectIdP
 | 서비스의 `Types.ObjectId.isValid` → 404 | 컨트롤러 `ParseObjectIdPipe` → 400 | A |
 | `page`/`limit`을 `string`으로 받아 `parseInt` | Query DTO | A |
 | `UpdatePostDto` 수기 복제 | `PartialType` | E |
-| `PostsModule`이 `Category`를 다시 `forFeature` | `CategoryModule`이 `MongooseModule` export | E |
 | `ValidationPipe`를 `main.ts`에서 `useGlobalPipes` | `APP_PIPE` | D |
 | `SwaggerAuthMiddleware` 클래스를 `new` | 함수형 미들웨어 | D |
 | `X & Document` | `HydratedDocument<X>` | F(#25) |

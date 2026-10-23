@@ -8,11 +8,11 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as express from 'express';
 import session from 'express-session';
 import { Logger } from '@nestjs/common';
-import { SwaggerAuthMiddleware } from './swagger/middleware/swagger.auth.middleware';
+import { createCorsOptions } from './config/cors.config';
+import { setupSwagger } from './swagger/swagger.setup';
 import { ValidationPipe } from '@nestjs/common';
 
 /**
@@ -43,10 +43,7 @@ async function bootstrap() {
   }));
 
   // CORS 설정
-  app.enableCors({
-    origin: configService.get<string>('CORS_ORIGINS')?.split(',') || ['http://localhost:3000'],
-    credentials: true,
-  });
+  app.enableCors(createCorsOptions(configService));
 
   // 세션 설정
   app.use(session({
@@ -60,21 +57,8 @@ async function bootstrap() {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-  // Swagger 인증 미들웨어 적용
-  app.use(new SwaggerAuthMiddleware(configService).use);
-  
-  // Swagger 문서 설정
-  const config = new DocumentBuilder()
-    .setTitle('VansDevBlog API')
-    .setDescription('VansDevBlog Post Service API description')
-    .setVersion('1.0')
-    .addTag('api/v1/posts', 'Posts API')
-    .addTag('api/v1/categories', 'Categories API')
-    .addBearerAuth()
-    .build();
-
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/posts/swagger', app, document);
+  // Swagger 인증 미들웨어 + 문서 (세션·JSON 파싱 뒤에 등록)
+  setupSwagger(app, configService);
 
   // 서버 시작 (PORT 미설정 시 3001)
   const port = Number(configService.get<string>('PORT')) || 3001;
