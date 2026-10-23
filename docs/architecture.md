@@ -44,11 +44,11 @@ HTTP 요청
 | 모듈 | 위치 | 제공 | import |
 |---|---|---|---|
 | `AppModule` | `src/app.module.ts` | `MongooseModule.forRoot`, `HttpModule` | `PostsModule`, `CategoryModule`, `AuthModule` |
-| `PostsModule` | `src/modules/post/Module/module.ts` | `PostsController`, `PostsService`, `InternalApiClient`, `SearchIndexClient`, `PostInitService` | `MongooseModule.forFeature(Post, Category)`, `HttpModule`, `AuthModule` |
-| `CategoryModule` | `src/modules/category/module/category.module.ts` | `CategoryController`, `CategoryService` | `MongooseModule.forFeature(Category)`, `AuthModule` |
+| `PostsModule` | `src/modules/post/Module/module.ts` | `PostsController`, `PostsService`, `InternalApiClient`, `SearchIndexClient` | `MongooseModule.forFeature(Post)`, `CategoryModule`(Category 모델), `HttpModule`, `AuthModule` |
+| `CategoryModule` | `src/modules/category/module/category.module.ts` | `CategoryController`, `CategoryService`; exports `CategoryService`, `MongooseModule` | `MongooseModule.forFeature(Category)`, `AuthModule` |
 | `AuthModule` | `src/utils/Authorization/Module/module.ts` | `JwtStrategy`; exports `PassportModule`, `JwtModule` (`RolesGuard`는 `@UseGuards`로 컨트롤러 모듈에서 생성) | `PassportModule`, `JwtModule.registerAsync(HS512)` |
 
-`PostsModule`이 `Category` 모델도 등록하는 이유: 게시글 목록 필터가 카테고리 `value`로 `_id`를 찾아야 해서다.
+`PostsModule`이 `CategoryModule`을 import하는 이유: 게시글 목록 필터가 카테고리 `value`로 `_id`를 찾아야 해서다. `Category` 모델은 `CategoryModule`만 `forFeature`로 등록하고, `PostsModule`은 그 모듈이 export한 `MongooseModule`로 주입받는다(techniques/mongodb, 2026-10-23 #15).
 
 ## 인증·권한
 

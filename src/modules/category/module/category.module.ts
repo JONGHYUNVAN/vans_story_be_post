@@ -32,7 +32,8 @@ import { AuthModule } from '../../../utils/Authorization/Module/module';
   ],
   controllers: [CategoryController],
   providers: [CategoryService],
-  exports: [CategoryService], // 다른 모듈에서 CategoryService를 사용할 수 있도록 내보냄
+  // CategoryService와 Category 모델(MongooseModule)을 다른 모듈에서 쓸 수 있도록 내보냄
+  exports: [CategoryService, MongooseModule],
 })
 export class CategoryModule {}
 

@@ -245,7 +245,6 @@ ObjectId 형식 검사는 서비스가 아니라 컨트롤러의 `ParseObjectIdP
 | 서비스의 `Types.ObjectId.isValid` → 404 | 컨트롤러 `ParseObjectIdPipe` → 400 | A |
 | `page`/`limit`을 `string`으로 받아 `parseInt` | Query DTO | A |
 | `UpdatePostDto` 수기 복제 | `PartialType` | E |
-| `PostsModule`이 `Category`를 다시 `forFeature` | `CategoryModule`이 `MongooseModule` export | E |
 | `ValidationPipe`를 `main.ts`에서 `useGlobalPipes` | `APP_PIPE` | D |
 | `SwaggerAuthMiddleware` 클래스를 `new` | 함수형 미들웨어 | D |
 | `X & Document` | `HydratedDocument<X>` | F(#25) |

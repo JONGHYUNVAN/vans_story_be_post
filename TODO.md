@@ -120,7 +120,7 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 
 ### 설정·구조
 
-- [ ] `src/config/{cors,database,swagger}.ts`는 어디서도 import하지 않는 죽은 코드. 삭제하거나 `main.ts`의 인라인 설정을 이쪽으로 옮기거나 둘 중 하나로 결정
+- [ ] `src/config/{cors,swagger}.ts`는 어디서도 import하지 않는 죽은 코드(`database.ts`는 2026-10-23 삭제 — 연결은 `AppModule`의 `forRootAsync`). 삭제하거나 `main.ts`의 인라인 설정을 이쪽으로 옮기거나 둘 중 하나로 결정
 - [x] `src/main.ts` `app.listen(3001)` 하드코딩 → `PORT` 환경 변수, 기본 3001 (2026-10-22)
 - [ ] `package.json`의 `migrate:schema`, `migrate:categories` 스크립트가 가리키는 `scripts/migrate-*.js`가 없다. 스크립트 항목 삭제
 - [x] `@nestjs/config` 도입 — `ConfigModule.forRoot({ isGlobal: true })`, `MongooseModule.forRootAsync`, `JwtModule.registerAsync`, `main.ts`는 `ConfigService`. `dotenv.config()` 호출 제거(`main.ts`, `app.module.ts`) (2026-10-22)
@@ -133,7 +133,7 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 
 ### 코드 품질
 
-- [ ] `console.*` 남은 곳 → Nest `Logger`: `src/config/database.ts`(죽은 코드, 삭제 대상), `src/database/init/post.init.ts`, `src/modules/post/Service/service.ts`의 `.catch` 3곳. swagger 미들웨어와 search-index 클라이언트는 2026-10-22 교체 완료
+- [ ] `console.*` 남은 곳 → Nest `Logger`: `src/modules/post/Service/service.ts`의 `.catch` 3곳. swagger 미들웨어와 search-index 클라이언트는 2026-10-22 교체 완료
 - [ ] `any` 축소 — `src` 41곳(2026-10-22 전수조사 시점, 이전 집계 38곳). `noImplicitAny: true`, eslint `no-explicit-any` 활성화 검토
 - [ ] eslint 8 + legacy `.eslintrc.js`. flat config 전환은 @typescript-eslint 8 지원 범위 확인 후
 
@@ -164,10 +164,10 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
   - [ ] #14 `AppModule`의 `HttpModule`, 쓰이지 않는 export(`PostsService`, `CategoryService`, `PassportModule`) 제거
   - [ ] #27 `main.ts` 정리: logger 배열(`'verbose'` 중복, 전체가 기본값과 같음), `@nestjs/common` import 두 줄, `void bootstrap()`
 - [ ] **E. 죽은 코드·중복** (`refactor/cleanup`)
-  - [ ] #16 `src/utils/pagination/DTO/dto.ts`, `PostInitService`(`src/database/init/post.init.ts`, 빈 시드), 미사용 조회 메서드 3개와 테스트(2절 결정 13), `MockAuthModule`의 쓰이지 않는 `APP_GUARD` import·`JwtAuthGuard` provider, `package.json`의 `swagger:serve`·`swagger:open`
+  - [ ] #16 `src/utils/pagination/DTO/dto.ts`, ~~`PostInitService`(`src/database/init/post.init.ts`, 빈 시드)~~ 2026-10-23 삭제, 미사용 조회 메서드 3개와 테스트(2절 결정 13), `MockAuthModule`의 쓰이지 않는 `APP_GUARD` import·`JwtAuthGuard` provider, `package.json`의 `swagger:serve`·`swagger:open`
   - [ ] #17 `PostsService` 중복: populate 체인 8회, `SearchIndexPayload` 조립 2회, 경로마다 다른 응답 필드(`findAll/findOne/findForEdit/update`는 `mainCategory`만 채움). A의 #1과 같이 보면 좋다
   - [ ] #18 `UpdatePostDto` → `PartialType(CreatePostDto)`(`@nestjs/swagger`), `.claude/rules/dto.md` 예외 문장 삭제
-  - [ ] #15 `PostsModule`이 `Category` 모델을 다시 `forFeature` → `CategoryModule`이 `MongooseModule` export
+  - [x] #15 `PostsModule`이 `Category` 모델을 다시 `forFeature` → `CategoryModule`이 `MongooseModule` export (2026-10-23)
   - [ ] #13 `JwtAuthGuard`의 미사용 `JwtService` 주입 제거(2절 결정 8)
 - [ ] **F. 명명·구조 전환** — 위 설정·구조 절 "명명 통일 전환" 항목의 실행 계획. 목표는 2절 결정 6, 리네임 목록은 감사 문서 2절. 커밋 순서: `.gitattributes`+renormalize → `git mv`만(`DTO→dto`는 두 단계) → import → 클래스명 → 문서·`.claude/rules` `paths`. #24 `@CurrentUser()` 데코레이터, #25 `HydratedDocument`(`.claude/rules/schemas.md`도), #28 테스트 이름·위치(결정 11)와 카테고리 테스트 추가, #33 서식, #34 `build` 스크립트 `echo` 제거·`tsconfig.build.json` `include`·jest `collectCoverageFrom`
 - [ ] **G. API 계약 변경** — 2절 결정 5·7 확정 후 프런트(`vans_story`)와 같이 배포
