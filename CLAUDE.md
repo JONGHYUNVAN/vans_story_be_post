@@ -49,7 +49,7 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
 
 ## 코딩 규칙
 
-- **환경 변수**: `.env`는 `AppModule`의 `ConfigModule.forRoot({ isGlobal: true, validate: validateEnv })`가 읽고 기동 시 검증한다(`src/config/env.validation.ts`). `process.env`를 직접 읽지 않는다 — `ConfigService`를 주입받아 읽고, 필수값은 `getOrThrow()`. 모듈 설정은 `forRootAsync`/`registerAsync` + `inject: [ConfigService]` (함정 5). DI 밖에서 만드는 객체(`SwaggerAuthMiddleware`)는 `main.ts`에서 `ConfigService`를 넘긴다. 새 변수는 `validateEnv`의 `REQUIRED`/`OPTIONAL`과 `.env.example`에 같이 추가한다. 검증 오류 메시지에 값을 넣지 않는다.
+- **환경 변수**: `.env`는 `AppModule`의 `ConfigModule.forRoot({ isGlobal: true, validate: validateEnv })`가 읽고 기동 시 검증한다(`src/config/env.validation.ts`). `process.env`를 직접 읽지 않는다 — `ConfigService`를 주입받아 읽고, 필수값은 `getOrThrow()`. 모듈 설정은 `forRootAsync`/`registerAsync` + `inject: [ConfigService]` (함정 5). DI 밖에서 만드는 객체(`SwaggerAuthMiddleware`)와 앱 설정 함수(`createCorsOptions`, `setupSwagger`)는 `main.ts`에서 `ConfigService`를 넘긴다. 설정 값은 `.env`, 조립은 TS 함수 — YAML 설정 파일은 쓰지 않는다(`docs/decisions.md` 2026-10-23). 새 변수는 `validateEnv`의 `REQUIRED`/`OPTIONAL`과 `.env.example`에 같이 추가한다. 검증 오류 메시지에 값을 넣지 않는다.
 - **로깅**: `@nestjs/common`의 `Logger` (`new Logger(ClassName.name)`). `console.*` 금지. URI·토큰·비밀번호·API 키는 어떤 레벨에도 찍지 않는다.
 - **`any`**: 새로 쓰지 않는다. `noImplicitAny: false`라 컴파일러가 잡지 않는다. populate 결과는 `test/helpers/test-utils.ts`의 `PopulatedCategoryRef`처럼 타입을 선언한다.
 - **JSDoc**: 공개 클래스·메서드에 한국어 JSDoc (typedoc 생성 대상). 요청/응답 예시는 Swagger 데코레이터에 두고 JSDoc에 중복하지 않는다.
@@ -78,7 +78,7 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
    Windows에서 `npm`이 띄우는 `cmd.exe`가 `node`를 못 찾으면(`'node'은(는) … 아닙니다`) PATH 앞에 `C:\Users\<user>\AppData\Roaming\nvm\v<버전>`을 넣고 다시 실행한다. `npm ci`가 이 이유로 실패하면 exit code는 0이 아니니 `| tail`로 가리지 말 것.
 5. **데코레이터 인자는 import 시점에 평가된다**: `@Module({ imports: [X.register({ secret: process.env.Y })] })`의 인자는 그 파일이 `require`될 때 계산된다. `ConfigModule.forRoot()`가 `.env`를 읽는 것은 `app.module.ts`가 평가될 때인데, `app.module.ts`가 import하는 모듈(`AuthModule` 등)은 그보다 먼저 평가되므로 `.env` 값을 보지 못한다. 그래서 `JwtModule.registerAsync`, `MongooseModule.forRootAsync`처럼 팩토리에서 `ConfigService`로 읽는다. (CJS 출력은 import 순서를 유지한다 — ESM처럼 호이스팅되지 않는다.)
 6. **`NODE_OPTIONS='…'` POSIX 문법**: `npm start`는 Windows PowerShell에서 실패한다 (어차피 실행 금지). 스크립트에 셸 의존 문법을 추가하지 않는다.
-7. **`SwaggerAuthMiddleware.use`는 화살표 속성**: `main.ts`가 `new SwaggerAuthMiddleware(configService).use`로 바인딩 없이 넘기므로 일반 메서드로 바꾸면 `this`가 사라진다.
+7. **`SwaggerAuthMiddleware.use`는 화살표 속성**: `setupSwagger`(`src/swagger/swagger.setup.ts`)가 `new SwaggerAuthMiddleware(config).use`로 바인딩 없이 넘기므로 일반 메서드로 바꾸면 `this`가 사라진다.
 8. **`overrideModule(MongooseModule)`은 아무것도 바꾸지 않는다**: Nest는 `===`로 비교하는데 `forRoot()`·`forFeature()`는 동적 모듈 객체를 import하므로 클래스와 일치하지 않는다. 테스트에서는 `overrideProvider(getConnectionToken())`과 모델 토큰을 바꾼다(`withFakeMongoose`). 2026-10-22 이전의 bootstrap 테스트는 이 때문에 `.env`의 운영 Atlas에 연결하고 있었다(문서 읽기·쓰기는 없지만 mongoose 기본 `autoIndex`로 스키마 인덱스 생성은 시도됐을 수 있다).
 
 ## 변경 체크리스트

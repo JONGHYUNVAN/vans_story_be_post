@@ -67,3 +67,11 @@
 - 무엇: `docs/conventions.md` 신설(폴더 구조, 이름, 레이어별 허용·금지, 인증·인가, 테스트). `TODO.md` 2절 결정 6·9·10·11을 Nest 표준 쪽으로 확정. (6) 구조는 `nest g resource` 출력 그대로 `src/<기능>/<기능>.<종류>.ts` — 전수조사 추천안 A의 `src/modules/` 래퍼도 두지 않는다. 외부 연동은 서비스별 모듈. (9) 전역 파이프는 `APP_PIPE`. (10) `app.use`로 거는 Swagger 미들웨어는 함수형. (11) 단위 테스트는 대상 옆, e2e는 `test/`. import 규칙(초안 1번)은 "같은 기능 폴더 안은 상대경로, 다른 최상위 폴더는 `src/...`"로 구체화. 테스트 이름은 한국어.
 - 왜: 사용자 요청("Nest 표준 코드 컨벤션") — CLI 출력과 공식 문서를 기준으로 삼으면 `nest g`로 만든 파일이 손대지 않아도 규칙에 맞는다. `APP_PIPE`는 DI가 되고 `Test.createTestingModule`에서도 검증이 돈다(pipes "Global scoped pipes"). 함수형 미들웨어는 middleware "Global middleware"가 `app.use`에 권하는 형태이고 함정 7(`this` 바인딩)이 사라진다. 상대경로 구체화는 평면 구조에서 같은 폴더 import가 `./dto`처럼 짧아지기 때문.
 - 대안: 전수조사 추천안(`src/modules/posts/…`, 테스트는 `test/` 유지) — 표준 출력과 달라 `nest g` 결과를 매번 옮겨야 한다. 결정 5(직렬화)·7(prefix)·8(`JwtModule`)·12~14는 이 문서로 정하지 않았다.
+
+## 2026-10-23
+
+### 앱 설정은 `.env` + `ConfigService`를 받는 TS 함수, YAML 설정 파일은 쓰지 않음
+
+- 무엇: `main.ts`에 인라인으로 있던 CORS·Swagger 설정을 `src/config/cors.config.ts`(`createCorsOptions(config)`)와 `src/swagger/swagger.setup.ts`(`createSwaggerConfig()`, `setupSwagger(app, config)`)로 옮겼다. 쓰이지 않던 `src/config/{cors,database,swagger}.ts`는 값이 현행과 달라(`allowedHeaders` 제한, Swagger 제목·태그, 보안 스킴 이름 `Authorization`) 옮기지 않고 삭제. `main.ts`는 호출만 한다.
+- 왜: 환경마다 다른 값(`CORS_ORIGINS`, `SWAGGER_ADMIN_PASSWORD`)은 이미 `.env`에 있고 `validateEnv`가 검증한다. 나머지(Swagger 제목·태그)는 환경과 무관한 상수다. Nest 12 공식 문서(techniques/configuration)의 기본도 `.env` + TS 팩토리다. 함수로 둔 것은 파일 최상단 상수가 import 시점에 `.env`를 보지 못하기 때문(CLAUDE.md 함정 5) — 삭제한 `cors.ts`가 그 형태였다.
+- 대안: YAML(`js-yaml` + `load`) — 의존성이 늘고, `nest-cli.json` `assets`로 `dist`에 복사해야 하며, `validateEnv`가 YAML 값을 검증하지 않아 검사를 팩토리에 다시 써야 한다. `registerAs` 네임스페이스 — 값 하나(`CORS_ORIGINS`)에 비해 과하고, 팩토리 안에서 `process.env`를 읽어야 해서 "`process.env` 직접 읽지 않음" 규칙의 예외가 생긴다. 설정이 늘면 다시 검토.

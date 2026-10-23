@@ -7,11 +7,12 @@
  * (Nest 12 업그레이드 시 가드 의존성 해석 변경을 잡아낸 테스트입니다.)
  */
 import { Test } from '@nestjs/testing';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SwaggerModule } from '@nestjs/swagger';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import './env';
 import { AppModule } from '../../src/app.module';
+import { createSwaggerConfig } from '../../src/swagger/swagger.setup';
 import { withFakeMongoose } from '../helpers/fake-mongoose';
 import { CategoryService } from '../../src/modules/category/service/category.service';
 
@@ -42,12 +43,8 @@ describe('AppModule bootstrap (no DB)', () => {
 
     categoryService = moduleRef.get(CategoryService);
     app = moduleRef.createNestApplication();
-    const config = new DocumentBuilder()
-      .setTitle('smoke')
-      .setVersion('1.0')
-      .addBearerAuth()
-      .build();
-    document = SwaggerModule.createDocument(app, config);
+    // 문서 설정은 main.ts와 같은 것을 쓰고, 인증 미들웨어(setupSwagger)는 걸지 않는다
+    document = SwaggerModule.createDocument(app, createSwaggerConfig());
     SwaggerModule.setup('api/posts/swagger', app, document);
     await app.init();
   });
@@ -67,6 +64,17 @@ describe('AppModule bootstrap (no DB)', () => {
     expect(
       Object.keys(document.components?.schemas ?? {}).length,
     ).toBeGreaterThan(0);
+  });
+
+  it('모든 엔드포인트의 보안 요구가 등록된 스킴을 가리킨다', () => {
+    // @ApiBearerAuth('다른이름')처럼 등록되지 않은 스킴을 쓰면 Swagger UI가 토큰을 붙이지 않는다
+    const schemes = Object.keys(document.components?.securitySchemes ?? {});
+    const used = Object.values(document.paths)
+      .flatMap((item: any) => Object.values(item))
+      .flatMap((op: any) => op.security ?? [])
+      .flatMap((req: Record<string, string[]>) => Object.keys(req));
+    expect(used.length).toBeGreaterThan(0);
+    expect([...new Set(used)].filter((s) => !schemes.includes(s))).toEqual([]);
   });
 
   it('rejects an unauthenticated POST /api/v1/posts with 401 via JwtAuthGuard', async () => {

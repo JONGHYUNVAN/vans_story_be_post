@@ -129,7 +129,7 @@ export class PostsController {
   @ApiResponse({ status: 403, description: '관리자가 아닌 사용자' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin)
-  @ApiBearerAuth('Authorization')
+  @ApiBearerAuth()
   @Post()
   create(@Body() createDto: CreateDto, @Request() request: any): Promise<ResponseDto> {
     return this.postsService.create(createDto, request.user.sub);
@@ -364,7 +364,7 @@ export class PostsController {
     example: '507f1f77bcf86cd799439011'
   })
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('Authorization')
+  @ApiBearerAuth()
   findForEdit(
     @Param('id') id: string,
     @Request() request: any
@@ -440,7 +440,7 @@ export class PostsController {
   @ApiResponse({ status: 404, description: '게시글을 찾을 수 없음' })
   @ApiParam({ name: 'id', description: 'MongoDB ObjectId' })
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('Authorization')
+  @ApiBearerAuth()
   @Patch(':id')
   update(
     @Param('id') id: string, 
@@ -487,7 +487,7 @@ export class PostsController {
   @ApiParam({ name: 'id', description: 'MongoDB ObjectId' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin)
-  @ApiBearerAuth('Authorization')
+  @ApiBearerAuth()
   @Delete(':id')
   remove(@Param('id') id: string): Promise<void> {
     return this.postsService.remove(id);

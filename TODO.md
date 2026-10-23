@@ -120,7 +120,7 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 
 ### 설정·구조
 
-- [ ] `src/config/{cors,swagger}.ts`는 어디서도 import하지 않는 죽은 코드(`database.ts`는 2026-10-23 삭제 — 연결은 `AppModule`의 `forRootAsync`). 삭제하거나 `main.ts`의 인라인 설정을 이쪽으로 옮기거나 둘 중 하나로 결정
+- [x] `src/config/{cors,database,swagger}.ts` 죽은 코드 정리 (2026-10-23) — `database.ts` 삭제(연결은 `AppModule`의 `forRootAsync`). `cors.ts`·`swagger.ts`는 값이 현행과 달라 삭제하고, `main.ts`의 인라인 설정을 `src/config/cors.config.ts`(`createCorsOptions`)·`src/swagger/swagger.setup.ts`(`setupSwagger`)로 옮겼다. 같이 `@ApiBearerAuth('Authorization')` 4곳을 `@ApiBearerAuth()`로 통일
 - [x] `src/main.ts` `app.listen(3001)` 하드코딩 → `PORT` 환경 변수, 기본 3001 (2026-10-22)
 - [ ] `package.json`의 `migrate:schema`, `migrate:categories` 스크립트가 가리키는 `scripts/migrate-*.js`가 없다. 스크립트 항목 삭제
 - [x] `@nestjs/config` 도입 — `ConfigModule.forRoot({ isGlobal: true })`, `MongooseModule.forRootAsync`, `JwtModule.registerAsync`, `main.ts`는 `ConfigService`. `dotenv.config()` 호출 제거(`main.ts`, `app.module.ts`) (2026-10-22)
