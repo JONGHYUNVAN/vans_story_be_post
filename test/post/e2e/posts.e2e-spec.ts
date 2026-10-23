@@ -15,10 +15,13 @@ import { TestAuthGuard } from '../../helpers/test-auth.guard';
 import { InternalApiClient } from '../../../src/utils/Api/api';
 import { MockInternalApiClient } from '../../helpers/mock-api.client';
 import { MockGenerator } from '../../helpers/mock-generator';
+import { MAIN_CATEGORY_ID, SUB_CATEGORY_ID } from '../../helpers/test-utils';
+import { Category } from '../../../src/modules/category/schemas/category.schema';
 
 describe('PostsController (e2e)', () => {
   let app: INestApplication;
   let postModel: Model<Post>;
+  let categoryModel: Model<Category>;
   const testToken = 'Bearer test_token';
 
   beforeAll(async () => {
@@ -34,9 +37,18 @@ describe('PostsController (e2e)', () => {
     postModel = moduleFixture.get(getModelToken(Post.name));
     app = moduleFixture.createNestApplication();
     await app.init();
+
+    // 게시글 생성은 카테고리 존재를 확인한다 — MockGenerator가 쓰는 고정 id로 테스트 카테고리를 만든다
+    categoryModel = moduleFixture.get(getModelToken(Category.name));
+    const suffix = Date.now();
+    await categoryModel.create([
+      { _id: MAIN_CATEGORY_ID, parentId: null, value: `e2e-main-${suffix}`, label: 'e2e main', path: `/e2e/main-${suffix}` },
+      { _id: SUB_CATEGORY_ID, parentId: MAIN_CATEGORY_ID, value: `e2e-sub-${suffix}`, label: 'e2e sub', path: `/e2e/sub-${suffix}` },
+    ]);
   });
 
   afterAll(async () => {
+    await categoryModel?.deleteMany({ _id: { $in: [MAIN_CATEGORY_ID, SUB_CATEGORY_ID] } });
     await app.close();
   });
 
@@ -206,13 +218,13 @@ describe('PostsController (e2e)', () => {
         .expect(404);
     });
 
-    it('잘못된 ID 형식으로 수정용 조회 - 404 에러', async () => {
+    it('잘못된 ID 형식으로 수정용 조회 - 400 에러', async () => {
       const invalidId = 'invalid-id';
       
       await request(app.getHttpServer())
         .get(`/api/v1/posts/${invalidId}/edit`)
         .set('Authorization', authorToken)
-        .expect(404);
+        .expect(400);
     });
   });
 

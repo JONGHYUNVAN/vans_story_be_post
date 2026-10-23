@@ -25,8 +25,9 @@ import { JwtAuthGuard } from '../../../utils/Authorization/Guard/auth';
 import { Roles } from 'src/utils/Authorization/Guard/roles.decorator';
 import { RolesGuard } from 'src/utils/Authorization/Guard/role';
 import { Role } from 'src/utils/Authorization/role.enum';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
-import { CreateDto, UpdateDto, ResponseDto } from '../DTO';
+import { ParseObjectIdPipe } from 'src/common/pipes/parse-object-id.pipe';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { CreateDto, UpdateDto, ResponseDto, FindPostsQueryDto } from '../DTO';
 import { Paginated } from '../../../utils/types/pagination';
 
 /**
@@ -141,10 +142,7 @@ export class PostsController {
    * 테마, 카테고리, 페이지네이션 등의 쿼리 파라미터를 지원합니다.
    * 인증 없이 접근 가능한 공개 엔드포인트입니다.
    * 
-   * @param {string} [theme] - 필터링할 게시글 테마 (선택사항)
-   * @param {string} [category] - 필터링할 게시글 카테고리 (선택사항)
-   * @param {number} [page] - 페이지 번호 (기본값: 1)
-   * @param {number} [limit] - 페이지당 게시글 수 (기본값: 10)
+   * @param query - 카테고리 필터와 페이지(`page` 1 이상, `limit` 1~50, 기본 1·10)
    * @returns {Promise<Paginated<ResponseDto>>} 페이지네이션이 적용된 게시글 목록
    * 
    * @example
@@ -191,22 +189,9 @@ export class PostsController {
   @Get()
   @ApiOperation({ summary: '게시글 목록 조회' })
   @ApiResponse({ status: 200, description: '게시글 목록 조회 성공', type: ResponseDto, isArray: true })
-  @ApiQuery({ name: 'mainCategory', required: false, description: '필터링할 메인 카테고리 value' })
-  @ApiQuery({ name: 'subCategory', required: false, description: '필터링할 서브 카테고리 value' })
-  @ApiQuery({ name: 'page', required: false, description: '페이지 번호 (기본값: 1)' })
-  @ApiQuery({ name: 'limit', required: false, description: '페이지당 게시글 수 (기본값: 10)' })
-  async findAll(
-    @Query('mainCategory') mainCategoryValue?: string,
-    @Query('subCategory') subCategoryValue?: string,
-    @Query('page') page: string = '1',
-    @Query('limit') limit: string = '10'
-  ): Promise<Paginated<ResponseDto>> {
-    return this.postsService.findAll(
-      mainCategoryValue, 
-      subCategoryValue, 
-      parseInt(page, 10), 
-      parseInt(limit, 10)
-    );
+  @ApiResponse({ status: 400, description: 'page·limit 형식 오류 또는 범위 초과(limit 최대 50)' })
+  async findAll(@Query() query: FindPostsQueryDto): Promise<Paginated<ResponseDto>> {
+    return this.postsService.findAll(query.mainCategory, query.subCategory, query.page, query.limit);
   }
  
   /**
@@ -280,13 +265,14 @@ export class PostsController {
   @Get(':id')
   @ApiOperation({ summary: '게시글 상세 조회' })
   @ApiResponse({ status: 200, description: '게시글 상세 조회 성공', type: ResponseDto })
+  @ApiResponse({ status: 400, description: 'id가 ObjectId 형식이 아님' })
   @ApiParam({ 
     name: 'id', 
     description: 'MongoDB ObjectId (24자리 16진수 문자열, 예: 507f1f77bcf86cd799439011)',
     example: '507f1f77bcf86cd799439011'
   })
   findOne(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @Headers('x-viewed') viewed?: string
   ): Promise<ResponseDto> {
     return this.postsService.findOne(id, viewed === 'true');
@@ -358,6 +344,7 @@ export class PostsController {
   @ApiResponse({ status: 401, description: '인증되지 않은 사용자' })
   @ApiResponse({ status: 403, description: '작성자가 아닌 사용자' })
   @ApiResponse({ status: 404, description: '게시글을 찾을 수 없음' })
+  @ApiResponse({ status: 400, description: 'id가 ObjectId 형식이 아님' })
   @ApiParam({ 
     name: 'id', 
     description: 'MongoDB ObjectId (24자리 16진수 문자열, 예: 507f1f77bcf86cd799439011)',
@@ -366,7 +353,7 @@ export class PostsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   findForEdit(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @Request() request: any
   ): Promise<ResponseDto> {
     return this.postsService.findForEdit(id, request.user.sub);
@@ -438,12 +425,13 @@ export class PostsController {
   @ApiResponse({ status: 401, description: '인증되지 않은 사용자' })
   @ApiResponse({ status: 403, description: '수정 권한이 없는 사용자' })
   @ApiResponse({ status: 404, description: '게시글을 찾을 수 없음' })
+  @ApiResponse({ status: 400, description: 'id가 ObjectId 형식이 아님' })
   @ApiParam({ name: 'id', description: 'MongoDB ObjectId' })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @Patch(':id')
   update(
-    @Param('id') id: string, 
+    @Param('id', ParseObjectIdPipe) id: string, 
     @Body() updateDto: UpdateDto,
     @Request() request: any
   ): Promise<ResponseDto> {
@@ -484,12 +472,13 @@ export class PostsController {
   @ApiResponse({ status: 204, description: '게시글 삭제 성공' })
   @ApiResponse({ status: 401, description: '인증되지 않은 사용자' })
   @ApiResponse({ status: 403, description: '관리자가 아닌 사용자' })
+  @ApiResponse({ status: 400, description: 'id가 ObjectId 형식이 아님' })
   @ApiParam({ name: 'id', description: 'MongoDB ObjectId' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin)
   @ApiBearerAuth()
   @Delete(':id')
-  remove(@Param('id') id: string): Promise<void> {
+  remove(@Param('id', ParseObjectIdPipe) id: string): Promise<void> {
     return this.postsService.remove(id);
   }
 }

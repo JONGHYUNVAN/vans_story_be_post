@@ -8,8 +8,9 @@
  */
 
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsBoolean, IsNumber, IsMongoId, Min } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsNumber, IsMongoId, Min, IsNotEmpty, IsEnum } from 'class-validator';
 import { Types } from 'mongoose';
+import { CategoryGroup } from '../category-group.enum';
 
 /**
  * 카테고리 생성 DTO
@@ -36,12 +37,13 @@ export class CreateCategoryDto {
    */
   @ApiPropertyOptional({
     description: '카테고리 그룹 (Frontend, Backend, Database 등, 메인 카테고리에만 필요)',
-    example: 'Frontend',
-    enum: ['Frontend', 'Backend', 'Database', 'IT', 'Test', 'Etc']
+    example: CategoryGroup.Frontend,
+    enum: CategoryGroup,
+    enumName: 'CategoryGroup',
   })
   @IsOptional()
-  @IsString()
-  group?: string;
+  @IsEnum(CategoryGroup)
+  group?: CategoryGroup;
 
   /**
    * 카테고리 값 (URL에 사용되는 키)
@@ -51,6 +53,7 @@ export class CreateCategoryDto {
     example: 'nextjs'
   })
   @IsString()
+  @IsNotEmpty()
   value: string;
 
   /**
@@ -61,6 +64,7 @@ export class CreateCategoryDto {
     example: 'Next.js'
   })
   @IsString()
+  @IsNotEmpty()
   label: string;
 
   /**
@@ -104,6 +108,7 @@ export class CreateCategoryDto {
     example: '/post/view/nextjs'
   })
   @IsString()
+  @IsNotEmpty()
   path: string;
 
   /**

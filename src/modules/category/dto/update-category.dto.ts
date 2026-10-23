@@ -19,7 +19,7 @@ import { CreateCategoryDto } from './create-category.dto';
  * @class UpdateCategoryDto
  * @extends {PartialType<CreateCategoryDto>}
  */
-export class UpdateCategoryDto extends PartialType(CreateCategoryDto) {}
+export class UpdateCategoryDto extends PartialType(CreateCategoryDto, { skipNullProperties: false }) {}
 
 
 

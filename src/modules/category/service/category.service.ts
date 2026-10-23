@@ -146,7 +146,7 @@ export class CategoryService {
     }
 
     const updatedCategory = await this.categoryModel
-      .findByIdAndUpdate(id, updateCategoryDto, { new: true })
+      .findByIdAndUpdate(id, updateCategoryDto, { new: true, runValidators: true })
       .exec();
 
     if (!updatedCategory) {

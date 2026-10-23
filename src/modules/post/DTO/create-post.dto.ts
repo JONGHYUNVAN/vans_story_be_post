@@ -8,7 +8,7 @@
  */
 
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsArray, IsOptional, MinLength, MaxLength, IsObject, IsMongoId } from 'class-validator';
+import { IsString, IsArray, IsOptional, MinLength, MaxLength, IsObject, IsMongoId, IsNotEmpty } from 'class-validator';
 
 /**
  * 게시글 생성 DTO 클래스
@@ -49,6 +49,7 @@ export class CreatePostDto {
         description: '게시글의 설명'
     })
     @IsString()
+    @IsNotEmpty()
     @MaxLength(500)
     description: string;
 
@@ -65,6 +66,7 @@ export class CreatePostDto {
         description: '게시글의 주제'
     })
     @IsString()
+    @IsNotEmpty()
     @MaxLength(200)
     topic: string;
 
@@ -81,6 +83,7 @@ export class CreatePostDto {
         description: '게시글 언어'
     })
     @IsString()
+    @IsNotEmpty()
     language: string;
 }
 

@@ -16,7 +16,7 @@ description: 이 NestJS 서비스에 새 REST 엔드포인트(라우트·API)를
    - 게시글이 바뀌면 `this.searchIndex.indexPost` / `deletePostIndex`(`SearchIndexClient`)를 fire-and-forget으로 호출하고 `.catch`로 로그만 남긴다.
 3. **Controller**
    - 데코레이터 순서(기존 관례): `@ApiOperation` → `@ApiResponse`(성공·400·401·403·404) → `@ApiParam/@ApiQuery` → `@UseGuards(JwtAuthGuard[, RolesGuard])` + `@Roles(...)` → `@ApiBearerAuth()`(이름 없이 — 문서에 등록된 스킴은 `bearer`) → HTTP 메서드 데코레이터 → 상태 코드가 기본값과 다르면 `@HttpCode`. 공개 라우트는 가드 없음.
-   - `:id`는 `@Param('id', ParseObjectIdPipe)`, 쿼리는 Query DTO, 쓰기 엔드포인트의 관리자 제한은 `@Roles(Role.Admin)`.
+   - `:id`는 `@Param('id', ParseObjectIdPipe)`(`src/common/pipes/parse-object-id.pipe` — `@nestjs/mongoose` 것이 아님) + `@ApiResponse({ status: 400 })`, 쿼리는 Query DTO, 쓰기 엔드포인트의 관리자 제한은 `@Roles(Role.Admin)`.
    - 정적 경로(`grouped`, `value/:value`, `:id/edit`)는 `:id`보다 **앞에** 선언한다.
    - 가드를 쓰는 모듈이 `AuthModule`을 import하는지 확인한다 (`CLAUDE.md` 함정 1).
 4. **단위 테스트** (대상 옆 `*.spec.ts`, `test/helpers`가 필요하면 당분간 `test/` — `.claude/rules/testing.md`): 정상 1건 + 예외 각각. `npm test`.

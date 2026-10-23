@@ -77,9 +77,11 @@ export class Post {
   mainCategoryId: Types.ObjectId;
 
   /**
-   * 서브 카테고리 ID (Category.subCategories._id 참조)
+   * 서브 카테고리 ID (Category 문서 참조, `parentId`가 메인 카테고리인 문서)
+   *
+   * `ref`가 없으면 쿼리 `populate('subCategoryId')`가 조용히 건너뛰어진다.
    */
-  @Prop({ type: Types.ObjectId, required: true })
+  @Prop({ type: Types.ObjectId, ref: 'Category', required: true })
   subCategoryId: Types.ObjectId;
 
   /**

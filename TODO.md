@@ -92,10 +92,10 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 - [x] **`RolesGuard`가 어디에도 등록되어 있지 않다.** `@Roles('admin')`이 붙은 게시글 생성·삭제도 인증만 통과하면 누구나 호출할 수 있다. 게다가 Spring이 발급하는 `auth` 클레임은 `ROLE_ADMIN` 형식이라 `RolesGuard`를 그냥 켜면 관리자도 막힌다. 해결 순서: (1) Spring `JwtProvider`의 `auth` 클레임 형식 확인(쉼표 구분 문자열인지) → (2) `JwtStrategy.validate`에서 `ROLE_ADMIN` → `admin`으로 정규화 또는 `@Roles('ROLE_ADMIN')` → (3) `@UseGuards(JwtAuthGuard, RolesGuard)` 또는 `APP_GUARD` 등록 → (4) `PostsService.update`의 `userRole !== 'admin'` 비교도 같이 맞춤. **최우선** (2026-10-22 `fix/authorization`: `auth`는 `ROLE_ADMIN`/`ADMIN` 쉼표 구분으로 확인 → `JwtStrategy`가 `Role`로 정규화, `@UseGuards(JwtAuthGuard, RolesGuard)`. 프런트에서 일반 사용자에게 생성·삭제 버튼이 보이는지는 미확인)
   - [x] (전수조사 #2) 카테고리 생성·수정·삭제·활성화·비활성화 5개 엔드포인트는 `@Roles`조차 없다(Swagger 설명은 "관리자 권한 필요"). 로그인한 아무 사용자나 카테고리를 바꿀 수 있다 — 같이 처리
   - [x] (전수조사 #3) `PostsService.update`는 `userEmail && userRole && …`이라 role이 없으면 권한 검사를 통과한다(fail-open). 파라미터를 필수로, role 없으면 거부. 이 동작을 고정한 `service.spec.ts`의 "backward compatibility" 테스트를 거부 케이스로 교체
+- [ ] **refresh 토큰이 access 토큰으로 통과한다.** Spring `JwtProvider`가 access(5시간)와 refresh(7일)를 같은 키·같은 클레임(`sub`, `auth`, `exp`)으로 만들고 만료만 다르게 줬다. 그래서 7일짜리 refresh 토큰을 `Authorization: Bearer`에 넣어도 `JwtStrategy`가 받아준다. Spring `fix/token-type` 브랜치(`D:\blog\vans_story_be`)가 두 토큰에 `typ` 클레임(`access`/`refresh`)을 넣고 Spring 필터·refresh 엔드포인트에서 구분한다(전환 정책은 그 레포 `SECURITY.md` "토큰 타입(typ) 클레임"). 이 서비스 할 일: `JwtPayload`에 `typ?: string`을 더하고 `JwtStrategy.validate`(`src/utils/Authorization/Strategy/strategy.ts`, `fix/authorization` 브랜치)에서 `payload.typ !== 'access'`면 거부(`null` 반환 → 401). 테스트는 `typ: 'access'` 통과, `typ: 'refresh'` 거부, `typ` 없음 거부. **순서 제약**: Spring 배포 **후**에만 바꾼다 — 먼저 바꾸면 Spring이 아직 `typ` 없는 토큰을 발급하므로 모든 인증 요청이 401. Spring 배포 직후에도 그 전에 발급된 access 토큰(`typ` 없음, 최대 5시간)이 남아 있으므로, 배포 + 5시간 뒤에 바꾸면 기존 로그인 사용자도 401을 보지 않는다(일찍 바꾸면 프런트의 401 → refresh 재시도로 복구되거나, 실패하면 재로그인)
 - [ ] (전수조사 #4) 목록 `limit` 상한이 없다. `?limit=100000`이면 게시글 10만 건 + 사용자 서비스 호출 10만 번. `?page=abc`는 `NaN`으로 통과. 페이지네이션 Query DTO(`@IsInt @Min(1) @Max(50)`)
 - [ ] (전수조사 #10) 세션: secret이 `JWT_SECRET` 재사용(도달 불가한 `'fallback-secret'` 포함), `secure` 쿠키인데 `trust proxy` 미설정(프록시 뒤에서 Swagger 로그인 유지 실패 가능), 운영 MemoryStore, Swagger 비밀번호 `===` 비교 → `SESSION_SECRET`(2절 결정 14), `app.set('trust proxy', 1)`, `crypto.timingSafeEqual`
 - [ ] (전수조사 #11) `InternalApiClient.getUserNickname`이 이메일을 URL 경로에 그대로 넣는다 → `encodeURIComponent`
-- [ ] refresh 토큰이 access 토큰으로 통과한다 — Spring `JwtProvider.generateToken`이 두 토큰을 같은 클레임(`sub`, `auth`, `exp`)으로 만든다. Spring에 `typ`(access/refresh) 클레임 추가·배포 → 이 서비스가 `typ !== 'access'` 거부. 순서를 지키지 않으면 모든 요청이 401. **레포를 넘는 작업**
 - [ ] JWT 서명을 HS512 공유 비밀키에서 RS256/ES256 + JWKS로. 대칭키는 검증하는 쪽이 토큰을 만들 수도 있어, 이 서비스에서 `JWT_SECRET`이 새면 모든 서비스에서 통하는 관리자 토큰을 만들 수 있다. Kotlin 사용자 서버가 개인키로 서명하고 `/.well-known/jwks.json` 공개 → 이 서비스는 `jwks-rsa`의 `secretOrKeyProvider`로 공개키 검증만(비밀값 제거). **레포를 넘는 작업**(사용자 서버 먼저). 만료 전 폐기(로그아웃·차단)가 필요하면 짧은 만료 + 리프레시 또는 민감 엔드포인트만 introspection(RFC 7662)을 따로 결정. 배경: `docs/architecture.md` "인증·권한"
 - [x] `src/main.ts:82` — MongoDB URI 로그 제거 (2026-10-22)
 - [x] `src/swagger/middleware/swagger.auth.middleware.ts` — 입력·기대 비밀번호를 `console.log`로 찍던 줄 제거, `Logger`로 교체. `SWAGGER_ADMIN_PASSWORD` 미설정 시 `undefined === undefined`로 누구나 통과하던 문제도 함께 수정 (2026-10-22)
@@ -147,11 +147,13 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 
 `docs/audits/2026-10-22-nest-standards.md`의 3절 묶음을 순서대로. 위 절에 이미 있는 항목(RolesGuard, console, `config/*`, `migrate:*`, eslint, CRLF, `forceConsistentCasing`, e2e 운영 DB)은 여기서 다시 적지 않는다. 브랜치는 묶음마다 main에서 딴다.
 
-- [ ] **A. 데이터·검증 버그** (`fix/data-validation`)
-  - [ ] #1 `post.schema.ts`의 `subCategoryId`에 `ref: 'Category'`가 없어 쿼리 populate가 건너뛰어진다 → 응답의 `subCategory`/`subCategoryLabel`이 항상 빈 값, 검색 인덱스에 `subCategory: ''`. 단위 테스트는 populate된 픽스처라 이 버그를 가린다. ref 추가 + 스키마 테스트, 배포 후 검색 인덱스 재색인
-  - [ ] #5 필수 문자열(`description`, `topic`, `language`, 카테고리 `value`/`label`/`path`)이 `@IsString()`뿐 → 빈 문자열이 mongoose `required`에서 실패해 500. `@IsNotEmpty()`
-  - [ ] #6 형식이 틀린 `:id` — 카테고리는 `CastError` 500, 게시글은 404. `@nestjs/mongoose`의 `ParseObjectIdPipe`로 400(e2e의 404 기대값도 변경)
-  - [ ] #19 카테고리 `group`은 Swagger에만 enum, 검증 없음 → `CategoryGroup` enum + `@IsEnum`
+- [x] **A. 데이터·검증 버그** (`fix/data-validation`, 2026-10-22) — 배포 전 확인: 운영 `posts.subCategoryId` 중 categories에 없는 id 개수(있으면 populate가 `null`이 되어 id가 응답에서 사라짐), 운영 `categories.group` 값이 `CategoryGroup` 6개 안에 있는지. 배포 후 검색 인덱스 재색인
+  - [x] #1 `post.schema.ts`의 `subCategoryId`에 `ref: 'Category'`가 없어 쿼리 populate가 건너뛰어진다 → 응답의 `subCategory`/`subCategoryLabel`이 항상 빈 값, 검색 인덱스에 `subCategory: ''`. 단위 테스트는 populate된 픽스처라 이 버그를 가린다. ref 추가 + 스키마 테스트, 배포 후 검색 인덱스 재색인
+  - [x] #5 필수 문자열(`description`, `topic`, `language`, 카테고리 `value`/`label`/`path`)이 `@IsString()`뿐 → 빈 문자열이 mongoose `required`에서 실패해 500. `@IsNotEmpty()`. 수정 경로는 500이 아니라 빈 값·`null`이 200으로 저장되던 것 — `PartialType(…, { skipNullProperties: false })` + `runValidators: true`
+  - [x] #6 형식이 틀린 `:id` — 카테고리는 `CastError` 500, 게시글은 404. `src/common/pipes/parse-object-id.pipe.ts`(패키지 파이프는 입력값을 메시지에 넣고 12자 문자열도 통과시켜 자체 구현)로 400. e2e 기대값 404→400
+  - [x] #19 카테고리 `group`은 Swagger에만 enum, 검증 없음 → `CategoryGroup` enum + `@IsEnum` + 스키마 `enum`
+  - [x] #4 목록 `limit` 상한 — `FindPostsQueryDto`(`limit` 1~50, `page` 정수 1 이상)
+  - [x] (검증 N4) 게시글 생성·카테고리 변경 시 메인·서브 카테고리 존재와 부모 관계 확인(400)
 - [x] **B. 권한** (2026-10-22 `fix/authorization`) — 위 보안 절 RolesGuard 항목(Spring `auth` 클레임 형식 확인이 선행). `Role` enum(#19)과 `AuthModule`의 `RolesGuard`·`Reflector` 정리(#14)를 같이
 - [ ] **C. Swagger·문서 정확성** (`docs/swagger-contract`)
   - [ ] #7 게시글의 `@ApiBearerAuth('Authorization')`가 문서에 없는 스킴 이름(등록된 건 `bearer`) → Swagger UI가 토큰을 안 붙임. DELETE는 204로 문서화했지만 `@HttpCode` 없어 200. 목록 응답을 `ResponseDto[]`로 선언(실제 `{ data, meta }`). `thumbnail`이 필수로 표시
@@ -166,7 +168,7 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 - [ ] **E. 죽은 코드·중복** (`refactor/cleanup`)
   - [ ] #16 `src/utils/pagination/DTO/dto.ts`, ~~`PostInitService`(`src/database/init/post.init.ts`, 빈 시드)~~ 2026-10-23 삭제, 미사용 조회 메서드 3개와 테스트(2절 결정 13), `MockAuthModule`의 쓰이지 않는 `APP_GUARD` import·`JwtAuthGuard` provider, `package.json`의 `swagger:serve`·`swagger:open`
   - [ ] #17 `PostsService` 중복: populate 체인 8회, `SearchIndexPayload` 조립 2회, 경로마다 다른 응답 필드(`findAll/findOne/findForEdit/update`는 `mainCategory`만 채움). A의 #1과 같이 보면 좋다
-  - [ ] #18 `UpdatePostDto` → `PartialType(CreatePostDto)`(`@nestjs/swagger`), `.claude/rules/dto.md` 예외 문장 삭제
+  - [x] #18 `UpdatePostDto` → `PartialType(CreatePostDto, { skipNullProperties: false })` — A의 #5와 같이 처리(2026-10-22)
   - [x] #15 `PostsModule`이 `Category` 모델을 다시 `forFeature` → `CategoryModule`이 `MongooseModule` export (2026-10-23)
   - [ ] #13 `JwtAuthGuard`의 미사용 `JwtService` 주입 제거(2절 결정 8)
 - [ ] **F. 명명·구조 전환** — 위 설정·구조 절 "명명 통일 전환" 항목의 실행 계획. 목표는 2절 결정 6, 리네임 목록은 감사 문서 2절. 커밋 순서: `.gitattributes`+renormalize → `git mv`만(`DTO→dto`는 두 단계) → import → 클래스명 → 문서·`.claude/rules` `paths`. #24 `@CurrentUser()` 데코레이터, #25 `HydratedDocument`(`.claude/rules/schemas.md`도), #28 테스트 이름·위치(결정 11)와 카테고리 테스트 추가, #33 서식, #34 `build` 스크립트 `echo` 제거·`tsconfig.build.json` `include`·jest `collectCoverageFrom`
