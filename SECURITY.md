@@ -222,8 +222,8 @@ if (!Types.ObjectId.isValid(id)) {
 #### 민감 정보 처리
 ```typescript
 // 사용자 정보 마스킹
-const responseDto = mapToDto(post, ResponseDto);
-responseDto.author = authorNickname;  // 이메일 대신 닉네임 사용
+const postResponse = mapToDto(post, PostResponseDto);
+postResponse.author = authorNickname;  // 이메일 대신 닉네임 사용
 ```
 
 ## 📚 API 문서 보안

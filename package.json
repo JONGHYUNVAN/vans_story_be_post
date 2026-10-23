@@ -22,13 +22,8 @@
     "test:e2e": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./test/jest-e2e.json",
     "test:all": "npm run test && npm run test:e2e",
     "test:all:cov": "npm run test:cov && npm run test:e2e",
-    "docs": "typedoc --options typedoc.json",
-    "swagger:generate:clean": "node scripts/generate-swagger-clean.js",
-    "swagger:build:clean": "npm run build && npm run swagger:generate:clean",
-    "swagger:serve": "npx http-server docs/swagger -p 8080 -o",
-    "swagger:open": "start docs/swagger/clean.html",
-    "migrate:schema": "node scripts/migrate-schema-fields.js",
-    "migrate:categories": "node scripts/migrate-categories.js"
+    "docs:typedoc": "typedoc --options typedoc.json",
+    "swagger:html": "node scripts/generate-swagger-html.js"
   },
   "dependencies": {
     "@nestjs/axios": "^12.0.1",
@@ -99,7 +94,8 @@
       "<rootDir>/test/"
     ],
     "moduleNameMapper": {
-      "^src/(.*)$": "<rootDir>/src/$1"
+      "^src/(.*)$": "<rootDir>/src/$1",
+      "^test/(.*)$": "<rootDir>/test/$1"
     }
   }
 }

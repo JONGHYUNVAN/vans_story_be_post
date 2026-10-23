@@ -2,14 +2,13 @@
  * Swagger 문서 설정
  *
  * 문서 메타데이터와 `/api/posts/swagger` 등록, 그 앞단의 `SwaggerAuthMiddleware`를 한곳에 둔다.
- *
- * @module swagger/swagger.setup
  */
 
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
-import { SwaggerAuthMiddleware } from './middleware/swagger.auth.middleware';
+import { SwaggerAuthMiddleware } from './swagger-auth.middleware';
+import { SWAGGER_PATH } from './swagger.constants';
 
 /**
  * 문서 메타데이터를 만든다.
@@ -23,8 +22,8 @@ export function createSwaggerConfig(): Omit<OpenAPIObject, 'paths'> {
     .setTitle('VansDevBlog API')
     .setDescription('VansDevBlog Post Service API description')
     .setVersion('1.0')
-    .addTag('api/v1/posts', 'Posts API')
-    .addTag('api/v1/categories', 'Categories API')
+    .addTag('posts', 'Posts API')
+    .addTag('categories', 'Categories API')
     .addBearerAuth()
     .build();
 }
@@ -46,6 +45,6 @@ export function setupSwagger(
   app.use(new SwaggerAuthMiddleware(config).use);
 
   const document = SwaggerModule.createDocument(app, createSwaggerConfig());
-  SwaggerModule.setup('api/posts/swagger', app, document);
+  SwaggerModule.setup(SWAGGER_PATH, app, document);
   return document;
 }

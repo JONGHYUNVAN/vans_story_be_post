@@ -2,17 +2,15 @@
  * 애플리케이션 진입점
  * 
  * NestJS 애플리케이션을 부트스트랩하고 필요한 미들웨어 및 설정을 구성합니다.
- * 
- * @module main
  */
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { AppModule } from './app.module';
+import { AppModule } from 'src/app.module';
 import * as express from 'express';
 import session from 'express-session';
 import { Logger } from '@nestjs/common';
-import { createCorsOptions } from './config/cors.config';
-import { setupSwagger } from './swagger/swagger.setup';
+import { createCorsOptions } from 'src/config/cors.config';
+import { setupSwagger } from 'src/swagger/swagger.setup';
 import { ValidationPipe } from '@nestjs/common';
 
 /**

@@ -3,8 +3,6 @@
  *
  * `main.ts`가 `app.get(ConfigService)` 뒤에 호출한다. import 시점에는 `.env`가 아직
  * 로드되지 않았을 수 있으므로 값은 상수가 아니라 `ConfigService`를 받는 함수에서 읽는다(CLAUDE.md 함정 5).
- *
- * @module config/cors.config
  */
 
 import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';

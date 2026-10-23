@@ -29,13 +29,14 @@ src/
 │  ├─ role.enum.ts
 │  └─ interfaces/authenticated-user.interface.ts
 ├─ common/                      여러 기능이 쓰는, 어떤 기능에도 속하지 않는 것
-│  ├─ decorators/  dto/  filters/  interceptors/  interfaces/  pipes/
+│  ├─ decorators/  dto/  filters/  interceptors/  interfaces/  pipes/  serialization/
 ├─ posts/                       기능 모듈 (복수형, `nest g resource posts`)
 │  ├─ posts.module.ts
 │  ├─ posts.controller.ts
 │  ├─ posts.controller.spec.ts
 │  ├─ posts.service.ts
 │  ├─ posts.service.spec.ts
+│  ├─ posts.constants.ts        (DEFAULT_/MAX_POSTS_PER_PAGE)
 │  ├─ dto/
 │  │  ├─ create-post.dto.ts  update-post.dto.ts  post-response.dto.ts  find-posts-query.dto.ts
 │  │  └─ index.ts
@@ -44,15 +45,17 @@ src/
 ├─ user-service/                외부 서비스 연동 하나 = 모듈 하나
 │  ├─ user-service.module.ts
 │  └─ user-service.client.ts
-├─ search-index/
-│  ├─ search-index.module.ts
-│  └─ search-index.client.ts
+├─ search-service/              환경 변수 이름(`SEARCH_SERVICE_URL`)을 따라 서비스 단위로
+│  ├─ search-service.module.ts
+│  └─ search-service.client.ts
 └─ swagger/
    ├─ swagger.setup.ts          문서 메타데이터 + 인증 미들웨어 + `SwaggerModule.setup` (`setupSwagger`)
    ├─ swagger-auth.middleware.ts
+   ├─ swagger.constants.ts      (SWAGGER_PATH)
    └─ views/swagger-auth.html   (nest-cli.json assets)
 test/
-├─ helpers/                     테스트 전용 모의 객체·픽스처
+├─ app/                         AppModule 전체를 띄우는 테스트(bootstrap, config)와 dummy-env.ts
+├─ helpers/                     테스트 전용 픽스처·Fake·모의 객체 (src spec에서는 `test/helpers/...`로 import)
 └─ *.e2e-spec.ts                e2e (CLI 기준선 위치)
 ```
 
@@ -61,7 +64,7 @@ test/
 | 한 기능에서만 쓰는 것 (DTO, 스키마, 그 기능 전용 파이프·enum) | 그 기능 폴더 | 다른 기능이 import하지 않는다 |
 | 두 기능 이상이 쓰고 어느 기능에도 속하지 않는 것 | `common/<종류>/` | 기능 이름이 파일에 들어가면 `common`이 아니다 |
 | 인증·인가 | `auth/` | `common`에 섞지 않는다 |
-| 외부 HTTP 서비스 호출 | 서비스별 모듈 (`user-service/`, `search-index/`) | 클라이언트를 export하고, 쓰는 모듈이 import한다 |
+| 외부 HTTP 서비스 호출 | 서비스별 모듈 (`user-service/`, `search-service/`) | 클라이언트를 export하고, 쓰는 모듈이 import한다 |
 | 단위 테스트 | 대상 파일 옆 `*.spec.ts` | `tsconfig.build.json`이 `**/*spec.ts`를 제외한다 |
 | e2e 테스트 | `test/*.e2e-spec.ts` | |
 | 테스트 헬퍼 | `test/helpers/` | `src/`에 두지 않는다 |
@@ -77,13 +80,35 @@ test/
 | 스키마 | `post.schema.ts` (단수) | `Post`, `PostSchema`, `PostDocument` |
 | 가드 / 전략 / 파이프 / 인터셉터 / 필터 / 미들웨어 | `roles.guard.ts` / `jwt.strategy.ts` / `parse-x.pipe.ts` / `logging.interceptor.ts` / `http-exception.filter.ts` / `swagger-auth.middleware.ts` | 접미사를 붙인 PascalCase (`RolesGuard`, `JwtStrategy`) |
 | 데코레이터 | `roles.decorator.ts`, `current-user.decorator.ts` | `Roles`, `CurrentUser` (+ 메타데이터 키 `ROLES_KEY`는 같은 파일) |
-| enum / 인터페이스 | `role.enum.ts` / `authenticated-user.interface.ts` | `Role` (멤버 PascalCase, 값 소문자 문자열) / `AuthenticatedUser` (`I` 접두사 없음) |
-| 외부 연동 클라이언트 (프로젝트 결정) | `user-service.client.ts` | `UserServiceClient` |
+| enum / 인터페이스 | `role.enum.ts` / `authenticated-user.interface.ts` | 멤버 PascalCase. 새 enum의 값은 소문자 문자열(`Role.Admin = 'admin'`) — 외부·DB에 이미 저장된 값을 쓰는 enum은 그 값 그대로(`CategoryGroup.Frontend = 'Frontend'`) / `AuthenticatedUser` (`I` 접두사 없음) |
+| 외부 연동 클라이언트 (프로젝트 결정) | `user-service.client.ts`, `search-service.client.ts` | `UserServiceClient`, `SearchServiceClient` — 환경 변수 `<NAME>_SERVICE_URL`의 이름을 따른다 |
 | 상수 | `*.constants.ts` | `UPPER_SNAKE_CASE` |
 
 - 파일·폴더는 kebab-case 소문자, 파일명에 `<이름>.<종류>.ts` 외의 점을 넣지 않는다
 - 기능 폴더·모듈·컨트롤러·서비스는 복수형(리소스 이름), 스키마·엔티티 클래스는 단수형
-- import (프로젝트 결정, `decisions.md` 2026-10-22 1번을 구체화): 같은 기능 폴더 안은 상대경로(`./dto`, `./schemas/post.schema`), 다른 최상위 폴더는 `src/...` 절대경로. 순서는 외부 패키지 → `src/...` → 상대경로
+- import (프로젝트 결정, `decisions.md` 2026-10-22 1번을 구체화): 같은 최상위 폴더(`src/posts/`, `test/`) 안은 상대경로(`./dto`, `./schemas/post.schema`), 다른 폴더는 `src/...`·`test/...` 절대경로. 순서는 외부 패키지 → `src/...` → 상대경로
+
+### 통일 규칙
+
+같은 개념은 같은 이름으로 쓴다. 근거와 바꾼 목록은 `docs/audits/2026-10-22-naming-review.md`.
+
+| 대상 | 규칙 | 예 |
+|---|---|---|
+| 사람 | 요청자는 `userEmail`·`userRoles`, 게시글 소유자 필드와 그것으로 조회하는 인자는 `authorEmail`. `request.user`는 `{ email, roles }` — JWT 클레임 이름 `sub`는 전략 밖으로 내보내지 않는다 | `update(id, dto, userEmail, userRoles)` |
+| 카테고리 | id는 `…CategoryId`, value 문자열은 `…CategoryValue`, 조회한 문서는 `mainCategory`/`subCategory`. `cat`·`subCat`·`main`·`sub` 같은 축약 금지 | `findAll(mainCategoryValue, …)` |
+| DTO | 클래스는 정식 이름만(별칭 없음). 변수는 `create<Resource>Dto`/`update<Resource>Dto`/`queryDto`. 서비스 안 응답 변수는 `<resource>Response(s)`, 문서→응답 변환 private 메서드는 `toResponseDto` | `createPostDto`, `postResponses` |
+| 주입 | 필드 이름은 클래스 이름 camelCase(`userServiceClient`, `categoriesService`, `postModel`). `ConfigService`는 `configService` — `config`는 원시 env 레코드와 `DocumentBuilder` 결과에만 | `constructor(private readonly configService: ConfigService)` |
+| 메서드 | 조회 `find*`(전체를 묶으면 `findAll*`), 서비스 삭제 `remove`, 동사+대상 순서, 부수 효과는 인자·이름에 드러낸다 | `findAllGrouped`, `removePostFromIndex`, `findOne(id, hasViewed)` |
+| 값 | boolean은 `is/has/should`. 모듈 수준 상수(메타데이터 키·기본값·테스트 픽스처 포함)는 `UPPER_SNAKE`, 모음은 `<feature>.constants.ts` | `RESPONSE_FIELDS_KEY`, `DEFAULT_POSTS_PER_PAGE` |
+| 지역 이름 | `result`·`data`·`bad`·`expected`·`controller`·`err`·한 글자 대신 도메인 이름. `catch`는 `error`, 결과물은 `createdPost`/`updatedPost`/`deletedPost`, 중복 검사 결과는 `duplicate*`(`existing*`는 수정 대상에만) | `duplicateCategory` |
+| JSDoc | `@module` 태그를 쓰지 않는다(typedoc `expand`가 경로로 이름을 붙인다) | |
+| Swagger | 태그는 리소스 이름(`posts`, `categories`), 보안 스킴은 `@ApiBearerAuth()`(`addBearerAuth()` 기본 이름 `bearer`) | |
+| 테스트 더블 | jest.fn 객체 팩토리는 `createMock<토큰 클래스>()`, 변수는 `mock<토큰 클래스>`. 손으로 짠 동작 구현은 `Fake<대상>`(`FakeJwtAuthGuard`, `withFakeMongoose`). `TestingModule`은 `moduleRef` | `createMockSearchServiceClient` |
+| 테스트 픽스처 | 상수는 `UPPER_SNAKE`, lean 문서 타입은 `*LeanDoc`(mongoose `Document`와 구분), DTO는 `createValidDto(DtoClass, overrides)`. 인증 토큰은 역할을 이름에(`admin_token`) | `MAIN_CATEGORY_DOC` |
+| 테스트 제목 | 최상위 describe는 대상 심볼, it은 한국어 "조건 + 결과"(상태 코드는 숫자, `테스트`·`- 에러`·`- 성공` 접미사 없음) | `it('작성자가 아니면 403')` |
+| npm 스크립트 | `clean`은 산출물 삭제에만. 실행 금지 스크립트(`start*`, `test:e2e`, `test:all*`)는 `.claude/settings.json` deny 패턴과 함께가 아니면 이름을 바꾸지 않는다 | `swagger:html`, `docs:typedoc` |
+
+API 계약에 속한 이름(경로, 쿼리·헤더, 요청·응답 JSON 필드, DB 필드, `SearchIndexPayload` 키, 오류 코드, 환경 변수)은 위 규칙과 달라도 이 문서만으로 바꾸지 않는다 — 프런트·다른 서비스와 같이 바꾼다(`TODO.md` 2절 결정 5·7).
 
 ## 3. 요청이 지나가는 순서
 
@@ -152,7 +177,7 @@ ObjectId 형식 검사는 서비스가 아니라 컨트롤러의 `ParseObjectIdP
 | 고정 값 집합은 enum + `@IsEnum` (Swagger `enum`과 같은 enum 사용) | Swagger에만 `enum`을 적고 검증 없음 |
 | 응답: 실제로 나가는 형태 그대로 선언 | 선언과 다른 형태(populate 객체 등)를 내보내기 |
 
-응답 직렬화 방식(class-transformer `@Expose` 등)과 날짜·id 형식은 `TODO.md` 2절 결정 5가 정해질 때까지 현행 `@Field` + `mapToDto`를 쓴다.
+응답 직렬화 방식(class-transformer `@Expose` 등)과 날짜·id 형식은 `TODO.md` 2절 결정 5가 정해질 때까지 현행 `@ResponseField` + `mapToDto`(`src/common/serialization/`)를 쓴다.
 
 ### 스키마 (`schemas/*.schema.ts`)
 
@@ -213,11 +238,11 @@ ObjectId 형식 검사는 서비스가 아니라 컨트롤러의 `ParseObjectIdP
 
 ### 설정 (`config/`)
 
-`ConfigModule.forRoot({ isGlobal: true, validate: validateEnv })` 하나. 새 변수는 `validateEnv`의 `REQUIRED`/`OPTIONAL`과 `.env.example`에 같이 추가하고, 읽는 쪽은 `ConfigService`를 주입받는다. 검증 오류 메시지에 값을 넣지 않는다.
+`ConfigModule.forRoot({ isGlobal: true, validate: validateEnv })` 하나. 새 변수는 `validateEnv`의 `REQUIRED_ENV`/`OPTIONAL_ENV`와 `.env.example`에 같이 추가하고, 읽는 쪽은 `ConfigService`를 주입받는다. 검증 오류 메시지에 값을 넣지 않는다.
 
 ## 5. 인증·인가
 
-- `request.user`의 형태는 `AuthenticatedUser`(`{ sub: string; roles: Role[] }`) 하나다. 컨트롤러는 `@CurrentUser()`로 받고, 서비스에는 필요한 값만 넘긴다
+- `request.user`의 형태는 `AuthenticatedUser`(`{ email: string; roles: Role[] }`) 하나다. 컨트롤러는 `@CurrentUser()`로 받고, 서비스에는 필요한 값만 넘긴다
 - 역할로 막는 것은 `@Roles()` + `RolesGuard`, 데이터로 막는 것(작성자 본인)은 서비스. 둘 다 필요한 라우트는 둘 다 쓴다
 - 쓰기 엔드포인트는 기본이 "막힘"이다: 권한 정보가 없거나 모르는 값이면 거부(fail-closed)
 - Swagger: `@ApiBearerAuth()`(이름 없이 — `src/swagger/swagger.setup.ts`의 `addBearerAuth()` 기본 이름 `bearer`와 맞춘다. `test/app/bootstrap.spec.ts`가 등록되지 않은 스킴 이름을 잡는다)
@@ -232,19 +257,13 @@ ObjectId 형식 검사는 서비스가 아니라 컨트롤러의 `ParseObjectIdP
 
 ## 7. 현행 코드와 다른 곳
 
-새 코드는 위 규칙을 따르되, **기존 폴더에 있는 기능에 파일을 더할 때는 그 기능의 현재 폴더에 표준 파일명으로 둔다**(예: 인증 관련 새 파일은 `src/utils/Authorization/`에 `role.enum.ts`로). 폴더 이동은 묶음 F에서 한꺼번에 한다 — 작업 중 리네임 금지(CLAUDE.md 명명).
-
-새 단위 테스트는 지금부터 대상 옆에 둔다(기존 `test/**/*.spec.ts`는 F에서 옮긴다). `test/helpers`를 쓰는 테스트는 F에서 `test/*` 경로 별칭(tsconfig `paths`, jest `moduleNameMapper`)을 추가하기 전까지 기존 위치(`test/`)에 둔다 — 대상 옆에서 `../../../../test/helpers`를 쓰지 않기 위해서다.
+폴더·파일·식별자 이름은 2026-10-22 명명 전환(`refactor/naming`)으로 이 문서와 맞췄다. 남은 차이는 이름이 아니라 구조·방식이다.
 
 | 현행 | 이 문서 | 옮기는 곳 |
 |---|---|---|
-| `src/modules/post/Controller/controller.ts` 등 PascalCase 레이어 폴더, `src/modules/category/{controller,service,module}/`, `src/modules/` 래퍼 | 1절 평면 구조 `src/posts/posts.controller.ts` | F |
-| `src/utils/Authorization/**` | `src/auth/` | F |
-| `src/utils/Api/api.ts`(`InternalApiClient`), `search-index.client.ts` — `PostsModule`이 직접 provide | `src/user-service/`, `src/search-index/` 모듈 | F |
-| `src/utils/Mapper/`, `src/utils/types/pagination.ts` | `common/` 또는 결정 5 결과에 따라 삭제 | F·G |
-| 단위 테스트 `test/post/Service/service.spec.ts` | `src/posts/posts.service.spec.ts` | F |
-| `@Request() request: any` | `@CurrentUser() user: AuthenticatedUser` | F(#24) |
+| `@Request() request: any` | `@CurrentUser() user: AuthenticatedUser` | #24 |
 | `ValidationPipe`를 `main.ts`에서 `useGlobalPipes` | `APP_PIPE` | D |
-| `SwaggerAuthMiddleware` 클래스를 `new` | 함수형 미들웨어 | D |
-| `X & Document` | `HydratedDocument<X>` | F(#25) |
-| e2e는 영어·한국어 혼재, 단위는 영어 `should …` | 한국어 | 손대는 테스트부터 |
+| `SwaggerAuthMiddleware` 클래스를 `new`, 세션 타입은 지역 `CustomSession` | 함수형 미들웨어, `SessionData` 선언 병합 | D |
+| `X & Document`, 주입 타입 `Model<PostDocument>`·`Model<CategoryDocument>` 혼용 | `HydratedDocument<X>`, 주입은 `Model<X>` | #25 |
+| `@ResponseField` + `mapToDto`, 날짜 `toLocaleString()` | class-transformer 직렬화 | G(결정 5) |
+| 결정 13 보류 메서드 `findByAuthor`·`searchPosts`·`findByThemeAndCategory`(이름이 규칙과 다름) | 삭제, 남기면 `findByAuthorEmail`·`findByKeyword`·`findByCategoryValues` | 결정 13 |

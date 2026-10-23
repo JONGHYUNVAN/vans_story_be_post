@@ -17,18 +17,17 @@ VansDevBlog는 NestJS 기반의 블로그 포스트 관리 시스템입니다. M
 
 ```
 src/
-├── modules/post/          # 포스트 관련 모듈
-│   ├── Controller/        # API 컨트롤러
-│   ├── Service/          # 비즈니스 로직
-│   ├── DTO/              # 데이터 전송 객체
-│   └── schemas/          # MongoDB 스키마
-├── utils/
-│   ├── Authorization/    # JWT 인증 관련
-│   ├── Api/             # 외부 API 클라이언트
-│   ├── Mapper/          # 데이터 매핑
-│   └── pagination/      # 페이지네이션
-└── config/              # 설정 파일
+├── posts/              # 게시글 (controller·service·module, dto/, schemas/)
+├── categories/         # 카테고리 (같은 구성)
+├── auth/               # JWT 인증·역할 인가 (가드·전략·데코레이터)
+├── user-service/       # Spring 사용자 서비스 클라이언트
+├── search-service/     # Django 검색 서비스 클라이언트
+├── common/             # 공용 파이프·인터페이스·직렬화
+├── config/             # 환경 변수 검증
+└── swagger/            # Swagger UI 인증 미들웨어·로그인 페이지
 ```
+
+폴더·이름 규칙은 `docs/conventions.md`.
 
 ## 인증
 
@@ -478,7 +477,7 @@ interface PaginationMeta {
 
 ```typescript
 // 작성자 이메일 → 닉네임 변환
-const authorNickname = await this.apiClient.getUserNickname(authorEmail);
+const authorNickname = await this.userServiceClient.getNicknameByEmail(authorEmail);
 ```
 
 ### 데이터 유효성 검사

@@ -13,8 +13,8 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
 | 단일 테스트 | `npm test -- -t "테스트 이름"` |
 | 빌드 | `npm run build` → `dist/` |
 | 포맷 확인 | `npx prettier --check <새 파일>` — 전체 `npm run lint`·`npm run format`은 실행하지 않는다 (CRLF 체크아웃의 `Delete ␍` 오류 수천 건 + 기존 파일 전체가 재포맷되어 diff가 터진다) |
-| Swagger HTML | `npm run swagger:build:clean` → `docs/swagger/clean.html` (추적됨) |
-| typedoc | `npm run docs` → `docs/typedoc/` (gitignore) |
+| Swagger HTML | `npm run swagger:html` → `docs/swagger/clean.html` (추적됨). 입력은 커밋된 `swagger-spec.json`이고 이를 만드는 코드는 아직 없다(`TODO.md` 1-2) |
+| typedoc | `npm run docs:typedoc` → `docs/typedoc/` (gitignore) |
 
 실행 금지 — `.claude/settings.json`이 deny한다:
 
@@ -24,43 +24,42 @@ Vercel 프런트엔드(`vans_story`)가 BFF로 호출한다. 작성자 닉네임
 | `npm run test:e2e`, `npm run test:all*` | e2e가 운영 DB에 쓴다 |
 | `.env` 읽기 | 비밀값. 변수 이름은 `.env.example` |
 
-`npm run migrate:*`는 참조하는 스크립트 파일이 없다 (`scripts/`에는 `generate-swagger-clean.js`뿐).
 
 ## 요청 흐름과 레이어 책임
 
-아래는 현행 코드 요약이다. 새 코드의 레이어 규칙(무엇을 하고 무엇을 하면 안 되는지)은 `docs/conventions.md` 4절, 현행과 다른 곳은 7절.
+아래는 현행 코드 요약이다. 레이어 규칙(무엇을 하고 무엇을 하면 안 되는지)은 `docs/conventions.md` 4절, 이름 규칙은 2절, 아직 규칙과 다른 곳은 7절.
 
 `main.ts`: 전역 `ValidationPipe`(whitelist + forbidNonWhitelisted + transform) → CORS → express-session → `express.json`(10mb) → `SwaggerAuthMiddleware`(`/api/posts/swagger*`만)
 → 라우트별 `@UseGuards(JwtAuthGuard)` → Controller → Service → mongoose Model → `mapToDto` → Response DTO
 
-- **Controller**: 파라미터 파싱과 Swagger 데코레이터만. 비즈니스 로직·DB 접근 금지. `request.user`는 `AuthenticatedUser` `{ sub: 이메일, roles: Role[] }`.
+- **Controller**: 파라미터 파싱과 Swagger 데코레이터만. 비즈니스 로직·DB 접근 금지. `request.user`는 `AuthenticatedUser` `{ email, roles: Role[] }`(JWT `sub` 클레임은 `JwtStrategy`에서만).
 - **Service**: 검증 실패·권한·없음은 Nest `HttpException`(`BadRequest/Forbidden/NotFound/Conflict`)을 던진다. 전역 예외 필터는 없다. try/catch로 삼키지 않는다.
-- **Model 조회 체인**: `.populate('mainCategoryId', 'value label').populate('subCategoryId', 'value label').lean().exec()`. 단위 테스트의 모의 객체가 이 체인을 그대로 흉내 내므로 체인을 바꾸면 `test/helpers/test-utils.ts`의 `mockQuery`도 바꾼다.
-- **Response DTO**: `mapToDto(entity, Dto)`는 `@Field`가 붙은 속성만 복사하고 `Date`는 `toLocaleString()` 문자열로 바꾼다. 새 응답 필드에는 `@Field`와 `@ApiProperty`를 둘 다 붙인다. `author`, `mainCategory` 같은 파생 필드는 Service가 채운다.
-- **페이지네이션**: 응답 타입은 `src/utils/types/pagination.ts`의 `Paginated<T>`. `src/utils/pagination/DTO/dto.ts`는 미사용.
-- **외부 호출**: 사용자 서비스는 `InternalApiClient`(DI, 실패 시 `null`). 검색 서비스는 `SearchIndexClient`(`search-index.client.ts`, DI)의 `indexPost/deletePostIndex`(fire-and-forget, `.catch`로 로그만). 응답을 기다리지 않는다.
+- **Model 조회 체인**: `.populate('mainCategoryId', 'value label').populate('subCategoryId', 'value label').lean().exec()`. 단위 테스트의 모의 객체가 이 체인을 그대로 흉내 내므로 체인을 바꾸면 `test/helpers/post-fixtures.ts`의 `createMockQuery`도 바꾼다.
+- **Response DTO**: `mapToDto(entity, Dto)`(`src/common/serialization`)는 `@ResponseField`가 붙은 속성만 복사하고 `Date`는 `toLocaleString()` 문자열로 바꾼다. 새 응답 필드에는 `@ResponseField`와 `@ApiProperty`를 둘 다 붙인다. `author`, `mainCategory` 같은 파생 필드는 Service의 `toResponseDto`가 채운다.
+- **페이지네이션**: 응답 타입은 `src/common/interfaces/paginated.interface.ts`의 `Paginated<T>`, 쿼리는 `FindPostsQueryDto`, 기본·최대 크기는 `src/posts/posts.constants.ts`.
+- **외부 호출**: 사용자 서비스는 `UserServiceClient.getNicknameByEmail`(`src/user-service/`, 실패 시 `null`). 검색 서비스는 `SearchServiceClient`(`src/search-service/`)의 `indexPost`/`removePostFromIndex`(fire-and-forget, 실패는 로그만). 각자 모듈을 `PostsModule`이 import한다.
 - **권한 검사**: 역할은 `@UseGuards(JwtAuthGuard, RolesGuard)` + `@Roles(Role.Admin)`(게시글 생성·삭제, 카테고리 쓰기 5개). 작성자 본인 여부는 Service에서 `userEmail`/`userRoles`로. Spring `auth` 클레임(`ROLE_ADMIN`, `ADMIN`, 쉼표 구분)은 `JwtStrategy.validate`가 `Role`로 정규화한다 — 다른 곳에서 권한 문자열을 비교하지 않는다.
 
 ## 명명과 import
 
-- 새 파일은 `docs/conventions.md` 1·2절: CLI 출력 그대로의 평면 구조(`src/posts/posts.service.ts`), `<이름>.<종류>.ts`. 기존 폴더에 있는 기능에 더할 때는 그 폴더에 표준 파일명으로 둔다(7절). 새 단위 테스트는 대상 옆 `*.spec.ts`.
-- 예외(그대로 둔다): post 모듈은 `Controller/controller.ts`, `DTO/`, `Service/service.ts`, `Module/module.ts`; utils는 `Authorization/Guard/auth.ts`처럼 PascalCase 폴더. 작업 중에 리네임하지 않는다 — Windows에서 대소문자만 바뀐 리네임은 `git mv` 두 단계가 필요하고, `forceConsistentCasingInFileNames`가 꺼져 있어 컴파일러가 잡지 못한다.
-- import: 같은 기능 폴더 안은 상대경로, 다른 최상위 폴더는 `src/...` 절대경로 (tsconfig `paths`, jest `moduleNameMapper` 모두 지원). 기존 import는 손대는 파일에서만 바꾼다.
+- 위치·파일명·식별자는 `docs/conventions.md` 1·2절: CLI 출력 그대로의 평면 구조(`src/posts/posts.service.ts`), `<이름>.<종류>.ts`, 단위 테스트는 대상 옆 `*.spec.ts`. 2절 "통일 규칙" 표(요청자는 `userEmail`, 카테고리 value는 `…CategoryValue`, 주입 필드는 클래스 이름 camelCase, `ConfigService`는 `configService` 등)를 따른다.
+- 이름에 대소문자만 바꾸는 리네임은 Windows에서 `git mv` 두 단계가 필요하다. `forceConsistentCasingInFileNames: true`라 import 대소문자가 틀리면 컴파일러가 잡는다.
+- import: 같은 최상위 폴더(`src/posts/` 등) 안은 상대경로, 다른 폴더는 `src/...`·`test/...` 절대경로 (tsconfig `paths`, 두 jest 설정의 `moduleNameMapper` 모두 지원).
 
 ## 코딩 규칙
 
-- **환경 변수**: `.env`는 `AppModule`의 `ConfigModule.forRoot({ isGlobal: true, validate: validateEnv })`가 읽고 기동 시 검증한다(`src/config/env.validation.ts`). `process.env`를 직접 읽지 않는다 — `ConfigService`를 주입받아 읽고, 필수값은 `getOrThrow()`. 모듈 설정은 `forRootAsync`/`registerAsync` + `inject: [ConfigService]` (함정 5). DI 밖에서 만드는 객체(`SwaggerAuthMiddleware`)와 앱 설정 함수(`createCorsOptions`, `setupSwagger`)는 `main.ts`에서 `ConfigService`를 넘긴다. 설정 값은 `.env`, 조립은 TS 함수 — YAML 설정 파일은 쓰지 않는다(`docs/decisions.md` 2026-10-23). 새 변수는 `validateEnv`의 `REQUIRED`/`OPTIONAL`과 `.env.example`에 같이 추가한다. 검증 오류 메시지에 값을 넣지 않는다.
+- **환경 변수**: `.env`는 `AppModule`의 `ConfigModule.forRoot({ isGlobal: true, validate: validateEnv })`가 읽고 기동 시 검증한다(`src/config/env.validation.ts`). `process.env`를 직접 읽지 않는다 — `ConfigService`를 주입받아 읽고, 필수값은 `getOrThrow()`. 모듈 설정은 `forRootAsync`/`registerAsync` + `inject: [ConfigService]` (함정 5). DI 밖에서 만드는 객체(`SwaggerAuthMiddleware`)와 앱 설정 함수(`createCorsOptions`, `setupSwagger`)는 `main.ts`에서 `ConfigService`를 넘긴다. 설정 값은 `.env`, 조립은 TS 함수 — YAML 설정 파일은 쓰지 않는다(`docs/decisions.md` 2026-10-23). 새 변수는 `validateEnv`의 `REQUIRED_ENV`/`OPTIONAL_ENV`와 `.env.example`에 같이 추가한다. 검증 오류 메시지에 값을 넣지 않는다.
 - **로깅**: `@nestjs/common`의 `Logger` (`new Logger(ClassName.name)`). `console.*` 금지. URI·토큰·비밀번호·API 키는 어떤 레벨에도 찍지 않는다.
-- **`any`**: 새로 쓰지 않는다. `noImplicitAny: false`라 컴파일러가 잡지 않는다. populate 결과는 `test/helpers/test-utils.ts`의 `PopulatedCategoryRef`처럼 타입을 선언한다.
+- **`any`**: 새로 쓰지 않는다. `noImplicitAny: false`라 컴파일러가 잡지 않는다. populate 결과는 `test/helpers/post-fixtures.ts`의 `PopulatedCategoryRef`처럼 타입을 선언한다.
 - **JSDoc**: 공개 클래스·메서드에 한국어 JSDoc (typedoc 생성 대상). 요청/응답 예시는 Swagger 데코레이터에 두고 JSDoc에 중복하지 않는다.
 - **DTO**: `.claude/rules/dto.md`. **스키마**: `.claude/rules/schemas.md`.
 
 ## 테스트
 
 - `npm test`는 DB·네트워크 없이 돈다. 새 테스트도 그래야 한다.
-- Service 단위 테스트: `test/helpers/test-utils.ts`의 `createMockPostModel / createMockCategoryModel / createMockApiClient / createMockSearchIndexClient / mockQuery`와 픽스처를 쓴다. 검색 클라이언트는 `{ provide: SearchIndexClient, useValue: createMockSearchIndexClient() }`.
-- 모듈 기동 테스트: `test/app/bootstrap.spec.ts` 패턴 — `import './env'`를 `AppModule`보다 먼저, `withFakeMongoose(Test.createTestingModule(...))`(`test/helpers/fake-mongoose.ts`). `overrideModule(MongooseModule)`은 효과가 없다 — 운영 DB에 실제로 연결된다(함정 8).
-- DTO 모의 데이터: `MockGenerator.createMock(CreateDto)` (class-validator 검증 통과를 보장).
+- Service 단위 테스트: `test/helpers/post-fixtures.ts`의 `createMockPostModel / createMockCategoryModel / createMockUserServiceClient / createMockSearchServiceClient / createMockQuery`와 픽스처를 쓴다. 클라이언트는 `{ provide: SearchServiceClient, useValue: createMockSearchServiceClient() }`처럼 토큰 클래스 그대로.
+- 모듈 기동 테스트: `test/app/bootstrap.spec.ts` 패턴 — `import './dummy-env'`를 `AppModule`보다 먼저, `withFakeMongoose(Test.createTestingModule(...))`(`test/helpers/fake-mongoose.ts`). `overrideModule(MongooseModule)`은 효과가 없다 — 운영 DB에 실제로 연결된다(함정 8).
+- DTO 픽스처: `createValidDto(CreatePostDto, overrides)`(`test/helpers/dto-fixtures.ts`, class-validator 검증 통과를 보장).
 - 상세: `.claude/rules/testing.md`.
 
 ## 보안·비밀

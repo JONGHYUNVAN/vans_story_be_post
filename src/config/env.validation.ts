@@ -4,8 +4,6 @@
  * `ConfigModule.forRoot({ validate: validateEnv })`가 기동 시 한 번 호출한다.
  * 문제를 모두 모아 한 번에 던지고, 메시지에는 변수 이름과 이유만 넣는다 — 값은 비밀일 수 있으므로 넣지 않는다.
  * 새 변수를 추가하면 여기와 `.env.example`에 같이 추가한다.
- *
- * @module config/env.validation
  */
 
 /** 문제가 있으면 이유를, 없으면 `null`을 돌려준다. */
@@ -47,17 +45,17 @@ const oneOf =
     allowed.includes(value) ? null : `must be one of ${allowed.join(', ')}`;
 
 const httpUrlList: Check = (value) => {
-  const bad = value
+  const invalidOrigins = value
     .split(',')
     .map((origin) => origin.trim())
     .filter((origin) => httpUrl(origin) !== null);
-  return bad.length === 0
+  return invalidOrigins.length === 0
     ? null
     : 'must be a comma-separated list of http(s) URLs';
 };
 
 /** 필수 변수. 비어 있으면 누락으로 본다. */
-const REQUIRED: Record<string, Check | null> = {
+const REQUIRED_ENV: Record<string, Check | null> = {
   MONGODB_URI: mongoUri,
   JWT_SECRET: base64,
   USER_SERVICE_URL: httpUrl,
@@ -65,7 +63,7 @@ const REQUIRED: Record<string, Check | null> = {
 };
 
 /** 선택 변수. 비어 있으면 검사하지 않는다(코드가 기본값을 쓴다). */
-const OPTIONAL: Record<string, Check> = {
+const OPTIONAL_ENV: Record<string, Check> = {
   NODE_ENV: oneOf('development', 'production', 'test'),
   PORT: port,
   CORS_ORIGINS: httpUrlList,
@@ -87,18 +85,18 @@ export function validateEnv(
   config: Record<string, unknown>,
 ): Record<string, unknown> {
   const errors: string[] = [];
-  const read = (key: string): string => {
+  const readTrimmed = (key: string): string => {
     const value = config[key];
     return typeof value === 'string' ? value.trim() : '';
   };
 
-  for (const [key, check] of Object.entries(REQUIRED)) {
-    const value = read(key);
+  for (const [key, check] of Object.entries(REQUIRED_ENV)) {
+    const value = readTrimmed(key);
     const problem = value === '' ? 'is required' : check?.(value);
     if (problem) errors.push(`${key} ${problem}`);
   }
-  for (const [key, check] of Object.entries(OPTIONAL)) {
-    const value = read(key);
+  for (const [key, check] of Object.entries(OPTIONAL_ENV)) {
+    const value = readTrimmed(key);
     const problem = value === '' ? null : check(value);
     if (problem) errors.push(`${key} ${problem}`);
   }
@@ -109,12 +107,12 @@ export function validateEnv(
     );
   }
 
-  const cors = read('CORS_ORIGINS');
-  return cors === ''
+  const corsOrigins = readTrimmed('CORS_ORIGINS');
+  return corsOrigins === ''
     ? config
     : {
         ...config,
-        CORS_ORIGINS: cors
+        CORS_ORIGINS: corsOrigins
           .split(',')
           .map((origin) => origin.trim())
           .join(','),

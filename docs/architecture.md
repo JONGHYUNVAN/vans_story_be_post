@@ -16,8 +16,8 @@ Vercel vans_story (Next.js BFF)
   Spring 사용자 서비스                   Django 검색 서비스 (Elasticsearch)
 ```
 
-- 사용자 서비스에서는 작성자 닉네임만 조회한다 (`InternalApiClient.getUserNickname`, 1초 타임아웃, 실패 시 `null` → `'Unknown'`).
-- 검색 서비스로는 게시글 생성·수정·삭제를 전송한다 (`SearchIndexClient.indexPost` / `deletePostIndex`, 3초 타임아웃, 실패는 로그만). 응답을 기다리지 않으므로 검색 서비스가 죽어도 게시글 API는 동작한다.
+- 사용자 서비스에서는 작성자 닉네임만 조회한다 (`UserServiceClient.getNicknameByEmail`, 1초 타임아웃, 실패 시 `null` → `'Unknown'`).
+- 검색 서비스로는 게시글 생성·수정·삭제를 전송한다 (`SearchServiceClient.indexPost` / `removePostFromIndex`, 3초 타임아웃, 실패는 로그만). 응답을 기다리지 않으므로 검색 서비스가 죽어도 게시글 API는 동작한다.
 - 두 서비스 모두 `INTERNAL_API_KEY` 하나를 검증한다.
 
 ## 요청 흐름
@@ -32,8 +32,8 @@ HTTP 요청
  → Controller              (파라미터 파싱, Swagger 메타)
  → Service                 (검증, 권한, 비즈니스 로직, HttpException)
  → mongoose Model          (.populate(...).lean().exec())
- → mapToDto                (@Field 속성 복사, Date → toLocaleString 문자열)
- → Response DTO            (+ Service가 채우는 author, mainCategory, *Label)
+ → mapToDto                (@ResponseField 속성 복사, Date → toLocaleString 문자열)
+ → Response DTO            (+ Service의 toResponseDto가 채우는 author, mainCategory, *Label)
 ```
 
 - 전역 예외 필터는 없다. Service가 던진 `HttpException`이 Nest 기본 필터로 응답된다.
@@ -43,12 +43,14 @@ HTTP 요청
 
 | 모듈 | 위치 | 제공 | import |
 |---|---|---|---|
-| `AppModule` | `src/app.module.ts` | `MongooseModule.forRoot`, `HttpModule` | `PostsModule`, `CategoryModule`, `AuthModule` |
-| `PostsModule` | `src/modules/post/Module/module.ts` | `PostsController`, `PostsService`, `InternalApiClient`, `SearchIndexClient` | `MongooseModule.forFeature(Post)`, `CategoryModule`(Category 모델), `HttpModule`, `AuthModule` |
-| `CategoryModule` | `src/modules/category/module/category.module.ts` | `CategoryController`, `CategoryService`; exports `CategoryService`, `MongooseModule` | `MongooseModule.forFeature(Category)`, `AuthModule` |
-| `AuthModule` | `src/utils/Authorization/Module/module.ts` | `JwtStrategy`; exports `PassportModule`, `JwtModule` (`RolesGuard`는 `@UseGuards`로 컨트롤러 모듈에서 생성) | `PassportModule`, `JwtModule.registerAsync(HS512)` |
+| `AppModule` | `src/app.module.ts` | `MongooseModule.forRoot`, `HttpModule` | `PostsModule`, `CategoriesModule`, `AuthModule` |
+| `PostsModule` | `src/posts/posts.module.ts` | `PostsController`, `PostsService` | `MongooseModule.forFeature(Post)`, `CategoriesModule`(Category 모델), `UserServiceModule`, `SearchServiceModule`, `AuthModule` |
+| `CategoriesModule` | `src/categories/categories.module.ts` | `CategoriesController`, `CategoriesService`; exports `CategoriesService`, `MongooseModule` | `MongooseModule.forFeature(Category)`, `AuthModule` |
+| `UserServiceModule` | `src/user-service/user-service.module.ts` | exports `UserServiceClient` | `HttpModule` |
+| `SearchServiceModule` | `src/search-service/search-service.module.ts` | exports `SearchServiceClient` | — |
+| `AuthModule` | `src/auth/auth.module.ts` | `JwtStrategy`; exports `PassportModule`, `JwtModule` (`RolesGuard`는 `@UseGuards`로 컨트롤러 모듈에서 생성) | `PassportModule`, `JwtModule.registerAsync(HS512)` |
 
-`PostsModule`이 `CategoryModule`을 import하는 이유: 게시글 목록 필터가 카테고리 `value`로 `_id`를 찾아야 해서다. `Category` 모델은 `CategoryModule`만 `forFeature`로 등록하고, `PostsModule`은 그 모듈이 export한 `MongooseModule`로 주입받는다(techniques/mongodb, 2026-10-23 #15).
+`PostsModule`이 `CategoriesModule`을 import하는 이유: 게시글 목록 필터가 카테고리 `value`로 `_id`를 찾아야 해서다. `Category` 모델은 `CategoriesModule`만 `forFeature`로 등록하고, `PostsModule`은 그 모듈이 export한 `MongooseModule`로 주입받는다(techniques/mongodb, 2026-10-23 #15).
 
 ## 인증·권한
 
@@ -56,9 +58,9 @@ HTTP 요청
 Authorization: Bearer <JWT>
  → JwtAuthGuard.canActivate   헤더 없음 → 401 NO_AUTH_HEADER, Bearer 아님 → 401 INVALID_TOKEN_FORMAT
  → passport-jwt (JwtStrategy)  JWT_SECRET(base64 디코딩)으로 검증. 알고리즘은 HS512만(그 외 401), 만료 검사
- → JwtStrategy.validate        payload.sub → user.sub(이메일), payload.auth → user.roles(정규화), sub 없으면 401
+ → JwtStrategy.validate        payload.sub → user.email, payload.auth → user.roles(정규화), sub 없으면 401
  → JwtAuthGuard.handleRequest  JsonWebTokenError → INVALID_TOKEN, TokenExpiredError → TOKEN_EXPIRED
- → request.user = { sub, roles: Role[] }
+ → request.user = { email, roles: Role[] }
  → RolesGuard                  @Roles()가 있으면 roles 중 하나가 일치해야 함, 아니면 403
 ```
 
@@ -142,4 +144,4 @@ Authorization: Bearer <JWT>
 - Swagger UI는 비밀번호 + 세션 쿠키(`secure`는 production에서만).
 - 내부 서비스 호출은 `INTERNAL_API_KEY` 헤더. 소스에 키 리터럴 없음.
 - 로그에 접속 문자열·비밀번호·토큰을 남기지 않는다.
-- 작성자 이메일은 저장하되 응답에는 닉네임을 함께 내려준다 (`authorEmail`은 그대로 노출된다 — 숨기려면 `ResponseDto`에서 `@Field` 제거).
+- 작성자 이메일은 저장하되 응답에는 닉네임을 함께 내려준다 (`authorEmail`은 그대로 노출된다 — 숨기려면 `PostResponseDto`에서 `@ResponseField` 제거).
