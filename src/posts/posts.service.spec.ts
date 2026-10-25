@@ -31,7 +31,6 @@ import {
   createMockSearchServiceClient,
   createPostLeanDoc,
   expectedFullResponse,
-  expectedMainCategoryOnlyResponse,
   MAIN_CATEGORY_DOC,
   createMockQuery,
   SUB_CATEGORY_DOC,
@@ -196,7 +195,7 @@ describe('PostsService', () => {
       expect(query.limit).toHaveBeenCalledWith(limit);
 
       // 목록 응답은 author 와 mainCategory 만 채운다 (label / subCategory 는 없음)
-      expect(result.data).toEqual([expectedMainCategoryOnlyResponse()]);
+      expect(result.data).toEqual([expectedFullResponse()]);
 
       // 페이지네이션 메타 정보 검증
       expect(result.meta).toEqual({
@@ -220,7 +219,7 @@ describe('PostsService', () => {
       expect(query.skip).toHaveBeenCalledWith(0);
       expect(query.limit).toHaveBeenCalledWith(10);
 
-      expect(result.data).toEqual([expectedMainCategoryOnlyResponse()]);
+      expect(result.data).toEqual([expectedFullResponse()]);
       expect(result.meta).toEqual({ totalItems: 1, currentPage: 1, totalPages: 1, itemsPerPage: 10 });
     });
 
@@ -258,7 +257,7 @@ describe('PostsService', () => {
 
       // 응답은 조회수를 증가시키기 전에 읽은 문서 기준이다 (viewCount: 0)
       expect(mockUserServiceClient.getNicknameByEmail).toHaveBeenCalledWith(AUTHOR_EMAIL);
-      expect(result).toEqual(expectedMainCategoryOnlyResponse());
+      expect(result).toEqual(expectedFullResponse());
     });
 
     it('이미 본 게시글이면 조회수를 올리지 않는다', async () => {
@@ -267,7 +266,7 @@ describe('PostsService', () => {
 
       // Then
       expect(mockPostModel.findByIdAndUpdate).not.toHaveBeenCalled();
-      expect(result).toEqual(expectedMainCategoryOnlyResponse());
+      expect(result).toEqual(expectedFullResponse());
     });
   });
 
@@ -282,7 +281,7 @@ describe('PostsService', () => {
 
       // Then
       expect(mockPostModel.findById).toHaveBeenCalledWith(POST_ID_HEX);
-      expect(result).toEqual(expectedMainCategoryOnlyResponse(createPostLeanDoc({ authorEmail: userEmail })));
+      expect(result).toEqual(expectedFullResponse(createPostLeanDoc({ authorEmail: userEmail })));
       expect(result.authorEmail).toBe(userEmail);
       // 조회수는 증가시키지 않는다
       expect(mockPostModel.findByIdAndUpdate).not.toHaveBeenCalled();
@@ -329,7 +328,7 @@ describe('PostsService', () => {
       expect(query.populate).toHaveBeenCalledWith('subCategoryId', 'value label');
 
       // 수정 응답도 author 와 mainCategory 만 채운다
-      expect(result).toEqual(expectedMainCategoryOnlyResponse());
+      expect(result).toEqual(expectedFullResponse());
 
       // 검색 인덱스 갱신 (fire-and-forget)
       expect(mockSearchServiceClient.indexPost).toHaveBeenCalledTimes(1);
@@ -353,7 +352,7 @@ describe('PostsService', () => {
       // Then
       expect(mockPostModel.findById).toHaveBeenCalledWith(POST_ID_HEX);
       expect(mockPostModel.findByIdAndUpdate).toHaveBeenCalledWith(POST_ID_HEX, updatePostDto, { new: true, runValidators: true });
-      expect(result).toEqual(expectedMainCategoryOnlyResponse());
+      expect(result).toEqual(expectedFullResponse());
     });
 
     it('작성자도 관리자도 아니면 403', async () => {

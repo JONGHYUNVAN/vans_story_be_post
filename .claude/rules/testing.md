@@ -13,7 +13,7 @@ paths:
   - `createMockPostModel(doc?)`, `createMockCategoryModel(categories?)` — 조회 메서드는 호출마다 새 `createMockQuery` 체인을 돌려준다. Category 모의는 `{ value, parentId: null | ObjectId | { $ne: null } }` 필터를 실제로 평가하고, `findById`도 픽스처에서 찾는다.
   - `createMockQuery(result)` — `populate/select/sort/skip/limit/lean`은 `this`, `exec()`와 `await` 둘 다 `result`. Service가 쓰는 체인 메서드가 늘면 여기에도 추가한다.
   - 픽스처: `POST_ID`, `MAIN_CATEGORY_ID`/`SUB_CATEGORY_ID`(+ `MAIN_CATEGORY_DOC`/`SUB_CATEGORY_DOC`, populate 결과 `POPULATED_*`), `AUTHOR_EMAIL`, `createPostLeanDoc(overrides)`.
-  - 기대 응답: `expectedMainCategoryOnlyResponse`(findAll/findOne/findForEdit/update 경로), `expectedFullResponse`(`toResponseDto` 경로 — create/findByAuthor/searchPosts/findByThemeAndCategory). 날짜는 `toLocaleString()` 문자열.
+  - 기대 응답: `expectedFullResponse` 하나다 — 2026-10-26부터 모든 조회·생성·수정 경로가 `toResponseDto`를 거쳐 `mainCategory`/`mainCategoryLabel`/`subCategory`/`subCategoryLabel`을 채운다(그전에는 findAll/findOne/findForEdit/update가 `subCategory`를 빼고 돌려줘 프런트 수정 화면의 하위 카테고리가 비었다). 날짜는 `toLocaleString()` 문자열.
   - 외부 클라이언트는 프로바이더로 바꾼다: `{ provide: UserServiceClient, useValue: createMockUserServiceClient() }`, `{ provide: SearchServiceClient, useValue: createMockSearchServiceClient() }`. `beforeEach`마다 새로 만들므로 `jest.clearAllMocks()`는 필요 없다. 검증은 `expect(mockSearchServiceClient.indexPost)...`.
 - 환경 변수 검증(`src/config/env.validation.spec.ts`): `validateEnv`에 규칙을 추가하면 정상·거부 케이스를 추가한다. 오류 메시지에 값이 들어가지 않는지 확인하는 케이스는 유지한다.
 - DTO 픽스처는 `createValidDto(CreatePostDto | UpdatePostDto, overrides)`(`test/helpers/dto-fixtures.ts`) — class-validator를 통과하는 값만 만들고, 실패하면 throw한다. 카테고리 id는 픽스처 카테고리를 가리킨다. DTO 자체의 검증 테스트는 대상 옆 `*.dto.spec.ts`(`plainToInstance` + `validateSync`).

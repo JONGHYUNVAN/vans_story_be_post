@@ -5,7 +5,7 @@
  *   (`find/findById/findByIdAndUpdate/... → populate → select → sort → skip → limit → lean → exec`)을
  *   흉내 내는 thenable 쿼리 모의 객체(`createMockQuery`)
  * - populate 결과가 포함된 lean 게시글 문서 픽스처(`createPostLeanDoc`)
- * - 서비스 경로별 기대 응답(`expectedFullResponse`, `expectedMainCategoryOnlyResponse`)
+ * - 서비스 경로별 기대 응답(`expectedFullResponse`, `expectedFullResponse`)
  * - Post / Category 모델과 UserServiceClient·SearchServiceClient 모의 객체
  */
 import { Types } from 'mongoose';
@@ -148,7 +148,7 @@ export type PopulatedPostResponse = Omit<PostResponseDto, 'mainCategoryId' | 'su
  * 이 경로들은 `author`와 `mainCategory`만 채우고 `mainCategoryLabel` / `subCategory` / `subCategoryLabel`은 넣지 않는다.
  * 날짜는 `mapToDto`가 `Date.toLocaleString()`으로 바꾼 문자열이다.
  */
-export const expectedMainCategoryOnlyResponse = (
+const postResponseBase = (
   doc: PostLeanDoc = createPostLeanDoc(),
 ): Omit<PopulatedPostResponse, 'mainCategoryLabel' | 'subCategory' | 'subCategoryLabel'> => ({
   _id: doc._id,
@@ -175,7 +175,7 @@ export const expectedMainCategoryOnlyResponse = (
  * 메인·서브 카테고리의 value와 label이 모두 채워진다.
  */
 export const expectedFullResponse = (doc: PostLeanDoc = createPostLeanDoc()): PopulatedPostResponse => ({
-  ...expectedMainCategoryOnlyResponse(doc),
+  ...postResponseBase(doc),
   mainCategoryLabel: doc.mainCategoryId.label,
   subCategory: doc.subCategoryId.value,
   subCategoryLabel: doc.subCategoryId.label,

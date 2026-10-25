@@ -213,11 +213,7 @@ export class PostsService {
     // 각 게시글의 authorEmail을 author(닉네임)로 변환
     const postResponses = await Promise.all(
       posts.map(async (post: any) => {
-        const authorNickname = await this.userServiceClient.getNicknameByEmail(post.authorEmail);
-        const postResponse = mapToDto(post, PostResponseDto);
-        postResponse.author = authorNickname ?? 'Unknown';
-        postResponse.mainCategory = post.mainCategoryId?.value || '';
-        return postResponse;
+        return this.toResponseDto(post);
       })
     );
 
@@ -263,11 +259,7 @@ export class PostsService {
       await this.incrementViewCount(id);
     }
 
-    const authorNickname = await this.userServiceClient.getNicknameByEmail(post.authorEmail);
-    const postResponse = mapToDto(post, PostResponseDto);
-    postResponse.author = authorNickname ?? 'Unknown';
-    postResponse.mainCategory = (post.mainCategoryId as any)?.value || '';
-    return postResponse;
+    return this.toResponseDto(post);
   }
 
   /**
@@ -330,11 +322,7 @@ export class PostsService {
       throw new ForbiddenException('Only the author can edit this post');
     }
 
-    const authorNickname = await this.userServiceClient.getNicknameByEmail(post.authorEmail);
-    const postResponse = mapToDto(post, PostResponseDto);
-    postResponse.author = authorNickname ?? 'Unknown';
-    postResponse.mainCategory = (post.mainCategoryId as any)?.value || '';
-    return postResponse;
+    return this.toResponseDto(post);
   }
 
   /**
@@ -387,10 +375,7 @@ export class PostsService {
       throw new NotFoundException(`Post with ID ${id} not found`);
     }
 
-    const authorNickname = await this.userServiceClient.getNicknameByEmail(updatedPost.authorEmail);
-    const postResponse = mapToDto(updatedPost, PostResponseDto);
-    postResponse.author = authorNickname ?? 'Unknown';
-    postResponse.mainCategory = (updatedPost.mainCategoryId as any)?.value || '';
+    const postResponse = await this.toResponseDto(updatedPost);
 
     // fire-and-forget: 검색 인덱스 갱신 (응답을 차단하지 않음)
     const searchIndexPayload: SearchIndexPayload = {
@@ -403,7 +388,7 @@ export class PostsService {
       mainCategory: (updatedPost.mainCategoryId as any)?.value || '',
       subCategory: (updatedPost.subCategoryId as any)?.value || '',
       language: updatedPost.language,
-      author: authorNickname ?? 'Unknown',
+      author: postResponse.author,
       createdAt: (updatedPost as any).createdAt instanceof Date
         ? (updatedPost as any).createdAt.toISOString()
         : String((updatedPost as any).createdAt ?? ''),
