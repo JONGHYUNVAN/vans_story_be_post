@@ -184,7 +184,7 @@ ObjectId 형식 검사는 서비스가 아니라 컨트롤러의 `ParseObjectIdP
 | 한다 | 하지 않는다 |
 |---|---|
 | `@Schema({ timestamps: true, collection })` + `@Prop` + `SchemaFactory.createForClass` | 메서드·훅·가상 필드·비즈니스 로직 |
-| 참조는 `@Prop({ type: Types.ObjectId, ref: '<클래스 이름>' })` — `ref`가 없으면 `populate`가 조용히 건너뛴다 | |
+| 참조는 `@Prop({ type: SchemaTypes.ObjectId, ref: '<클래스 이름>' })` (`type`에 bson `Types.ObjectId`를 쓰면 @nestjs/mongoose 12에서 `Mixed`가 된다, decisions 2026-10-25) — `ref`가 없으면 `populate`가 조용히 건너뛴다 | |
 | `export type PostDocument = HydratedDocument<Post>`, 주입은 `Model<Post>` | `Post & Document` (구식) |
 | 고정 값 필드는 DTO와 같은 enum으로 `enum` 지정 | |
 

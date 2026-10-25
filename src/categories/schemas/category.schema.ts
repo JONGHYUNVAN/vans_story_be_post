@@ -6,7 +6,7 @@
  */
 
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document, SchemaTypes, Types } from 'mongoose';
 import { CategoryGroup } from '../category-group.enum';
 
 /**
@@ -37,7 +37,7 @@ export class Category {
    * 
    * @type {Types.ObjectId | null}
    */
-  @Prop({ type: Types.ObjectId, ref: 'Category', default: null })
+  @Prop({ type: SchemaTypes.ObjectId, ref: 'Category', default: null })
   parentId: Types.ObjectId | null;
 
   /**

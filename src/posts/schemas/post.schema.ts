@@ -5,7 +5,7 @@
  */
 
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document, SchemaTypes, Types } from 'mongoose';
 
 /**
  * 게시글 문서 타입
@@ -71,7 +71,7 @@ export class Post {
   /**
    * 메인 카테고리 ID (Category 문서 참조)
    */
-  @Prop({ type: Types.ObjectId, ref: 'Category', required: true })
+  @Prop({ type: SchemaTypes.ObjectId, ref: 'Category', required: true })
   mainCategoryId: Types.ObjectId;
 
   /**
@@ -79,7 +79,7 @@ export class Post {
    *
    * `ref`가 없으면 쿼리 `populate('subCategoryId')`가 조용히 건너뛰어진다.
    */
-  @Prop({ type: Types.ObjectId, ref: 'Category', required: true })
+  @Prop({ type: SchemaTypes.ObjectId, ref: 'Category', required: true })
   subCategoryId: Types.ObjectId;
 
   /**

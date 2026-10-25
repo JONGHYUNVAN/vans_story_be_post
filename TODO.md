@@ -181,6 +181,8 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 
 ---
 
+- [ ] 운영 Atlas에서 `scripts/migrate-category-id-types.js` 실행(배포 후 1회, 절차 `docs/history/2026-10-25-category-id-types.md`). 2026-10-25 새 백엔드 전환 뒤 API로 만든 글(`posts/6ade12e7a26d691e30272c0a`)의 `mainCategoryId`/`subCategoryId`가 문자열로 저장돼 카테고리 필터 목록에서 빠진다. 이 PC는 Atlas IP 미등록이라 허용된 곳에서 돌리거나, 한 건이면 관리자 토큰으로 같은 id를 `PATCH`해도 된다
+
 ## 4. 참고 자료
 
 - [How Claude remembers your project](https://code.claude.com/docs/en/memory) — CLAUDE.md 범위, 200줄 기준, `.claude/rules/`와 `paths` frontmatter, `@import`, `CLAUDE.local.md`, AGENTS.md

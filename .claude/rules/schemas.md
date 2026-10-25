@@ -7,7 +7,7 @@ paths:
 
 - `@Schema({ timestamps: true, collection: '<복수형>' })` 클래스 + `SchemaFactory.createForClass`. `@Prop`만 둔다. 메서드·훅·가상 필드·비즈니스 로직은 Service로.
 - Document 타입: 새 스키마는 `export type XDocument = HydratedDocument<X>`, 주입은 `Model<X>` (`docs/conventions.md` 4절 스키마). 기존 `X & Document`는 전수조사 #25에서 바꾼다. timestamps 필드를 타입에서 쓰려면 `CategoryDocument`처럼 `& { createdAt: Date; updatedAt: Date }`를 덧붙인다.
-- 참조는 `@Prop({ type: Types.ObjectId, ref: 'Category' })`. `ref` 문자열은 대상 클래스 이름과 같아야 `populate`가 된다.
+- 참조는 `@Prop({ type: SchemaTypes.ObjectId, ref: 'Category' })` — `type`은 반드시 `SchemaTypes.ObjectId`(mongoose `Schema.Types.ObjectId`). bson 클래스 `Types.ObjectId`를 넣으면 @nestjs/mongoose 12가 스키마 클래스로 오해해 `Mixed` 경로가 되고 문자열이 그대로 저장돼 ObjectId 필터·$in에 안 걸린다(2026-10-25 결정). 속성의 TS 타입은 그대로 `Types.ObjectId`. `ref` 문자열은 대상 클래스 이름과 같아야 `populate`가 된다.
 - 필드를 추가·삭제하면 함께 확인한다:
   - 생성·수정·응답 DTO
   - `test/helpers/post-fixtures.ts`의 `PostLeanDoc` / `createPostLeanDoc` 픽스처와 기대 응답
