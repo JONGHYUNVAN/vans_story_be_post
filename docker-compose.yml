@@ -1,0 +1,13 @@
+services:
+  api:
+    build:
+      context: .
+      target: development
+    volumes:
+      - ./src:/app/src
+      - ./.env:/app/.env:ro
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+    restart: unless-stopped
