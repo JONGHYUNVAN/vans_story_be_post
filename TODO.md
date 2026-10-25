@@ -140,7 +140,7 @@ CLAUDE.md 초안에 추천안을 반영했다(2026-10-22, `docs/decisions.md`에
 ### 자동화
 
 - [ ] CI 워크플로 없음. GitHub Actions로 `npx tsc --noEmit -p tsconfig.json`, `npm run build`, `npm test`(DB 불필요 항목만) 실행
-- [ ] 배포 환경 Node 26 이상 확인(`engines.node >= 26.0.0`). 클라우드타입 Node 프리셋에 26이 없어 Dockerfile 템플릿으로 배포한다. `Dockerfile`은 `node:26-alpine`으로 커밋됨(2026-10-25, `11f7d4c`; production 이미지 로컬 빌드·기동, `/api/v1/categories`·`/api/v1/posts` 200 확인). 남은 일: 클라우드타입 서비스를 Dockerfile 템플릿(타깃 `production`, 포트 3001)으로 전환하고, 위 "배포 전 확인"의 환경 변수 검증 통과 확인
+- [x] 배포 환경 Node 26 이상 확인(`engines.node >= 26.0.0`). 클라우드타입 Node 프리셋에 26이 없어 Dockerfile 템플릿으로 배포한다 — 2026-10-25 전환 완료. 새 서비스 `vansdevblog-be-post`(Dockerfile, 브랜치 main, Port 3001, Dockerfile path·Start commands 비움)가 `www.vansdevblog.online`을 서빙하고, 컨테이너 Node는 26.12.1. 기본 주소·운영 도메인에서 `/api/v1/categories`·`/api/v1/posts` 200, Vercel 프런트 BFF·CORS 프리플라이트 정상 확인. 옛 `vans-story-be-post`(node@22)는 정지 상태로 남김 — 며칠 뒤 삭제. 전환 중 걸린 것: 생성 화면이 옛 브랜치(`test/e2e-test-database`)를 골라 Dockerfile을 못 찾음(브랜치 main으로), Port를 비우면 공개 주소가 안 생기고 도메인 연결 목록에도 안 뜸, 도메인 연결 입력은 스킴·슬래시 없는 호스트명만
 - [x] 로컬 Node 26 설치(`nvm install 26`). 현재 nvm에는 18/22/23뿐이라 `npm test`가 한 건도 못 돈다(Nest 12 ESM → jest `require(esm)`은 Node 24.9+). 2026-10-22 변경분의 단위 테스트는 이 이유로 **미검증** — tsc만 통과 (2026-10-22 Node 26.8.1에서 `npm test` 4 스위트 47건, `npm run build` 통과 확인 — 기준 커밋 `5134a0b`)
 
 ### 표준 준수 (2026-10-22 전수조사)
