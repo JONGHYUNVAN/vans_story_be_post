@@ -90,7 +90,7 @@
 - 왜: @nestjs/mongoose 12는 `type`이 함수이고 mongoose `SchemaType` 자손이 아니면 `@Schema` 클래스로 보고 `createForClass`를 돌린다. bson `ObjectId` 클래스는 메타데이터가 없어 빈 정의가 되고 mongoose는 `Mixed`로 등록해 캐스팅이 사라진다. 그 결과 2026-10-25 새 백엔드 전환 뒤 등록한 글의 카테고리 id가 문자열로 저장되어 `find({ mainCategoryId: ObjectId })` 필터에서 빠졌다(populate는 되므로 상세는 멀쩡해 보임). `SchemaTypes.ObjectId`는 `SchemaType` 자손이라 그대로 통과한다.
 - 대안: 문자열 `'ObjectId'` — 동작은 같지만 타입 추론이 없다. `mongoose.ObjectId` — 같은 SchemaType이지만 이름이 bson 클래스와 헷갈린다. @nestjs/mongoose 11로 되돌리기 — Nest 12와 peer 범위가 맞지 않는다. mongoose 8/9 업그레이드는 별도 작업(`TODO.md` 3절)이고 이 문제와 무관하게 `Types.ObjectId`는 같은 경로로 `Mixed`가 된다.
 
-## 2026-11-11
+## 2026-11-05
 
 ### 닉네임 조회를 이메일별로 묶고 성공한 결과만 5분 재사용, 타임아웃 3초
 
