@@ -16,7 +16,7 @@ Vercel vans_story (Next.js BFF)
   Spring 사용자 서비스                   Django 검색 서비스 (Elasticsearch)
 ```
 
-- 사용자 서비스에서는 작성자 닉네임만 조회한다 (`UserServiceClient.getNicknameByEmail`, 1초 타임아웃, 실패 시 `null` → `'Unknown'`).
+- 사용자 서비스에서는 작성자 닉네임만 조회한다 (`UserServiceClient.getNicknameByEmail`, 3초 타임아웃, 같은 이메일은 호출을 한 번으로 묶고 성공한 결과는 5분 재사용, 실패 시 경고 로그 후 `null` → `'Unknown'`).
 - 검색 서비스로는 게시글 생성·수정·삭제를 전송한다 (`SearchServiceClient.indexPost` / `removePostFromIndex`, 3초 타임아웃, 실패는 로그만). 응답을 기다리지 않으므로 검색 서비스가 죽어도 게시글 API는 동작한다.
 - 두 서비스 모두 `INTERNAL_API_KEY` 하나를 검증한다.
 

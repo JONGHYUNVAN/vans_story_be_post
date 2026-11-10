@@ -89,3 +89,11 @@
 - 무엇: `Post.mainCategoryId`/`subCategoryId`, `Category.parentId`의 `@Prop({ type: Types.ObjectId })`를 `SchemaTypes.ObjectId`(mongoose `Schema.Types.ObjectId`)로 바꿨다. 경로 타입을 고정하는 단위 테스트(`*.schema.spec.ts`)와, API로 만든 글이 카테고리 필터 목록에 나오는지 보는 e2e(`test/posts-category-filter.e2e-spec.ts`)를 추가. 이미 문자열로 저장된 문서는 `scripts/migrate-category-id-types.js`로 되돌린다(절차 `docs/history/2026-10-25-category-id-types.md`).
 - 왜: @nestjs/mongoose 12는 `type`이 함수이고 mongoose `SchemaType` 자손이 아니면 `@Schema` 클래스로 보고 `createForClass`를 돌린다. bson `ObjectId` 클래스는 메타데이터가 없어 빈 정의가 되고 mongoose는 `Mixed`로 등록해 캐스팅이 사라진다. 그 결과 2026-10-25 새 백엔드 전환 뒤 등록한 글의 카테고리 id가 문자열로 저장되어 `find({ mainCategoryId: ObjectId })` 필터에서 빠졌다(populate는 되므로 상세는 멀쩡해 보임). `SchemaTypes.ObjectId`는 `SchemaType` 자손이라 그대로 통과한다.
 - 대안: 문자열 `'ObjectId'` — 동작은 같지만 타입 추론이 없다. `mongoose.ObjectId` — 같은 SchemaType이지만 이름이 bson 클래스와 헷갈린다. @nestjs/mongoose 11로 되돌리기 — Nest 12와 peer 범위가 맞지 않는다. mongoose 8/9 업그레이드는 별도 작업(`TODO.md` 3절)이고 이 문제와 무관하게 `Types.ObjectId`는 같은 경로로 `Mixed`가 된다.
+
+## 2026-11-11
+
+### 닉네임 조회를 이메일별로 묶고 성공한 결과만 5분 재사용, 타임아웃 3초
+
+- 무엇: `UserServiceClient.getNicknameByEmail`이 같은 이메일의 동시 호출을 하나로 묶고 성공한 결과를 프로세스 메모리에 5분 둔다. 실패는 재사용하지 않는다. 타임아웃을 1초에서 3초로 늘리고, 실패하면 코드와 상태만 경고 로그로 남긴다.
+- 왜: 목록이 글마다 동시에 호출해 운영에서 글 15개 목록의 호출 8~13개가 1초를 넘겨 작성자가 `'Unknown'`으로 나왔다(글 2개 목록도 간헐적으로 전부 실패). 실패를 로그 없이 삼켜 원인이 보이지 않았다. 사용자 서비스가 1초를 넘기는 이유는 아직 확인하지 못했다.
+- 대안: 타임아웃만 늘리기 — 동시 호출 수가 그대로라 목록이 느려지고 여전히 실패할 수 있다. Redis 같은 공유 캐시 — 닉네임 하나에 인프라가 늘어난다. 닉네임을 게시글에 저장 — 변경 전파가 필요하다. 프로세스 메모리라 닉네임을 바꾸면 최대 5분 뒤에 반영된다.
